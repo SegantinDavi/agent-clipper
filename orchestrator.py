@@ -5,19 +5,25 @@ from autogen import UserProxyAgent, AssistantAgent, GroupChat, GroupChatManager
 llm_config_manager = {
     "base_url": "http://127.0.0.1:11434/v1",
     "api_key": "ollama",
-    "model": "qwen2.5:14b"
+    "model": "qwen2.5:14b",
+    "max_tokens": 1500,
+    "stop": ["TERMINATE"]
 }
 
 llm_config_analyst = {
     "base_url": "http://127.0.0.1:11434/v1",
     "api_key": "ollama",
-    "model": "deepseek-r1:8b"
+    "model": "deepseek-r1:8b",
+    "max_tokens": 1500,
+    "stop": ["TERMINATE", "```\n"]
 }
 
 llm_config_coder = {
     "base_url": "http://127.0.0.1:11434/v1",
     "api_key": "ollama",
-    "model": "qwen2.5-coder:14b"
+    "model": "qwen2.5-coder:14b",
+    "max_tokens": 1500,
+    "stop": ["TERMINATE", "```\n"]
 }
 
 # 2. Gerenciamento de VRAM
@@ -38,13 +44,15 @@ def force_unload_model(model_name: str):
 admin = UserProxyAgent(
     name="Admin",
     human_input_mode="NEVER",
-    code_execution_config={"work_dir": ".", "use_docker": False}
+    code_execution_config={"work_dir": ".", "use_docker": False},
+    is_termination_msg=lambda x: isinstance(x, dict) and x.get("content", "") and "TERMINATE" in x.get("content", "")
 )
 
 orchestrator_manager = AssistantAgent(
     name="Orchestrator_Manager",
     llm_config=llm_config_manager,
-    system_prompt="Receba um link de YouTube, planeje os passos e chame os outros agentes na ordem correta, finalizando a tarefa quando o vídeo estiver editado."
+    system_prompt="Receba um link de YouTube, planeje os passos e chame os outros agentes na ordem correta, finalizando a tarefa quando o vídeo estiver editado.\n\n"
+                  "Quando todo o processo terminar e os vídeos finais estiverem salvos com sucesso no disco, responda APENAS com a palavra TERMINATE."
 )
 
 content_analyst = AssistantAgent(
@@ -80,32 +88,14 @@ video_coder = AssistantAgent(
 )
 
 # 4. Registro de Ferramentas (AutoGen API)
-from autogen.agentchat import register_function
-from ingestion import download_video_and_transcript
-from editor import cut_and_format_video
-
-register_function(
-    name="download_video_and_transcript",
-    function=download_video_and_transcript,
-    caller="Orchestrator_Manager",
-    executor="Admin",
-    description="Baixa o vídeo do YouTube e retorna a transcrição com timestamps exatos."
-)
-
-register_function(
-    name="cut_and_format_video",
-    function=cut_and_format_video,
-    caller="Video_Coder",
-    executor="Admin",
-    description="Recebe o caminho do vídeo original e um JSON de timestamps, corta os trechos e salva no disco em formato vertical."
-)
+# (Nenhuma modificação necessária aqui)
 
 # 5. Inicialização do Grupo de Chat
-group_chat = GroupChat(
-    agents=[orchestrator_manager, content_analyst, video_coder, admin],
-    messages=[],
-    max_round=10,
+group = GroupChat(
+    agents=[admin, orchestrator_manager, content_analyst, video_coder],
+    max_round=100,
+    is_termination_msg=lambda x: isinstance(x, dict) and x.get("content", "") and "TERMINATE" in x.get("content", "")
 )
 
 # 6. Iniciar o Grupo de Chat
-group_chat.run()
+group.start()
