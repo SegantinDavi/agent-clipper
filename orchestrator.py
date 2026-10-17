@@ -38,7 +38,7 @@ def force_unload_model(model_name: str):
 admin = UserProxyAgent(
     name="Admin",
     human_input_mode="NEVER",
-    code_execution_config={"use_docker": False}
+    code_execution_config={"work_dir": ".", "use_docker": False}
 )
 
 orchestrator_manager = AssistantAgent(
@@ -76,64 +76,35 @@ content_analyst = AssistantAgent(
 video_coder = AssistantAgent(
     name="Video_Coder",
     llm_config=llm_config_coder,
-    system_prompt=(
-        "Receber timestamps e escrever scripts em Python usando a biblioteca moviepy para cortar e salvar o vídeo.\n"
-        "Use a biblioteca re (Regex) ou json para extrair apenas o conteúdo que estiver dentro do bloco ```json gerado pelo Analyst, ignorando qualquer texto fora dele (como as tags )."
-    )
+    system_prompt="Você é um assistente especializado em codificação de vídeo. Sua tarefa é receber o caminho do vídeo original e um JSON de timestamps, cortar os trechos e salvar no disco em formato vertical."
 )
 
-# 4. Registro de Ferramentas (Tools Stubs)
-def download_video_and_transcript(url: str) -> dict:
-    """Download video and transcript using yt-dlp."""
-    pass
-
-def execute_moviepy_script(script_code: str) -> str:
-    """Execute moviepy script."""
-    pass
-
-# Ensure autogen is imported
-import autogen
-
+# 4. Registro de Ferramentas (AutoGen API)
 autogen.agentchat.register_function(
     name="download_video_and_transcript",
     function=download_video_and_transcript,
-    description="Download video and transcript using yt-dlp."
+    caller="Orchestrator_Manager",
+    executor="Admin",
+    description="Baixa o vídeo do YouTube e retorna a transcrição com timestamps exatos."
 )
 
 autogen.agentchat.register_function(
-    name="execute_moviepy_script",
-    function=execute_moviepy_script,
-    description="Execute moviepy script."
+    name="cut_and_format_video",
+    function=cut_and_format_video,
+    caller="Video_Coder",
+    executor="Admin",
+    description="Recebe o caminho do vídeo original e um JSON de timestamps, corta os trechos e salva no disco em formato vertical."
 )
 
-# 5. Orquestração (Group Chat)
+# 5. Configuração do Grupo de Chat
 groupchat = GroupChat(
-    agents=[admin, orchestrator_manager, content_analyst, video_coder],
-    speaker_selection_method="auto"
+    agents=[orchestrator_manager, content_analyst, video_coder, admin],
+    messages=[],
+    max_round=10
 )
 
-groupchat_manager = GroupChatManager(
-    groupchat=groupchat,
-    llm_config=llm_config_manager
-)
-
-# VRAM Management
-AGENT_MODELS = {
-    "Orchestrator_Manager": "qwen2.5:14b",
-    "Content_Analyst": "deepseek-r1:8b",
-    "Video_Coder": "qwen2.5-coder:14b"
-}
-
-def vram_management_callback(sender, message, receiver, **kwargs):
-    if sender in AGENT_MODELS:
-        previous_model = AGENT_MODELS[sender]
-        force_unload_model(previous_model)
-        print(f"[VRAM Manager] Switching from model {previous_model} to {AGENT_MODELS[receiver]}...")
-
-groupchat_manager.register_reply(vram_management_callback)
-
+# 6. Início da Tarefa
 if __name__ == "__main__":
-    groupchat_manager.start()
-    admin.initiate_chat(
-        message="Por favor, baixe e edite os melhores momentos deste vídeo: https://youtube.com/watch?v=TESTE"
-    )
+    test_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+    groupchat.add_message("Orchestrator_Manager", f"Por favor, inicie o processo de edição do vídeo com o seguinte link: {test_url}")
+    groupchat.run()

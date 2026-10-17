@@ -30,9 +30,3 @@ def cut_and_format_video(video_path: str, cuts_json: str, output_dir: str = "out
 
     video.close()
     return generated_files
-
-if __name__ == "__main__":
-    test_video_path = "downloads/jNQXAC9IVRw.mp4"
-    test_cuts_json = '[{"title": "Test Cut 1", "start_time": 10, "end_time": 20}, {"title": "Test Cut 2", "start_time": 30, "end_time": 40}]'
-    result = cut_and_format_video(test_video_path, test_cuts_json)
-    print(f"Generated files: {result}")
