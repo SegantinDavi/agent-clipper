@@ -80,7 +80,9 @@ video_coder = AssistantAgent(
 )
 
 # 4. Registro de Ferramentas (AutoGen API)
-autogen.agentchat.register_function(
+from autogen.agentchat import register_function
+
+register_function(
     name="download_video_and_transcript",
     function=download_video_and_transcript,
     caller="Orchestrator_Manager",
@@ -88,7 +90,7 @@ autogen.agentchat.register_function(
     description="Baixa o vídeo do YouTube e retorna a transcrição com timestamps exatos."
 )
 
-autogen.agentchat.register_function(
+register_function(
     name="cut_and_format_video",
     function=cut_and_format_video,
     caller="Video_Coder",
@@ -96,15 +98,12 @@ autogen.agentchat.register_function(
     description="Recebe o caminho do vídeo original e um JSON de timestamps, corta os trechos e salva no disco em formato vertical."
 )
 
-# 5. Configuração do Grupo de Chat
-groupchat = GroupChat(
+# 5. Inicialização do Grupo de Chat
+group_chat = GroupChat(
     agents=[orchestrator_manager, content_analyst, video_coder, admin],
     messages=[],
-    max_round=10
+    max_round=10,
 )
 
 # 6. Início da Tarefa
-if __name__ == "__main__":
-    test_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
-    groupchat.add_message("Orchestrator_Manager", f"Por favor, inicie o processo de edição do vídeo com o seguinte link: {test_url}")
-    groupchat.run()
+group_chat.run()
