@@ -3,19 +3,19 @@ from autogen import UserProxyAgent, AssistantAgent, GroupChat, GroupChatManager
 
 # 1. Configuração de LLM e Endpoints
 llm_config_manager = {
-    "base_url": "http://localhost:11434/v1",
+    "base_url": "http://127.0.0.1:11434/v1",
     "api_key": "ollama",
     "model": "qwen2.5:14b"
 }
 
 llm_config_analyst = {
-    "base_url": "http://localhost:11434/v1",
+    "base_url": "http://127.0.0.1:11434/v1",
     "api_key": "ollama",
     "model": "deepseek-r1:8b"
 }
 
 llm_config_coder = {
-    "base_url": "http://localhost:11434/v1",
+    "base_url": "http://127.0.0.1:11434/v1",
     "api_key": "ollama",
     "model": "qwen2.5-coder:14b"
 }
@@ -24,7 +24,7 @@ llm_config_coder = {
 def force_unload_model(model_name: str):
     try:
         response = requests.post(
-            "http://localhost:11434/api/generate",
+            "http://127.0.0.1:11434/api/generate",
             json={"model": model_name, "keep_alive": 0}
         )
         if response.status_code == 200:
