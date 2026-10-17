@@ -1,7 +1,9 @@
 import os
 import re
+import gc
 from yt_dlp import YoutubeDL
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
+from faster_whisper import WhisperModel
 
 def download_video_and_transcript(url: str, output_dir: str = "downloads") -> dict:
     try:
@@ -29,8 +31,14 @@ def download_video_and_transcript(url: str, output_dir: str = "downloads") -> di
         try:
             transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['pt', 'pt-BR', 'en'])
             transcript = "\n".join([f"[{entry['start']:.2f} - {entry['start'] + entry['duration']:.2f}] {entry['text']}" for entry in transcript_list])
-        except TranscriptsDisabled:
-            transcript = "Erro: Transcrição não disponível"
+        except (TranscriptsDisabled, Exception):
+            print("[Ingestion] Legendas não encontradas na API. Iniciando faster-whisper local...")
+            model = WhisperModel("small", device="cuda", compute_type="float16")
+            segments, info = model.transcribe(video_path, beam_size=5)
+            transcript = "\n".join([f"[{segment.start:.2f} - {segment.end:.2f}] {segment.text}" for segment in segments])
+            print("[Ingestion] Transcrição concluída. Liberando VRAM.")
+            del model
+            gc.collect()
 
         return {
             "status": "success",
