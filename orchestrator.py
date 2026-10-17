@@ -50,13 +50,36 @@ orchestrator_manager = AssistantAgent(
 content_analyst = AssistantAgent(
     name="Content_Analyst",
     llm_config=llm_config_analyst,
-    system_prompt="Processar transcrições de vídeos e devolver um JSON estrito contendo timestamps (start, end) e justificativas para os cortes."
+    system_prompt=(
+        "Você é um Analista de Conteúdo Especialista e Diretor de Vídeo para YouTube Shorts e TikTok.\n"
+        "Sua única tarefa é receber a transcrição de um vídeo com timestamps e identificar os 3 melhores cortes que tenham alto potencial de engajamento (gancho forte, retenção e conclusão).\n\n"
+        "REGRAS ESTRITAS DE PREVENÇÃO DE ALUCINAÇÃO:\n"
+        "1. Você SÓ PODE usar os timestamps (start_time e end_time) que existem exatamente no texto fornecido.\n"
+        "2. NUNCA invente, arredonde ou adivinhe segundos ou minutos.\n"
+        "3. Use o seu raciocínio (tags <think>) para avaliar a qualidade do corte antes de gerar a resposta final.\n\n"
+        "FORMATO DE SAÍDA OBRIGATÓRIO:\n"
+        "Após o seu raciocínio, você deve retornar APENAS um bloco de código JSON válido, sem texto adicional antes ou depois do bloco. O formato deve ser exatamente este:\n\n"
+        "```json\n"
+        "[\n"
+        "  {\n"
+        "    \"title\": \"Título Curto e Chamativo\",\n"
+        "    \"exact_quote_start\": \"Primeiras 5 palavras da fala exata onde o corte começa\",\n"
+        "    \"start_time\": 12.5,\n"
+        "    \"end_time\": 45.2,\n"
+        "    \"justification\": \"Por que este corte retém a atenção\"\n"
+        "  }\n"
+        "]\n"
+        "```"
+    )
 )
 
 video_coder = AssistantAgent(
     name="Video_Coder",
     llm_config=llm_config_coder,
-    system_prompt="Receber timestamps e escrever scripts em Python usando a biblioteca moviepy para cortar e salvar o vídeo."
+    system_prompt=(
+        "Receber timestamps e escrever scripts em Python usando a biblioteca moviepy para cortar e salvar o vídeo.\n"
+        "Use a biblioteca re (Regex) ou json para extrair apenas o conteúdo que estiver dentro do bloco ```json gerado pelo Analyst, ignorando qualquer texto fora dele (como as tags )."
+    )
 )
 
 # 4. Registro de Ferramentas (Tools Stubs)
