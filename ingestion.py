@@ -2,6 +2,8 @@ import os
 import re
 from yt_dlp import YoutubeDL
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
+from faster_whisper import WhisperModel
+import torch
 
 def download_video_and_transcript(url: str, output_dir: str = "downloads") -> dict:
     """
@@ -18,13 +20,6 @@ def download_video_and_transcript(url: str, output_dir: str = "downloads") -> di
             return {"status": "error", "message": "URL inválida."}
         video_id = video_id.group(1)
 
-        # Extração da transcrição
-        try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['pt', 'pt-BR', 'en'])
-            transcript = "\n".join([f"[{entry['start']:.2f} - {entry['start'] + entry['duration']:.2f}] {entry['text']}" for entry in transcript_list])
-        except (TranscriptsDisabled, Exception) as e:
-            transcript = f"Erro: Transcrição não disponível. ({str(e)})"
-
         # Configuração do yt-dlp
         os.makedirs(output_dir, exist_ok=True)
         ydl_opts = {
@@ -38,6 +33,19 @@ def download_video_and_transcript(url: str, output_dir: str = "downloads") -> di
             info_dict = ydl.extract_info(url, download=True)
             video_path = ydl.prepare_filename(info_dict)
             title = info_dict.get('title', 'Desconhecido')
+
+        # Extração da transcrição
+        try:
+            transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['pt', 'pt-BR', 'en'])
+            transcript = "\n".join([f"[{entry['start']:.2f} - {entry['start'] + entry['duration']:.2f}] {entry['text']}" for entry in transcript_list])
+        except (TranscriptsDisabled, Exception) as e:
+            print("[Ingestion] Legendas ausentes. Transcrição gerada localmente via Whisper.")
+            model = WhisperModel("small", device="cuda", compute_type="float16")
+            segments, info = model.transcribe(video_path, beam_size=5)
+            transcript = "\n".join([f"[{segment.start:.2f} - {segment.end:.2f}] {segment.text}" for segment in segments])
+            del model
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
         return {
             "status": "success",
