@@ -63,6 +63,9 @@ def execute_moviepy_script(script_code: str) -> str:
     """Execute moviepy script."""
     pass
 
+# Ensure autogen is imported
+import autogen
+
 autogen.agentchat.register_function(
     name="download_video_and_transcript",
     function=download_video_and_transcript,
