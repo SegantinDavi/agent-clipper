@@ -81,6 +81,8 @@ video_coder = AssistantAgent(
 
 # 4. Registro de Ferramentas (AutoGen API)
 from autogen.agentchat import register_function
+from ingestion import download_video_and_transcript
+from editor import cut_and_format_video
 
 register_function(
     name="download_video_and_transcript",
@@ -105,5 +107,5 @@ group_chat = GroupChat(
     max_round=10,
 )
 
-# 6. Início da Tarefa
+# 6. Iniciar o Grupo de Chat
 group_chat.run()
