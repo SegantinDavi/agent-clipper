@@ -2,17 +2,8 @@ import os
 import re
 from yt_dlp import YoutubeDL
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
-from faster_whisper import WhisperModel
-import torch
 
 def download_video_and_transcript(url: str, output_dir: str = "downloads") -> dict:
-    """
-    Baixa o vídeo do YouTube em uma resolução otimizada e extrai as legendas com os timestamps exatos.
-    
-    :param url: URL do vídeo do YouTube.
-    :param output_dir: Diretório onde o vídeo e a transcrição serão salvos.
-    :return: Dicionário com status, video_id, video_path, transcript e title.
-    """
     try:
         # Extração do video_id
         video_id = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)
@@ -38,14 +29,8 @@ def download_video_and_transcript(url: str, output_dir: str = "downloads") -> di
         try:
             transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['pt', 'pt-BR', 'en'])
             transcript = "\n".join([f"[{entry['start']:.2f} - {entry['start'] + entry['duration']:.2f}] {entry['text']}" for entry in transcript_list])
-        except (TranscriptsDisabled, Exception) as e:
-            print("[Ingestion] Legendas ausentes. Transcrição gerada localmente via Whisper.")
-            model = WhisperModel("small", device="cuda", compute_type="float16")
-            segments, info = model.transcribe(video_path, beam_size=5)
-            transcript = "\n".join([f"[{segment.start:.2f} - {segment.end:.2f}] {segment.text}" for segment in segments])
-            del model
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+        except TranscriptsDisabled:
+            transcript = "Erro: Transcrição não disponível"
 
         return {
             "status": "success",
