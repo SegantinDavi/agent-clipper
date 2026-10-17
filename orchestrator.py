@@ -21,13 +21,18 @@ llm_config_coder = {
 }
 
 # 2. Gerenciamento de VRAM
-def unload_ollama_model(model_name: str):
-    response = requests.post(
-        "http://localhost:11434/api/generate",
-        json={"model": model_name, "keep_alive": 0}
-    )
-    if response.status_code != 200:
-        raise Exception(f"Failed to unload model {model_name}: {response.text}")
+def force_unload_model(model_name: str):
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={"model": model_name, "keep_alive": 0}
+        )
+        if response.status_code == 200:
+            print(f"[VRAM Manager] Model {model_name} unloaded successfully.")
+        else:
+            print(f"[VRAM Manager] Failed to unload model {model_name}: {response.text}")
+    except Exception as e:
+        print(f"[VRAM Manager] Error unloading model {model_name}: {e}")
 
 # 3. Definição dos Agentes
 admin = UserProxyAgent(
@@ -88,6 +93,21 @@ groupchat_manager = GroupChatManager(
     groupchat=groupchat,
     llm_config=llm_config_manager
 )
+
+# VRAM Management
+AGENT_MODELS = {
+    "Orchestrator_Manager": "qwen2.5:14b",
+    "Content_Analyst": "deepseek-r1:8b",
+    "Video_Coder": "qwen2.5-coder:14b"
+}
+
+def vram_management_callback(sender, message, receiver, **kwargs):
+    if sender in AGENT_MODELS:
+        previous_model = AGENT_MODELS[sender]
+        force_unload_model(previous_model)
+        print(f"[VRAM Manager] Switching from model {previous_model} to {AGENT_MODELS[receiver]}...")
+
+groupchat_manager.register_reply(vram_management_callback)
 
 if __name__ == "__main__":
     groupchat_manager.start()
