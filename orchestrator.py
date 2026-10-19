@@ -103,7 +103,7 @@ group = GroupChat(
 )
 
 # 6. Inicialização do Gerenciador de Grupo de Chat
-manager = GroupChatManager(group)
+manager = GroupChatManager(groupchat=group, llm_config=llm_config_manager)
 
 # 7. Início do Processo
-admin.initiate_chat(group, message="Iniciar processo de edição de vídeo.")
+admin.initiate_chat(manager, message="Por favor, baixe o vídeo https://www.youtube.com/watch?v=jNQXAC9IVRw, analise a transcrição para encontrar os 3 melhores cortes e edite os vídeos.")
