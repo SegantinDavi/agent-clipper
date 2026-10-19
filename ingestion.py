@@ -1,6 +1,7 @@
 import os
 import re
 import gc
+import requests
 from yt_dlp import YoutubeDL
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
 from faster_whisper import WhisperModel
@@ -33,6 +34,10 @@ def download_video_and_transcript(url: str, output_dir: str = "downloads") -> di
             transcript = "\n".join([f"[{entry['start']:.2f} - {entry['start'] + entry['duration']:.2f}] {entry['text']}" for entry in transcript_list])
         except (TranscriptsDisabled, Exception):
             print("[Ingestion] Legendas não encontradas na API. Iniciando faster-whisper local...")
+            try:
+                requests.post("http://127.0.0.1:11434/api/generate", json={"model": "qwen2.5:14b", "keep_alive": 0})
+            except Exception:
+                pass
             model = WhisperModel("small", device="cuda", compute_type="float16")
             segments, info = model.transcribe(video_path, beam_size=5)
             transcript = "\n".join([f"[{segment.start:.2f} - {segment.end:.2f}] {segment.text}" for segment in segments])
