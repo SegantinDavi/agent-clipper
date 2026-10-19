@@ -43,33 +43,17 @@ def force_unload_model(model_name: str):
         else:
             print(f"[VRAM Manager] Failed to unload model {model_name}. Status code: {response.status_code}")
     except Exception as e:
-        print(f"[VRAM Manager] Exception occurred while unloading model {model_name}: {e}")
+        print(f"[VRAM Manager] Error unloading model {model_name}: {e}")
 
-# 3. Definição dos Agentes
-admin = UserProxyAgent(
-    name="Admin",
-    human_input_mode="NEVER",
-    code_execution_config={"work_dir": ".", "use_docker": False},
-    is_termination_msg=lambda x: isinstance(x, dict) and x.get("content", "") and "TERMINATE" in x.get("content", "")
-)
+# 3. Inicialização dos agentes
+manager = GroupChatManager()
+admin = UserProxyAgent(name="admin", system_message="Você é um administrador assistente.", max_tokens=1000, llm_config=llm_config_manager)
+content_analyst = AssistantAgent(name="ContentAnalyst", system_message="Você é um assistente para analisar e extrair informações da transcrição.", max_tokens=1000, llm_config=llm_config_analyst)
+video_editor = AssistantAgent(name="VideoEditor", system_message="Você é um assistente para editar e gerar vídeos.", max_tokens=1000, llm_config=llm_config_coder)
 
-orchestrator_manager = AssistantAgent(
-    name="Orchestrator_Manager",
-    llm_config=llm_config_manager,
-    system_message="You are the Orchestrator Manager. Your task is to coordinate the workflow between the agents. Ensure that the video is downloaded, transcribed, and then edited according to the specified cuts."
-)
-
-content_analyst = AssistantAgent(
-    name="Content_Analyst",
-    llm_config=llm_config_analyst,
-    system_message="You are the Content Analyst. Your task is to analyze the video transcript and extract the relevant cuts in JSON format."
-)
-
-video_coder = AssistantAgent(
-    name="Video_Coder",
-    llm_config=llm_config_coder,
-    system_message="You are the Video Coder. Your task is to edit the video according to the JSON cuts provided by the Content Analyst."
-)
+manager.register(admin)
+manager.register(content_analyst)
+manager.register(video_editor)
 
 # 4. Inicialização do chat
-admin.initiate_chat(manager, message="Por favor, baixe o vídeo [https://www.youtube.com/watch?v=jNQXAC9IVRw](https://www.youtube.com/watch?v=jNQXAC9IVRw). Em seguida, passe a transcrição para o Content_Analyst extrair os cortes em JSON. Por fim, mande o JSON para o Video_Coder editar. Não pare até os arquivos existirem.")
+admin.initiate_chat(manager, message="Por favor, baixe o vídeo [https://www.youtube.com/watch?v=jNQXAC9IVRw](https://www.youtube.com/watch?v=jNQXAC9IVRw). Em seguida, passe a transcrição para o ContentAnalyst extrair os cortes em JSON. Por fim, mande o JSON para o VideoEditor editar. Não pare até os arquivos existirem.")
