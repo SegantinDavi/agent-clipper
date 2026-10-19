@@ -1,5 +1,7 @@
 import requests
 from autogen import UserProxyAgent, AssistantAgent, GroupChat, GroupChatManager
+from ingestion import download_video_and_transcript
+from editor import cut_and_format_video
 
 # 1. Configuração de LLM e Endpoints
 llm_config_manager = {
@@ -51,14 +53,14 @@ admin = UserProxyAgent(
 orchestrator_manager = AssistantAgent(
     name="Orchestrator_Manager",
     llm_config=llm_config_manager,
-    system_prompt="Receba um link de YouTube, planeje os passos e chame os outros agentes na ordem correta, finalizando a tarefa quando o vídeo estiver editado.\n\n"
+    system_message="Receba um link de YouTube, planeje os passos e chame os outros agentes na ordem correta, finalizando a tarefa quando o vídeo estiver editado.\n\n"
                   "Quando todo o processo terminar e os vídeos finais estiverem salvos com sucesso no disco, responda APENAS com a palavra TERMINATE."
 )
 
 content_analyst = AssistantAgent(
     name="Content_Analyst",
     llm_config=llm_config_analyst,
-    system_prompt=(
+    system_message=(
         "Você é um Analista de Conteúdo Especialista e Diretor de Vídeo para YouTube Shorts e TikTok.\n"
         "Sua única tarefa é receber a transcrição de um vídeo com timestamps e identificar os 3 melhores cortes que tenham alto potencial de engajamento (gancho forte, retenção e conclusão).\n\n"
         "REGRAS ESTRITAS DE PREVENÇÃO DE ALUCINAÇÃO:\n"
@@ -84,18 +86,23 @@ content_analyst = AssistantAgent(
 video_coder = AssistantAgent(
     name="Video_Coder",
     llm_config=llm_config_coder,
-    system_prompt="Você é um assistente especializado em codificação de vídeo. Sua tarefa é receber o caminho do vídeo original e um JSON de timestamps, cortar os trechos e salvar no disco em formato vertical."
+    system_message="Você é um assistente especializado em codificação de vídeo. Sua tarefa é receber o caminho do vídeo original e um JSON de timestamps, cortar os trechos e salvar no disco em formato vertical."
 )
 
 # 4. Registro de Ferramentas (AutoGen API)
-# (Nenhuma modificação necessária aqui)
+autogen.agentchat.register_function(download_video_and_transcript, caller=orchestrator_manager, executor=admin, name="download_video_and_transcript", description="Baixa o vídeo e retorna a transcrição com timestamps")
+autogen.agentchat.register_function(cut_and_format_video, caller=video_coder, executor=admin, name="cut_and_format_video", description="Corta trechos do vídeo baseado nos timestamps e redimensiona para 9:16")
 
 # 5. Inicialização do Grupo de Chat
 group = GroupChat(
     agents=[admin, orchestrator_manager, content_analyst, video_coder],
-    max_round=100,
-    is_termination_msg=lambda x: isinstance(x, dict) and x.get("content", "") and "TERMINATE" in x.get("content", "")
+    max_round=15,
+    is_termination_msg=lambda x: isinstance(x, dict) and x.get("content", "") and "TERMINATE" in x.get("content", ""),
+    messages=[]
 )
 
-# 6. Iniciar o Grupo de Chat
-group.start()
+# 6. Inicialização do Gerenciador de Grupo de Chat
+manager = GroupChatManager(group)
+
+# 7. Início do Processo
+admin.initiate_chat(group, message="Iniciar processo de edição de vídeo.")
