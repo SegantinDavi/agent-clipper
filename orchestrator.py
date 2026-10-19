@@ -90,6 +90,7 @@ video_coder = AssistantAgent(
 )
 
 # 4. Registro de Ferramentas (AutoGen API)
+autogen = __import__('autogen')
 autogen.agentchat.register_function(download_video_and_transcript, caller=orchestrator_manager, executor=admin, name="download_video_and_transcript", description="Baixa o vídeo e retorna a transcrição com timestamps")
 autogen.agentchat.register_function(cut_and_format_video, caller=video_coder, executor=admin, name="cut_and_format_video", description="Corta trechos do vídeo baseado nos timestamps e redimensiona para 9:16")
 
