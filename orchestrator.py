@@ -90,16 +90,27 @@ video_coder = AssistantAgent(
 )
 
 # 4. Registro de Ferramentas (AutoGen API)
-autogen = __import__('autogen')
-autogen.agentchat.register_function(download_video_and_transcript, caller=orchestrator_manager, executor=admin, name="download_video_and_transcript", description="Baixa o vídeo e retorna a transcrição com timestamps")
-autogen.agentchat.register_function(cut_and_format_video, caller=video_coder, executor=admin, name="cut_and_format_video", description="Corta trechos do vídeo baseado nos timestamps e redimensiona para 9:16")
+autogen.agentchat.register_function(
+    download_video_and_transcript,
+    caller=orchestrator_manager,
+    executor=admin,
+    name="download_video_and_transcript",
+    description="Baixa o vídeo e retorna a transcrição com timestamps."
+)
+
+autogen.agentchat.register_function(
+    cut_and_format_video,
+    caller=video_coder,
+    executor=admin,
+    name="cut_and_format_video",
+    description="Recebe o caminho do vídeo e um JSON com timestamps, corta e salva os vídeos."
+)
 
 # 5. Inicialização do Grupo de Chat
 group = GroupChat(
     agents=[admin, orchestrator_manager, content_analyst, video_coder],
-    max_round=15,
-    is_termination_msg=lambda x: isinstance(x, dict) and x.get("content", "") and "TERMINATE" in x.get("content", ""),
-    messages=[]
+    messages=[],
+    max_round=15
 )
 
 # 6. Inicialização do Gerenciador de Grupo de Chat
