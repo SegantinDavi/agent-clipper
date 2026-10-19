@@ -6,7 +6,9 @@ from moviepy.video.fx.all import crop
 
 def cut_and_format_video(video_path: str, cuts_json: str, output_dir: str = "output") -> list:
     try:
-        cuts = json.loads(cuts_json)
+        # Remove blocos markdown (```json e ```) gerados pelos LLMs
+        clean_json = cuts_json.replace("```json", "").replace("```", "").strip()
+        cuts = json.loads(clean_json)
     except json.JSONDecodeError as e:
         print(f"Erro ao decodificar JSON: {e}")
         return []
