@@ -1,5 +1,5 @@
 import requests
-from autogen import UserProxyAgent, AssistantAgent, GroupChat, GroupChatManager
+from autogen import UserProxyAgent, AssistantAgent, GroupChat, GroupChatManager, agentchat
 from ingestion import download_video_and_transcript
 from editor import cut_and_format_video
 
@@ -90,7 +90,7 @@ video_coder = AssistantAgent(
 )
 
 # 4. Registro de Ferramentas (AutoGen API)
-autogen.agentchat.register_function(
+agentchat.register_function(
     download_video_and_transcript,
     caller=orchestrator_manager,
     executor=admin,
@@ -98,7 +98,7 @@ autogen.agentchat.register_function(
     description="Baixa o vídeo e retorna a transcrição com timestamps."
 )
 
-autogen.agentchat.register_function(
+agentchat.register_function(
     cut_and_format_video,
     caller=video_coder,
     executor=admin,
