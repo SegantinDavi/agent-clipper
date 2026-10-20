@@ -22,10 +22,12 @@ Se você está rodando este projeto dentro do WSL (Ubuntu) no Windows, é **obri
 
 1. No Windows, abra o bloco de notas e edite (ou crie) o arquivo `C:\Users\<SeuUsuario>\.wslconfig`.
 2. Adicione as seguintes linhas:
-   ```ini
+
+```ini
    [wsl2]
    networkingMode=mirrored
-   ```
+```
+
 3. Salve o arquivo, abra o PowerShell do Windows e reinicie o WSL com o comando: `wsl --shutdown`.
 
 ## ⚙️ Variáveis de Ambiente e Configuração
@@ -46,28 +48,34 @@ A comunicação com a IA já está configurada diretamente nos dicionários do a
 
 1. Clone este repositório e acesse a pasta do projeto.
 2. Crie um ambiente virtual Python:
-   ```bash
+
+```bash
    python3 -m venv venv
-   ```
+```
+
 3. Ative o ambiente virtual:
    - **Linux/WSL:** `source venv/bin/activate`
    - **Windows:** `venv\Scripts\activate`
 4. Instale as dependências com as versões estabilizadas:
-   ```bash
+
+```bash
    pip install -r requirements.txt
-   ```
+```
 
 ## 🕹️ Como Usar
 
 1. Abra o arquivo `orchestrator.py` no seu editor de código.
 2. Role até o final do arquivo (próximo à linha `if __name__ == "__main__":`).
 3. Altere a variável `url` para o link do vídeo do YouTube que você deseja processar:
-   ```python
+
+```python
    url = "https://www.youtube.com/watch?v=SEU_LINK_AQUI"
-   ```
+```
+
 4. Salve o arquivo e rode o orquestrador no terminal:
-   ```bash
+
+```bash
    python orchestrator.py
-   ```
+```
 
 O sistema executará todas as etapas de forma autônoma. Ao finalizarem, os cortes verticais estarão disponíveis e prontos para uso na pasta `/output`!
