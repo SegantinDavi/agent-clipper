@@ -38,7 +38,7 @@ def download_video_and_transcript(url: str, output_dir: str = "downloads") -> di
                 requests.post("http://127.0.0.1:11434/api/generate", json={"model": "qwen2.5:14b", "keep_alive": 0})
             except Exception:
                 pass
-            model = WhisperModel("small", device="cuda", compute_type="float16")
+            model = WhisperModel("small", device="cpu", compute_type="int8")
             segments, info = model.transcribe(video_path, beam_size=5)
             transcript = "\n".join([f"[{segment.start:.2f} - {segment.end:.2f}] {segment.text}" for segment in segments])
             print("[Ingestion] Transcrição concluída. Liberando VRAM.")
@@ -63,3 +63,4 @@ if __name__ == "__main__":
     print(f"Video Path: {result['video_path']}")
     print(f"Title: {result['title']}")
     print(f"Transcript (first 500 chars): {result['transcript'][:500]}")
+    

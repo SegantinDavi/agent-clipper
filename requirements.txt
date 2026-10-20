@@ -1,0 +1,14 @@
+# Agentes e Comunicação
+pyautogen>=0.2.0,<0.3.0
+requests
+
+# Download e Extração
+yt-dlp
+youtube-transcript-api
+
+# Transcrição Local (Whisper)
+faster-whisper
+av<19
+
+# Edição de Vídeo
+moviepy==1.0.3

@@ -1,1 +1,6 @@
 .aider*
+venv*
+.cache*
+__pycache__
+downloads*
+output*

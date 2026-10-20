@@ -1,59 +1,79 @@
 import requests
+import json
 from autogen import UserProxyAgent, AssistantAgent, GroupChat, GroupChatManager, agentchat
 from ingestion import download_video_and_transcript
 from editor import cut_and_format_video
 
-# 1. Configuração de LLM e Endpoints
+# 1. Configuração de LLM
 llm_config_manager = {
     "base_url": "http://127.0.0.1:11434/v1",
     "api_key": "ollama",
     "model": "qwen2.5:14b",
     "max_tokens": 1500,
-    "stop": ["TERMINATE"],
     "timeout": 300
 }
 
-llm_config_analyst = {
-    "base_url": "http://127.0.0.1:11434/v1",
-    "api_key": "ollama",
-    "model": "deepseek-r1:8b",
-    "max_tokens": 1500,
-    "stop": ["TERMINATE", "```\n"],
-    "timeout": 300
-}
+# 2. Definição dos Agentes (Apenas 2 necessários)
+admin = UserProxyAgent(
+    name="Admin",
+    human_input_mode="NEVER",
+    code_execution_config={"work_dir": ".", "use_docker": False},
+    is_termination_msg=lambda x: "TERMINATE" in x.get("content", "").upper()
+)
 
-llm_config_coder = {
-    "base_url": "http://127.0.0.1:11434/v1",
-    "api_key": "ollama",
-    "model": "qwen2.5-coder:14b",
-    "max_tokens": 1500,
-    "stop": ["TERMINATE", "```\n"],
-    "timeout": 300
-}
+content_analyst = AssistantAgent(
+    name="Content_Analyst",
+    llm_config=llm_config_manager,
+    system_message=(
+        "Você é um Analista Especialista para YouTube Shorts. Sua tarefa é analisar transcrições com timestamps e escolher os 3 melhores cortes.\n"
+        "Regras:\n"
+        "1. SÓ PODE usar timestamps (start_time e end_time) que existam no texto.\n"
+        "2. Retorne APENAS o bloco JSON válido e termine sua mensagem com a palavra TERMINATE.\n"
+        "Formato Obrigatório:\n"
+        "```json\n"
+        "[\n"
+        "  {\"title\": \"Titulo1\", \"start_time\": 0.0, \"end_time\": 5.0},\n"
+        "  {\"title\": \"Titulo2\", \"start_time\": 10.0, \"end_time\": 15.0}\n"
+        "]\n"
+        "```\nTERMINATE"
+    )
+)
 
-# 2. Gerenciamento de VRAM
-def force_unload_model(model_name: str):
-    try:
-        response = requests.post(
-            "http://127.0.0.1:11434/api/generate",
-            json={"model": model_name, "keep_alive": 0}
-        )
-        if response.status_code == 200:
-            print(f"[VRAM Manager] Model {model_name} unloaded successfully.")
-        else:
-            print(f"[VRAM Manager] Failed to unload model {model_name}. Status code: {response.status_code}")
-    except Exception as e:
-        print(f"[VRAM Manager] Error unloading model {model_name}: {e}")
-
-# 3. Inicialização dos agentes
-manager = GroupChatManager()
-admin = UserProxyAgent(name="admin", system_message="Você é um administrador assistente.", max_tokens=1000, llm_config=llm_config_manager)
-content_analyst = AssistantAgent(name="ContentAnalyst", system_message="Você é um assistente para analisar e extrair informações da transcrição.", max_tokens=1000, llm_config=llm_config_analyst)
-video_editor = AssistantAgent(name="VideoEditor", system_message="Você é um assistente para editar e gerar vídeos.", max_tokens=1000, llm_config=llm_config_coder)
-
-manager.register(admin)
-manager.register(content_analyst)
-manager.register(video_editor)
-
-# 4. Inicialização do chat
-admin.initiate_chat(manager, message="Por favor, baixe o vídeo [https://www.youtube.com/watch?v=jNQXAC9IVRw](https://www.youtube.com/watch?v=jNQXAC9IVRw). Em seguida, passe a transcrição para o ContentAnalyst extrair os cortes em JSON. Por fim, mande o JSON para o VideoEditor editar. Não pare até os arquivos existirem.")
+if __name__ == "__main__":
+    print("[1] Iniciando o Download e Transcrição...")
+    url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+    
+    # Execução Manual da Ferramenta 1 (Evita alucinações de argumentos)
+    ingestion_result = download_video_and_transcript(url)
+    
+    if ingestion_result["status"] == "error":
+        print(f"Erro na Ingestão: {ingestion_result['message']}")
+        exit(1)
+        
+    print("[2] Vídeo baixado. Iniciando a Análise via IA...")
+    
+    # Conversa focada apenas em extrair o JSON
+    chat_result = admin.initiate_chat(
+        content_analyst,
+        message=f"Aqui está a transcrição do vídeo:\n\n{ingestion_result['transcript']}\n\nExtraia os 3 melhores cortes e retorne o JSON."
+    )
+    
+    # Extração do JSON da resposta
+    final_message = admin.last_message(content_analyst)["content"]
+    
+    print("[3] Análise concluída. Iniciando os Cortes (MoviePy)...")
+    
+    # Execução Manual da Ferramenta 2 com o texto gerado
+    generated_files = cut_and_format_video(
+        video_path=ingestion_result["video_path"],
+        cuts_json=final_message,
+        output_dir="output"
+    )
+    
+    if generated_files:
+        print("\n🎉 SUCESSO! Vídeos gerados:")
+        for file in generated_files:
+            print(f"- {file}")
+    else:
+        print("\nFalha ao gerar os vídeos. O JSON gerado pode estar incorreto.")
+        
