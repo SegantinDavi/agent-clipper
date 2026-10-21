@@ -1,6 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+.cache
 .aider*
-venv*
-.cache*
-__pycache__
-downloads*
-output*
+downloads/
+output/
+*.mp4
