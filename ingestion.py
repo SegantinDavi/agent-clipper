@@ -39,11 +39,18 @@ def download_video_and_transcript(url: str, output_dir: str = "downloads") -> di
             except Exception:
                 pass
             model = WhisperModel("small", device="cpu", compute_type="int8")
-            segments, info = model.transcribe(video_path, beam_size=5)
-            transcript = "\n".join([f"[{segment.start:.2f} - {segment.end:.2f}] {segment.text}" for segment in segments])
-            print("[Ingestion] Transcrição concluída. Liberando VRAM.")
-            del model
-            gc.collect()
+            segments, info = model.transcribe(video_path, beam_size=5, word_timestamps=True)
+            
+            transcription = []
+            for segment in segments:
+                for word in segment.words:
+                    transcription.append({
+                        "word": word.word,
+                        "start": word.start,
+                        "end": word.end
+                    })
+            
+            return transcription
 
         return {
             "status": "success",
@@ -63,4 +70,3 @@ if __name__ == "__main__":
     print(f"Video Path: {result['video_path']}")
     print(f"Title: {result['title']}")
     print(f"Transcript (first 500 chars): {result['transcript'][:500]}")
-    
