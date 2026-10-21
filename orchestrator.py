@@ -63,10 +63,14 @@ if __name__ == "__main__":
     
     print("[3] Análise concluída. Iniciando os Cortes (MoviePy)...")
     
+    # Extract word_timestamps
+    word_timestamps = ingestion_result["word_timestamps"]
+    
     # Execução Manual da Ferramenta 2 com o texto gerado
     generated_files = cut_and_format_video(
         video_path=ingestion_result["video_path"],
         cuts_json=final_message,
+        word_timestamps=word_timestamps,
         output_dir="output"
     )
     
@@ -76,4 +80,3 @@ if __name__ == "__main__":
             print(f"- {file}")
     else:
         print("\nFalha ao gerar os vídeos. O JSON gerado pode estar incorreto.")
-        
