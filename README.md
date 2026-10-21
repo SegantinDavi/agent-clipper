@@ -1,81 +1,110 @@
-# Auto Video Factory 🎬🤖
+# Agent Clipper 🎬🤖
 
-Um pipeline 100% autônomo e local para criação de vídeos curtos (YouTube Shorts/TikTok). O sistema baixa vídeos do YouTube, transcreve o áudio silenciosamente, utiliza agentes de IA para identificar os momentos de maior retenção e corta/formata os clipes automaticamente na vertical.
+Um pipeline 100% autônomo, local e isolado em container (Docker) para criação de vídeos curtos (YouTube Shorts / TikTok / Reels).
 
-**Stack Tecnológico:** Python, AutoGen, Ollama (Qwen2.5), yt-dlp, faster-whisper, MoviePy.
+O sistema baixa vídeos do YouTube, transcreve o áudio via CPU (`faster-whisper`), utiliza agentes de IA (`AutoGen` + `Ollama`/`Qwen2.5`) para identificar os momentos de maior retenção e corta/formata os clipes automaticamente na vertical (9:16) com legendas dinâmicas.
+
+**Stack Tecnológico:** Python 3.12, AutoGen, Ollama (Qwen2.5), yt-dlp, faster-whisper (CPU), MoviePy, ImageMagick e Docker.
 
 ---
 
 ## 🛑 Pré-requisitos
 
-Antes de iniciar, certifique-se de ter os seguintes componentes instalados na sua máquina:
+Antes de iniciar, certifique-se de ter os seguintes componentes configurados na sua máquina:
 
-- **Python:** Versão 3.12 ou superior.
-- **FFmpeg:** Essencial para o download e manipulação de vídeo/áudio.
-  - No Ubuntu/WSL, instale com: `sudo apt update && sudo apt install ffmpeg -y`
-- **Ollama:** Instalado e rodando localmente.
-  - Baixe o modelo principal executando: `ollama run qwen2.5:14b`
+1. **Docker Desktop** (com suporte ao WSL2 habilitado no Windows).
+2. **Ollama:** Instalado e rodando localmente no host.
+   - Baixe e inicie o modelo executando: `ollama run qwen2.5:14b`
 
-## ⚠️ Atenção Usuários de WSL2 (Windows)
+---
 
-Se você está rodando este projeto dentro do WSL (Ubuntu) no Windows, é **obrigatório** configurar a rede do WSL para o modo espelhado. Isso permite que o código Python dentro do WSL consiga se comunicar perfeitamente com o Ollama rodando no Windows na porta `11434`.
+## ⚠️ Configuração Obrigatória do WSL2 (Windows)
 
-1. No Windows, abra o bloco de notas e edite (ou crie) o arquivo `C:\Users\<SeuUsuario>\.wslconfig`.
-2. Adicione as seguintes linhas:
+Para que o container Docker consiga se comunicar com a API do Ollama na porta `11434` da sua máquina host sem configurações complexas de IP, a rede do WSL2 deve estar configurada no modo espelhado (_mirrored_).
+
+1. No Windows, edite (ou crie) o arquivo `C:\Users\<SeuUsuario>\.wslconfig`.
+2. Adicione as seguintes configurações de rede e memória:
 
 ```ini
-   [wsl2]
-   networkingMode=mirrored
+[wsl2]
+networkingMode=mirrored
+memory=8GB
+swap=8GB
 ```
 
-3. Salve o arquivo, abra o PowerShell do Windows e reinicie o WSL com o comando: `wsl --shutdown`.
+3. Salve o arquivo e reinicie o WSL no PowerShell do Windows com o comando:
 
-## ⚙️ Variáveis de Ambiente e Configuração
-
-Uma das grandes vantagens deste projeto é que ele é **100% Local e Gratuito**.
-
-- **NÃO** é necessário criar arquivo `.env`.
-- **NÃO** é necessário configurar chaves da API da OpenAI.
-
-A comunicação com a IA já está configurada diretamente nos dicionários do arquivo `orchestrator.py`, apontando para a sua máquina:
-
-```python
-"base_url": "http://127.0.0.1:11434/v1"
-"api_key": "ollama"
+```powershell
+wsl --shutdown
 ```
 
-## 🚀 Instalação (Quick Start)
+---
 
-1. Clone este repositório e acesse a pasta do projeto.
-2. Crie um ambiente virtual Python:
+## 🚀 Como Usar com Docker (Recomendado / Sandboxed)
+
+A execução via Docker garante que todas as dependências do sistema operacional (`ffmpeg`, `imagemagick`, `fonts-liberation`, `libgomp1`) estejam devidamente isoladas do seu sistema principal.
+
+### 1. Construir a imagem Docker
+
+No terminal do Ubuntu/WSL na pasta do projeto, rode:
 
 ```bash
+docker build -t agent-clipper .
+```
+
+### 2. Configurar o link do vídeo
+
+Abra o arquivo `orchestrator.py` e altere a variável `url` no final do arquivo:
+
+```python
+if __name__ == "__main__":
+    url = "https://www.youtube.com/watch?v=SEU_LINK_AQUI"
+```
+
+### 3. Executar o container
+
+Rode o container mapeando a pasta `./output` para que os vídeos gerados fiquem salvos no seu computador:
+
+```bash
+docker run --rm --network host -v $(pwd)/output:/app/output agent-clipper
+```
+
+Os clipes curtos formatados e legendados estarão disponíveis na pasta `./output` do seu repositório ao término da execução!
+
+---
+
+## ⚙️ Execução Local sem Docker (Desenvolvimento)
+
+Caso prefira rodar fora do Docker, você precisará instalar as dependências do sistema operacional diretamente no seu Linux/WSL:
+
+1. **Instalar dependências de sistema:**
+
+   ```bash
+   sudo apt update && sudo apt install -y ffmpeg libgomp1 nodejs imagemagick fonts-liberation fontconfig
+   ```
+
+2. **Criar e ativar o ambiente virtual Python:**
+
+   ```bash
    python3 -m venv venv
-```
+   source venv/bin/activate
+   ```
 
-3. Ative o ambiente virtual:
-   - **Linux/WSL:** `source venv/bin/activate`
-   - **Windows:** `venv\Scripts\activate`
-4. Instale as dependências com as versões estabilizadas:
+3. **Instalar dependências Python:**
 
-```bash
-   pip install -r requirements.txt
-```
+   ```bash
+   pip install --prefer-binary -r requirements.txt
+   ```
 
-## 🕹️ Como Usar
+4. **Executar o orquestrador:**
 
-1. Abra o arquivo `orchestrator.py` no seu editor de código.
-2. Role até o final do arquivo (próximo à linha `if __name__ == "__main__":`).
-3. Altere a variável `url` para o link do vídeo do YouTube que você deseja processar:
-
-```python
-   url = "https://www.youtube.com/watch?v=SEU_LINK_AQUI"
-```
-
-4. Salve o arquivo e rode o orquestrador no terminal:
-
-```bash
+   ```bash
    python orchestrator.py
-```
+   ```
 
-O sistema executará todas as etapas de forma autônoma. Ao finalizarem, os cortes verticais estarão disponíveis e prontos para uso na pasta `/output`!
+---
+
+## 🛠️ Variáveis de Ambiente e Comunicação
+
+- **100% Local e Gratuito:** O projeto não exige chave de API da OpenAI ou arquivos `.env`.
+- A comunicação com o Ollama local é feita diretamente em `http://127.0.0.1:11434/v1`.

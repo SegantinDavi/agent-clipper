@@ -64,7 +64,7 @@ def cut_and_format_video(video_path: str, cuts_json: str, word_timestamps: list,
             text_clip = TextClip(
                 word["word"],
                 fontsize=70,
-                font='Arial-Bold',
+                font='Liberation-Sans-Bold',
                 color='yellow',
                 stroke_color='black',
                 stroke_width=3
