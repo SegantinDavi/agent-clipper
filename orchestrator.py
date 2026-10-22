@@ -45,7 +45,7 @@ def main():
     )
 
     # Extract the list of CorteVideo instances from the response
-    cortes_extraidos = response.choices[0].message.content
+    cortes_extraidos = response
 
     # Serialize the list of CorteVideo instances to a JSON string
     cuts_json = json.dumps([corte.model_dump() for corte in cortes_extraidos])
