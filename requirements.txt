@@ -12,3 +12,8 @@ av<19
 
 # Edição de Vídeo
 moviepy==1.0.3
+
+# Constrained Decoding
+pydantic
+instructor
+openai

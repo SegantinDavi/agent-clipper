@@ -1,45 +1,18 @@
-import requests
 import json
-from autogen import UserProxyAgent, AssistantAgent, GroupChat, GroupChatManager, agentchat
+import openai
+import instructor
+from schemas import CorteVideo
 from ingestion import download_video_and_transcript
 from editor import cut_and_format_video
 
-# 1. Configuração de LLM
-llm_config_manager = {
-    "base_url": "http://127.0.0.1:11434/v1",
-    "api_key": "ollama",
-    "model": "qwen2.5:14b",
-    "max_tokens": 1500,
-    "timeout": 300
-}
-
-# 2. Definição dos Agentes (Apenas 2 necessários)
-admin = UserProxyAgent(
-    name="Admin",
-    human_input_mode="NEVER",
-    code_execution_config={"work_dir": ".", "use_docker": False},
-    is_termination_msg=lambda x: "TERMINATE" in x.get("content", "").upper()
+# Configure the OpenAI client with Ollama
+client = openai.OpenAI(
+    base_url="http://127.0.0.1:11434/v1",
+    api_key="ollama"
 )
+client = instructor.from_openai(client, mode=instructor.Mode.JSON)
 
-content_analyst = AssistantAgent(
-    name="Content_Analyst",
-    llm_config=llm_config_manager,
-    system_message=(
-        "Você é um Analista Especialista para YouTube Shorts. Sua tarefa é analisar transcrições com timestamps e escolher os 3 melhores cortes.\n"
-        "Regras:\n"
-        "1. SÓ PODE usar timestamps (start_time e end_time) que existam no texto.\n"
-        "2. Retorne APENAS o bloco JSON válido e termine sua mensagem com a palavra TERMINATE.\n"
-        "Formato Obrigatório:\n"
-        "```json\n"
-        "[\n"
-        "  {\"title\": \"Titulo1\", \"start_time\": 0.0, \"end_time\": 5.0},\n"
-        "  {\"title\": \"Titulo2\", \"start_time\": 10.0, \"end_time\": 15.0}\n"
-        "]\n"
-        "```\nTERMINATE"
-    )
-)
-
-if __name__ == "__main__":
+def main():
     print("[1] Iniciando o Download e Transcrição...")
     url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
     
@@ -52,15 +25,28 @@ if __name__ == "__main__":
         
     print("[2] Vídeo baixado. Iniciando a Análise via IA...")
     
-    # Conversa focada apenas em extrair o JSON
-    chat_result = admin.initiate_chat(
-        content_analyst,
-        message=f"Aqui está a transcrição do vídeo:\n\n{ingestion_result['transcript']}\n\nExtraia os 3 melhores cortes e retorne o JSON."
+    # Create the system and user prompts
+    system_prompt = (
+        "Você é um Analista Especialista para YouTube Shorts. Sua tarefa é analisar transcrições com timestamps e escolher os 3 melhores cortes.\n"
+        "Regras:\n"
+        "1. SÓ PODE usar timestamps (start_time e end_time) que existam no texto.\n"
+        "2. Retorne APENAS a lista de cortes no formato JSON."
     )
-    
-    # Extração do JSON da resposta
-    final_message = admin.last_message(content_analyst)["content"]
-    
+    user_prompt = f"Aqui está a transcrição do vídeo:\n\n{ingestion_result['transcript']}\n\nExtraia os 3 melhores cortes e retorne o JSON."
+
+    # Call the OpenAI client to get the response
+    response = client.chat.completions.create(
+        model="qwen2.5:14b",
+        response_model=list[CorteVideo],
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+    )
+
+    # Extract the list of CorteVideo instances from the response
+    cortes_extraidos = response
+
     print("[3] Análise concluída. Iniciando os Cortes (MoviePy)...")
     
     # Extract word_timestamps
@@ -69,7 +55,7 @@ if __name__ == "__main__":
     # Execução Manual da Ferramenta 2 com o texto gerado
     generated_files = cut_and_format_video(
         video_path=ingestion_result["video_path"],
-        cuts_json=final_message,
+        cortes_validados=cortes_extraidos,  # Pass cortes_extraidos directly
         word_timestamps=word_timestamps,
         output_dir="output"
     )
@@ -80,3 +66,6 @@ if __name__ == "__main__":
             print(f"- {file}")
     else:
         print("\nFalha ao gerar os vídeos. O JSON gerado pode estar incorreto.")
+
+if __name__ == "__main__":
+    main()

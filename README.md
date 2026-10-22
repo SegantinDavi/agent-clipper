@@ -2,9 +2,9 @@
 
 Um pipeline 100% autônomo, local e isolado em container (Docker) para criação de vídeos curtos (YouTube Shorts / TikTok / Reels).
 
-O sistema baixa vídeos do YouTube, transcreve o áudio via CPU (`faster-whisper`), utiliza agentes de IA (`AutoGen` + `Ollama`/`Qwen2.5`) para identificar os momentos de maior retenção e corta/formata os clipes automaticamente na vertical (9:16) com legendas dinâmicas.
+O sistema adota os princípios de **AI Systems Engineering**: abandona chats procedurais (como AutoGen) em favor de fluxos determinísticos (DAGs) e decodificação restrita (Constrained Decoding). Ele baixa vídeos do YouTube, fatia o áudio preventivamente para não estourar a memória RAM, transcreve localmente via CPU (`faster-whisper`), e utiliza `Instructor` + `Pydantic` junto ao Ollama (Qwen2.5) para forçar matematicamente a extração da estrutura de dados dos cortes. Por fim, formata os clipes automaticamente na vertical (9:16) com legendas dinâmicas.
 
-**Stack Tecnológico:** Python 3.12, AutoGen, Ollama (Qwen2.5), yt-dlp, faster-whisper (CPU), MoviePy, ImageMagick e Docker.
+**Stack Tecnológico:** Python 3.12, Ollama (Qwen2.5), Pydantic, Instructor, yt-dlp, faster-whisper (CPU), FFmpeg (Fatiamento Silencioso), MoviePy, ImageMagick e Docker.
 
 ---
 
@@ -20,10 +20,10 @@ Antes de iniciar, certifique-se de ter os seguintes componentes configurados na 
 
 ## ⚠️ Configuração Obrigatória do WSL2 (Windows)
 
-Para que o container Docker consiga se comunicar com a API do Ollama na porta `11434` da sua máquina host sem configurações complexas de IP, a rede do WSL2 deve estar configurada no modo espelhado (_mirrored_).
+Para que o container Docker consiga se comunicar com a API do Ollama na porta `11434` da sua máquina host sem configurações complexas de IP e para garantir o limite arquitetural de hardware, a rede do WSL2 deve estar configurada no modo espelhado (_mirrored_).
 
 1. No Windows, edite (ou crie) o arquivo `C:\Users\<SeuUsuario>\.wslconfig`.
-2. Adicione as seguintes configurações de rede e memória:
+2. Adicione as seguintes configurações de rede e memória (limite estrito validado para a arquitetura):
 
 ```ini
 [wsl2]
@@ -54,7 +54,7 @@ docker build -t agent-clipper .
 
 ### 2. Configurar o link do vídeo
 
-Abra o arquivo `orchestrator.py` e altere a variável `url` no final do arquivo:
+Abra o arquivo `orchestrator.py` e altere a variável `url` no início da função principal:
 
 ```python
 if __name__ == "__main__":
@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
 ### 3. Executar o container
 
-Rode o container mapeando a pasta `./output` para que os vídeos gerados fiquem salvos no seu computador:
+Rode o container mapeando a pasta `./output` para que os vídeos gerados e o banco de dados de estado fiquem salvos no seu computador:
 
 ```bash
 docker run --rm --network host -v $(pwd)/output:/app/output agent-clipper
@@ -108,3 +108,4 @@ Caso prefira rodar fora do Docker, você precisará instalar as dependências do
 
 - **100% Local e Gratuito:** O projeto não exige chave de API da OpenAI ou arquivos `.env`.
 - A comunicação com o Ollama local é feita diretamente em `http://127.0.0.1:11434/v1`.
+- **Fatiamento Preventivo:** Graças ao pré-processamento via `node_0`, não há limite de duração para os vídeos processados; o sistema fraciona o conteúdo de forma inteligente com base no silêncio do locutor para respeitar o limite de 8GB de RAM.
