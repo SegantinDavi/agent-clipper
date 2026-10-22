@@ -17,16 +17,23 @@ def node_0_preventive_slicing(video_path: str, output_dir: str = "/app/output", 
     chunks = []
     last_cut = 0.0
     chunk_index = 0
+    ultimo_silencio_valido = 0.0
     
     for silence_end in silence_points:
-        if silence_end - last_cut >= max_chunk_sec:
+        if silence_end - last_cut > max_chunk_sec:
+            if ultimo_silencio_valido <= last_cut:
+                ultimo_silencio_valido = silence_end
+                
             chunk_path = os.path.join(output_dir, f"audio_chunk_{chunk_index:03d}.wav")
-            subprocess.run(["ffmpeg", "-y", "-i", full_audio_path, "-ss", str(last_cut), "-to", str(silence_end), chunk_path], check=True, stderr=subprocess.DEVNULL)
+            subprocess.run(["ffmpeg", "-y", "-i", full_audio_path, "-ss", str(last_cut), "-to", str(ultimo_silencio_valido), chunk_path], check=True, stderr=subprocess.DEVNULL)
+            
             chunks.append({"chunk_path": chunk_path, "offset": last_cut})
-            last_cut = silence_end
+            
+            last_cut = ultimo_silencio_valido
             chunk_index += 1
+            
+        ultimo_silencio_valido = silence_end
 
-    # Processa a cauda do áudio
     final_chunk_path = os.path.join(output_dir, f"audio_chunk_{chunk_index:03d}.wav")
     subprocess.run(["ffmpeg", "-y", "-i", full_audio_path, "-ss", str(last_cut), final_chunk_path], check=True, stderr=subprocess.DEVNULL)
     chunks.append({"chunk_path": final_chunk_path, "offset": last_cut})
