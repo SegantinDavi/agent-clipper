@@ -47,9 +47,6 @@ def main():
     # Extract the list of CorteVideo instances from the response
     cortes_extraidos = response
 
-    # Serialize the list of CorteVideo instances to a JSON string
-    cuts_json = json.dumps([corte.model_dump() for corte in cortes_extraidos])
-
     print("[3] Análise concluída. Iniciando os Cortes (MoviePy)...")
     
     # Extract word_timestamps
@@ -58,7 +55,7 @@ def main():
     # Execução Manual da Ferramenta 2 com o texto gerado
     generated_files = cut_and_format_video(
         video_path=ingestion_result["video_path"],
-        cuts_json=cuts_json,
+        cortes_validados=cortes_extraidos,  # Pass cortes_extraidos directly
         word_timestamps=word_timestamps,
         output_dir="output"
     )
