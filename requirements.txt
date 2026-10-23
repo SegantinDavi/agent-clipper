@@ -1,5 +1,4 @@
 # Agentes e Comunicação
-pyautogen>=0.2.0,<0.3.0
 requests
 
 # Download e Extração
@@ -17,3 +16,7 @@ moviepy==1.0.3
 pydantic
 instructor
 openai
+
+# Orquestração e Estado
+langgraph
+langgraph-checkpoint-sqlite

@@ -68,3 +68,8 @@ Use dois nós sequenciais operando o MESMO modelo (Qwen2.5) para separar racioc�
 - A instalação de pacotes pesados (`faster-whisper`, `ctranslate2`, `onnxruntime`, `av<19`) deve ser feita isolada do resto do `requirements.txt` via `--prefer-binary`.
 - Nenhuma URL ou parâmetro deve ficar _hardcoded_ no Python. A inicialização deve ler a variável de ambiente via `os.getenv` (ex: injetada via `docker run -e YOUTUBE_URL=...`).
 - Todo o output final (vídeos, logs e estado) deve ser gerado no volume mapeado `/app/output`.
+
+### 8. Padrões de Código (Clean Code)
+
+- **Nomenclatura em Inglês:** Todas as variáveis, funções, classes, métodos e argumentos devem ser nomeados estritamente em inglês para manter o padrão universal de desenvolvimento.
+- **Limitação de Comentários:** O código deve ser limpo e autoexplicativo. Evite comentários redundantes que explicam "o que" o código faz. Restrinja o uso de comentários apenas para documentar o "porquê" de lógicas complexas, decisões arquiteturais ou contornos de limitações físicas do ambiente.
