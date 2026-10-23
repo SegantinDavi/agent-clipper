@@ -1,6 +1,4 @@
 # Agentes e Comunicação
-langgraph
-langgraph-checkpoint-sqlite
 requests
 
 # Download e Extração
@@ -18,3 +16,7 @@ moviepy==1.0.3
 pydantic
 instructor
 openai
+
+# Orquestração e Estado
+langgraph
+langgraph-checkpoint-sqlite
