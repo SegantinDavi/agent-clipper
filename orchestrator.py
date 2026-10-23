@@ -15,14 +15,16 @@ from ingestion import download_video, transcribe_audio_chunk
 from node_0 import node_0_preventive_slicing
 from editor import cut_and_format_video
 
-OUTPUT_DIR = os.getenv(
-    "OUTPUT_DIR", "/app/output" if os.path.exists("/app") else "output"
+from config import (
+    DB_PATH,
+    DOWNLOADS_DIR,
+    LOG_FILE,
+    MODEL_NAME,
+    OLLAMA_BASE_URL,
+    OUTPUT_DIR,
+    YOUTUBE_URL,
 )
-DOWNLOADS_DIR = os.getenv("DOWNLOADS_DIR", os.path.join(OUTPUT_DIR, "downloads"))
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(DOWNLOADS_DIR, exist_ok=True)
 
-LOG_FILE = os.path.join(OUTPUT_DIR, "pipeline.log")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -33,10 +35,6 @@ logging.basicConfig(
     force=True,
 )
 logger = logging.getLogger(__name__)
-
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1")
-MODEL_NAME = os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
-DB_PATH = os.path.join(OUTPUT_DIR, "estado.db")
 
 
 class VideoState(TypedDict):
@@ -330,7 +328,10 @@ def create_graph():
 
 
 if __name__ == "__main__":
-    video_url = os.getenv("YOUTUBE_URL", "https://www.youtube.com/watch?v=jNQXAC9IVRw")
+    video_url = os.getenv("YOUTUBE_URL")
+    if not video_url:
+        logger.error("Environment variable 'YOUTUBE_URL' is not set.")
+        raise ValueError("Environment variable 'YOUTUBE_URL' is required.")
     logger.info("==================================================")
     logger.info("AGENT-CLIPPER: Autonomous LangGraph Pipeline")
     logger.info("Target URL: %s", video_url)
