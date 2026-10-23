@@ -10,7 +10,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir --prefer-binary faster-whisper ctranslate2 onnxruntime av
+RUN pip install --no-cache-dir --prefer-binary faster-whisper ctranslate2 onnxruntime "av<19"
 
 RUN pip install --no-cache-dir --prefer-binary -r requirements.txt && \
     rm -rf /tmp/* /root/.cache/pip
