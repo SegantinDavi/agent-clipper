@@ -1,9 +1,12 @@
 import os
 import json
 import re
+import logging
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 from moviepy.video.fx.all import crop
 from schemas import CorteVideo
+
+logger = logging.getLogger(__name__)
 
 
 def cut_and_format_video(
@@ -33,8 +36,11 @@ def cut_and_format_video(
     for corte in cortes_validados:
         titulo_limpo = re.sub(r"[^\w\s]", "", corte.title).replace(" ", "_")[:50]
 
-        print(
-            f"[MoviePy] Cortando: {titulo_limpo} ({corte.start_time}s - {corte.end_time}s)"
+        logger.info(
+            "Rendering clip: %s (%.2fs - %.2fs)",
+            titulo_limpo,
+            corte.start_time,
+            corte.end_time,
         )
         clip = video.subclip(corte.start_time, corte.end_time)
         filepath = os.path.join(output_dir, f"{titulo_limpo}.mp4")
@@ -74,6 +80,7 @@ def cut_and_format_video(
             ffmpeg_params=["-pix_fmt", "yuv420p", "-profile:v", "main"],
             logger=None,
         )
+        logger.info("Saved clip to %s", filepath)
         generated_files.append(filepath)
 
     video.close()

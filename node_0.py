@@ -2,6 +2,9 @@ import subprocess
 import re
 import os
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_silence_points(
@@ -27,6 +30,7 @@ def node_0_preventive_slicing(
     video_path: str, output_dir: str = "/app/output", max_chunk_sec: int = 600
 ) -> list[dict]:
     full_audio_path = os.path.join(output_dir, "full_audio.wav")
+    logger.info("Extracting full audio for silence detection: %s", full_audio_path)
     subprocess.run(
         [
             "ffmpeg",
@@ -47,6 +51,9 @@ def node_0_preventive_slicing(
     )
 
     silence_points = get_silence_points(full_audio_path)
+    logger.info(
+        "Detected %d silence points. Slicing into chunks...", len(silence_points)
+    )
 
     chunks = []
     last_cut = 0.0
@@ -76,6 +83,12 @@ def node_0_preventive_slicing(
             )
 
             chunks.append({"chunk_path": chunk_path, "offset": last_cut})
+            logger.info(
+                "Created audio chunk %d: %s (offset: %.2fs)",
+                chunk_index,
+                chunk_path,
+                last_cut,
+            )
 
             last_cut = ultimo_silencio_valido
             chunk_index += 1
@@ -89,10 +102,17 @@ def node_0_preventive_slicing(
         stderr=subprocess.DEVNULL,
     )
     chunks.append({"chunk_path": final_chunk_path, "offset": last_cut})
+    logger.info(
+        "Created final audio chunk %d: %s (offset: %.2fs)",
+        chunk_index,
+        final_chunk_path,
+        last_cut,
+    )
 
     state_path = os.path.join(output_dir, "node0_state.json")
     with open(state_path, "w") as f:
         json.dump({"original_video_path": video_path, "chunks": chunks}, f, indent=2)
 
     os.remove(full_audio_path)
+    logger.info("Preventive slicing completed. Total chunks: %d", len(chunks))
     return chunks

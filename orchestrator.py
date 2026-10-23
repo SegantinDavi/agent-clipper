@@ -2,6 +2,7 @@ import os
 import re
 import gc
 import hashlib
+import logging
 from typing import TypedDict
 
 import openai
@@ -20,6 +21,18 @@ OUTPUT_DIR = os.getenv(
 DOWNLOADS_DIR = os.getenv("DOWNLOADS_DIR", os.path.join(OUTPUT_DIR, "downloads"))
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+
+LOG_FILE = os.path.join(OUTPUT_DIR, "pipeline.log")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(LOG_FILE, encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
+    force=True,
+)
+logger = logging.getLogger(__name__)
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1")
 MODEL_NAME = os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
@@ -40,16 +53,18 @@ def download_node(state: VideoState) -> dict:
     """Nó 1: Download do vídeo fonte via yt-dlp."""
     video_url = state.get("video_url")
     if not video_url:
+        logger.error("Missing 'video_url' in state.")
         raise ValueError("A chave 'video_url' não foi fornecida no estado.")
 
-    print(f"\n[DOWNLOAD_NODE] Iniciando download do vídeo: {video_url}")
+    logger.info("Starting video download: %s", video_url)
     result = download_video(url=video_url, output_dir=DOWNLOADS_DIR)
 
     if result.get("status") == "error":
+        logger.error("Video download failed: %s", result.get("message"))
         raise RuntimeError(f"Erro no download do vídeo: {result.get('message')}")
 
     video_path = result.get("video_path")
-    print(f"[DOWNLOAD_NODE] Download concluído com sucesso: {video_path}")
+    logger.info("Video download completed successfully: %s", video_path)
     return {"video_path": video_path}
 
 
@@ -57,15 +72,16 @@ def fatiamento_node(state: VideoState) -> dict:
     """Nó 2: Fatiamento preventivo do áudio em silêncios para vídeos longos."""
     video_path = state.get("video_path")
     if not video_path or not os.path.exists(video_path):
+        logger.error("Video file not found for slicing: %s", video_path)
         raise FileNotFoundError(
             f"Arquivo de vídeo não encontrado para fatiamento: {video_path}"
         )
 
-    print(f"\n[FATIAMENTO_NODE] Fatiando áudio por silêncios com FFmpeg: {video_path}")
+    logger.info("Slicing audio with FFmpeg silence detection: %s", video_path)
     chunks = node_0_preventive_slicing(
         video_path=video_path, output_dir=OUTPUT_DIR, max_chunk_sec=600
     )
-    print(f"[FATIAMENTO_NODE] Chunks de áudio gerados com sucesso: {len(chunks)}")
+    logger.info("Audio chunks generated successfully: %d", len(chunks))
     return {"audio_chunks": chunks}
 
 
@@ -73,10 +89,12 @@ def transcription_node(state: VideoState) -> dict:
     """Nó 3: Transcrição local na CPU com faster-whisper iterando sobre os chunks."""
     audio_chunks = state.get("audio_chunks", [])
     if not audio_chunks:
+        logger.error("No audio chunks found in state for transcription.")
         raise ValueError("Nenhum chunk de áudio encontrado no estado para transcrição.")
 
-    print(
-        f"\n[TRANSCRICAO_NODE] Transcrevendo {len(audio_chunks)} chunks via faster-whisper (CPU int8)..."
+    logger.info(
+        "Transcribing %d chunks via faster-whisper (CPU int8)...",
+        len(audio_chunks),
     )
 
     aggregated_transcript_parts: list[str] = []
@@ -90,12 +108,19 @@ def transcription_node(state: VideoState) -> dict:
             chunk_path = str(chunk)
             offset = 0.0
 
-        print(
-            f"[TRANSCRICAO_NODE] Chunk {index + 1}/{len(audio_chunks)}: {chunk_path} (offset: {offset:.2f}s)"
+        logger.info(
+            "Transcribing chunk %d/%d: %s (offset: %.2fs)",
+            index + 1,
+            len(audio_chunks),
+            chunk_path,
+            offset,
         )
         result = transcribe_audio_chunk(chunk_path)
 
         if result.get("status") == "error":
+            logger.error(
+                "Error transcribing chunk %s: %s", chunk_path, result.get("message")
+            )
             raise RuntimeError(
                 f"Erro na transcrição do chunk {chunk_path}: {result.get('message')}"
             )
@@ -127,8 +152,9 @@ def transcription_node(state: VideoState) -> dict:
         gc.collect()
 
     full_transcript = " ".join(aggregated_transcript_parts)
-    print(
-        f"[TRANSCRICAO_NODE] Concluído. Palavras registradas: {len(aggregated_word_timestamps)}"
+    logger.info(
+        "Transcription completed. Recorded words: %d",
+        len(aggregated_word_timestamps),
     )
 
     return {
@@ -145,10 +171,11 @@ def thinker_node(state: VideoState) -> dict:
     """
     transcript = state.get("transcript_grouped", "")
     if not transcript:
+        logger.error("Empty or missing transcript in state for thinker node.")
         raise ValueError("Transcrição vazia ou ausente no estado para o nó pensador.")
 
-    print(
-        "\n[THINKER_NODE] Analisando momentos de retenção e gerando raciocínio estratégico (Qwen2.5:14b)..."
+    logger.info(
+        "Analyzing retention moments and generating strategic reasoning (Qwen2.5:14b)..."
     )
 
     raw_client = openai.OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
@@ -179,7 +206,7 @@ def thinker_node(state: VideoState) -> dict:
     )
 
     raciocinio = response.choices[0].message.content or ""
-    print(f"[THINKER_NODE] Raciocínio gerado ({len(raciocinio)} caracteres).")
+    logger.info("Strategic reasoning generated (%d characters).", len(raciocinio))
     return {"raciocinio_bruto": raciocinio}
 
 
@@ -192,11 +219,10 @@ def extractor_node(state: VideoState) -> dict:
     raciocinio = state.get("raciocinio_bruto", "")
 
     if not raciocinio:
+        logger.error("Raw reasoning missing in state for extractor node.")
         raise ValueError("Raciocínio bruto ausente no estado para o nó extrator.")
 
-    print(
-        "\n[EXTRACTOR_NODE] Formatando decisões finais em schema Pydantic via Instructor..."
-    )
+    logger.info("Formatting final decisions into Pydantic schema via Instructor...")
 
     raw_client = openai.OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
     instructor_client = instructor.from_openai(raw_client, mode=instructor.Mode.JSON)
@@ -227,12 +253,14 @@ def extractor_node(state: VideoState) -> dict:
         temperature=0.1,
     )
 
-    print(
-        f"[EXTRACTOR_NODE] Extração concluída com sucesso: {len(cortes)} cortes validados."
-    )
+    logger.info("Extraction completed successfully: %d cuts validated.", len(cortes))
     for idx, corte in enumerate(cortes, start=1):
-        print(
-            f"  [{idx}] '{corte.title}' ({corte.start_time:.2f}s - {corte.end_time:.2f}s)"
+        logger.info(
+            "  [%d] '%s' (%.2fs - %.2fs)",
+            idx,
+            corte.title,
+            corte.start_time,
+            corte.end_time,
         )
 
     return {"cortes_finais": cortes}
@@ -245,12 +273,13 @@ def editor_node(state: VideoState) -> dict:
     word_timestamps = state.get("word_timestamps", [])
 
     if not video_path or not os.path.exists(video_path):
+        logger.error("Video file not found for editing: %s", video_path)
         raise FileNotFoundError(
             f"Arquivo de vídeo não encontrado para edição: {video_path}"
         )
 
     if not cortes:
-        print("[EDITOR_NODE] Nenhum corte estruturado para renderizar.")
+        logger.warning("No structured cuts found to render.")
         return {}
 
     cortes_validados = [
@@ -258,9 +287,7 @@ def editor_node(state: VideoState) -> dict:
         for corte in cortes
     ]
 
-    print(
-        f"\n[EDITOR_NODE] Renderizando {len(cortes_validados)} vídeos verticais (9:16)..."
-    )
+    logger.info("Rendering %d vertical videos (9:16)...", len(cortes_validados))
     arquivos_gerados = cut_and_format_video(
         video_path=video_path,
         cortes_validados=cortes_validados,
@@ -268,11 +295,9 @@ def editor_node(state: VideoState) -> dict:
         output_dir=OUTPUT_DIR,
     )
 
-    print(
-        f"[EDITOR_NODE] Renderização concluída! {len(arquivos_gerados)} arquivos criados:"
-    )
+    logger.info("Rendering completed! %d files created:", len(arquivos_gerados))
     for arq in arquivos_gerados:
-        print(f"  - {arq}")
+        logger.info("  - %s", arq)
 
     return {}
 
@@ -306,12 +331,12 @@ def create_graph():
 
 if __name__ == "__main__":
     video_url = os.getenv("YOUTUBE_URL", "https://www.youtube.com/watch?v=jNQXAC9IVRw")
-    print("==================================================")
-    print("🚀 AGENT-CLIPPER: Pipeline Autônomo com LangGraph")
-    print(f"URL Alvo: {video_url}")
-    print(f"Output Dir: {OUTPUT_DIR}")
-    print(f"Modelo LLM: {MODEL_NAME} ({OLLAMA_BASE_URL})")
-    print("==================================================")
+    logger.info("==================================================")
+    logger.info("AGENT-CLIPPER: Autonomous LangGraph Pipeline")
+    logger.info("Target URL: %s", video_url)
+    logger.info("Output Dir: %s", OUTPUT_DIR)
+    logger.info("LLM Model: %s (%s)", MODEL_NAME, OLLAMA_BASE_URL)
+    logger.info("==================================================")
 
     initial_state: VideoState = {
         "video_url": video_url,
@@ -332,9 +357,10 @@ if __name__ == "__main__":
         checkpointer.setup()
         app = workflow.compile(checkpointer=checkpointer)
 
-        print(
-            f"[ORCHESTRATOR] Grafo compilado. Iniciando execução (Thread: clipper_{thread_id})..."
+        logger.info(
+            "Graph compiled. Starting execution (Thread: clipper_%s)...",
+            thread_id,
         )
         final_state = app.invoke(initial_state, config=config)
 
-    print("\n🎉 Pipeline finalizado com sucesso!")
+    logger.info("Pipeline completed successfully!")

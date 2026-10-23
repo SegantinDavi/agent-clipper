@@ -1,15 +1,19 @@
 import os
 import re
 import gc
+import logging
 import requests
 from yt_dlp import YoutubeDL
 from faster_whisper import WhisperModel
+
+logger = logging.getLogger(__name__)
 
 
 def download_video(url: str, output_dir: str = "downloads") -> dict:
     try:
         video_id = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)
         if not video_id:
+            logger.error("Invalid YouTube URL: %s", url)
             return {"status": "error", "message": "URL inválida."}
         video_id = video_id.group(1)
 
@@ -25,6 +29,7 @@ def download_video(url: str, output_dir: str = "downloads") -> dict:
             video_path = ydl.prepare_filename(info_dict)
             title = info_dict.get("title", "Desconhecido")
 
+        logger.info("Video successfully downloaded: %s (%s)", title, video_path)
         return {
             "status": "success",
             "video_id": video_id,
@@ -32,11 +37,13 @@ def download_video(url: str, output_dir: str = "downloads") -> dict:
             "title": title,
         }
     except Exception as e:
+        logger.error("Failed to download video from %s: %s", url, e, exc_info=True)
         return {"status": "error", "message": str(e)}
 
 
 def transcribe_audio_chunk(audio_path: str) -> dict:
     try:
+        logger.info("Starting Whisper transcription on CPU: %s", audio_path)
         model = WhisperModel("small", device="cpu", compute_type="int8")
         segments, info = model.transcribe(audio_path, beam_size=5, word_timestamps=True)
 
@@ -58,12 +65,16 @@ def transcribe_audio_chunk(audio_path: str) -> dict:
 
         gc.collect()
 
+        logger.info("Transcription completed for %s", audio_path)
         return {
             "status": "success",
             "transcript": transcript_string,
             "word_timestamps": word_timestamps_list,
         }
     except Exception as e:
+        logger.error(
+            "Failed to transcribe audio chunk %s: %s", audio_path, e, exc_info=True
+        )
         if "model" in locals():
             del model
             import gc
@@ -75,10 +86,18 @@ def transcribe_audio_chunk(audio_path: str) -> dict:
 def download_video_and_transcript(url: str, output_dir: str = "downloads") -> dict:
     video_res = download_video(url, output_dir)
     if video_res.get("status") == "error":
+        logger.error(
+            "Download failed in download_video_and_transcript: %s",
+            video_res.get("message"),
+        )
         return video_res
 
     transcribe_res = transcribe_audio_chunk(video_res["video_path"])
     if transcribe_res.get("status") == "error":
+        logger.error(
+            "Transcription failed in download_video_and_transcript: %s",
+            transcribe_res.get("message"),
+        )
         return transcribe_res
 
     return {
@@ -94,11 +113,13 @@ def download_video_and_transcript(url: str, output_dir: str = "downloads") -> di
 if __name__ == "__main__":
     test_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
     result = download_video_and_transcript(test_url)
-    print(f"Status: {result.get('status')}")
+    logger.info("Status: %s", result.get("status"))
     if result.get("status") == "success":
-        print(f"Video ID: {result.get('video_id')}")
-        print(f"Video Path: {result.get('video_path')}")
-        print(f"Title: {result.get('title')}")
-        print(f"Transcript (first 500 chars): {result.get('transcript', '')[:500]}")
+        logger.info("Video ID: %s", result.get("video_id"))
+        logger.info("Video Path: %s", result.get("video_path"))
+        logger.info("Title: %s", result.get("title"))
+        logger.info(
+            "Transcript (first 500 chars): %s", result.get("transcript", "")[:500]
+        )
     else:
-        print(f"Message: {result.get('message')}")
+        logger.error("Message: %s", result.get("message"))
