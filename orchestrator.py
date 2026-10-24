@@ -10,7 +10,7 @@ import instructor
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 
-from schemas import CorteVideo
+from schemas import CorteVideo, CortesResponse
 from prompts import (
     EXTRACTOR_FEW_SHOT_EXAMPLES,
     EXTRACTOR_SYSTEM_PROMPT_TEMPLATE,
@@ -186,7 +186,8 @@ def thinker_node(state: VideoState) -> dict:
     user_prompt = (
         f"Transcrição do vídeo com timestamps:\n\n"
         f"{transcript}\n\n"
-        f"Pense criticamente e descreva sua análise dos melhores momentos virais."
+        f"Identifique de 1 a 3 momentos com alto potencial de viralização. "
+        f"Indique os intervalos de tempo exatos [INÍCIO - FIM] na transcrição e descreva a estratégia de retenção de cada corte."
     )
 
     response = raw_client.chat.completions.create(
@@ -223,7 +224,8 @@ def extractor_node(state: VideoState) -> dict:
     user_prompt = (
         f"Transcrição do vídeo:\n{transcript}\n\n"
         f"Raciocínio Estratégico:\n{raciocinio}\n\n"
-        f"Extraia a lista final dos cortes ideais conforme as instruções."
+        f"Com base na transcrição e no raciocínio acima, extraia entre 1 e 3 cortes ideais (entre 15s e 60s cada). "
+        f"Preencha start_time e end_time com os segundos exatos dos trechos na transcrição."
     )
 
     messages = (
@@ -232,13 +234,14 @@ def extractor_node(state: VideoState) -> dict:
         + [{"role": "user", "content": user_prompt}]
     )
 
-    cortes: list[CorteVideo] = instructor_client.chat.completions.create(
+    extraction_response: CortesResponse = instructor_client.chat.completions.create(
         model=MODEL_NAME,
-        response_model=list[CorteVideo],
+        response_model=CortesResponse,
         messages=messages,
         temperature=0.1,
     )
 
+    cortes: list[CorteVideo] = extraction_response.cortes
     logger.info("Extraction completed successfully: %d cuts validated.", len(cortes))
     for idx, corte in enumerate(cortes, start=1):
         logger.info(
