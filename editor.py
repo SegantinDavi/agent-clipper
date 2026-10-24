@@ -1,5 +1,4 @@
 import os
-import json
 import re
 import logging
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip

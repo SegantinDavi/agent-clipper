@@ -2,7 +2,6 @@ import os
 import re
 import gc
 import logging
-import requests
 from yt_dlp import YoutubeDL
 from faster_whisper import WhisperModel
 
@@ -61,8 +60,6 @@ def transcribe_audio_chunk(audio_path: str) -> dict:
                     )
 
         del model
-        import gc
-
         gc.collect()
 
         logger.info("Transcription completed for %s", audio_path)
@@ -77,8 +74,6 @@ def transcribe_audio_chunk(audio_path: str) -> dict:
         )
         if "model" in locals():
             del model
-            import gc
-
             gc.collect()
         return {"status": "error", "message": str(e)}
 
@@ -111,8 +106,14 @@ def download_video_and_transcript(url: str, output_dir: str = "downloads") -> di
 
 
 if __name__ == "__main__":
-    test_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
-    result = download_video_and_transcript(test_url)
+    from config import YOUTUBE_URL
+
+    video_url = YOUTUBE_URL
+    if not video_url:
+        logger.error("Environment variable 'YOUTUBE_URL' is required.")
+        raise ValueError("Environment variable 'YOUTUBE_URL' is required.")
+
+    result = download_video_and_transcript(video_url)
     logger.info("Status: %s", result.get("status"))
     if result.get("status") == "success":
         logger.info("Video ID: %s", result.get("video_id"))

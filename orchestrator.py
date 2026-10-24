@@ -10,7 +10,12 @@ import instructor
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 
-from schemas import CorteVideo
+from schemas import CorteVideo, CortesResponse
+from prompts import (
+    EXTRACTOR_FEW_SHOT_EXAMPLES,
+    EXTRACTOR_SYSTEM_PROMPT_TEMPLATE,
+    THINKER_SYSTEM_PROMPT,
+)
 from ingestion import download_video, transcribe_audio_chunk
 from node_0 import node_0_preventive_slicing
 from editor import cut_and_format_video
@@ -178,26 +183,17 @@ def thinker_node(state: VideoState) -> dict:
 
     raw_client = openai.OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
 
-    system_prompt = (
-        "Você é um Diretor Criativo e Estrategista Viral de vídeos curtos (Shorts/TikTok/Reels).\n"
-        "Sua função é analisar a transcrição agrupada com timestamps e 'pensar alto' detalhadamente "
-        "sobre os momentos com maior potencial de retenção da audiência.\n"
-        "Identifique momentos que possuem um gancho forte (hook) nos primeiros 3 segundos, "
-        "uma narrativa coerente e um clímax ou fechamento interessante.\n"
-        "Escreva um parágrafo denso de raciocínio crítico justificando por que esses segmentos selecionados "
-        "irão prender a atenção do espectador e quais são os intervalos de tempo correspondentes."
-    )
-
     user_prompt = (
         f"Transcrição do vídeo com timestamps:\n\n"
         f"{transcript}\n\n"
-        f"Pense criticamente e descreva sua análise dos melhores momentos virais."
+        f"Identifique de 1 a 3 momentos com alto potencial de viralização. "
+        f"Indique os intervalos de tempo exatos [INÍCIO - FIM] na transcrição e descreva a estratégia de retenção de cada corte."
     )
 
     response = raw_client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": THINKER_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.7,
@@ -225,32 +221,27 @@ def extractor_node(state: VideoState) -> dict:
     raw_client = openai.OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
     instructor_client = instructor.from_openai(raw_client, mode=instructor.Mode.JSON)
 
-    system_prompt = (
-        "Você é um Extrator de Dados Especialista para YouTube Shorts.\n"
-        "Com base estrita na transcrição e no raciocínio estratégico fornecido, extraia a lista com os melhores cortes.\n"
-        "Regras Inegociáveis:\n"
-        "1. Os tempos (start_time e end_time) em segundos DEVEM coincidir com timestamps presentes na transcrição.\n"
-        "2. A duração de cada corte deve ser ideal para Shorts (entre 15s e 60s).\n"
-        "3. Defina um título chamativo e viral para cada corte no campo 'title'.\n"
-        "4. Retorne exclusivamente a estrutura solicitada."
-    )
-
     user_prompt = (
         f"Transcrição do vídeo:\n{transcript}\n\n"
         f"Raciocínio Estratégico:\n{raciocinio}\n\n"
-        f"Extraia a lista final dos cortes ideais conforme as instruções."
+        f"Com base na transcrição e no raciocínio acima, extraia entre 1 e 3 cortes ideais (entre 15s e 60s cada). "
+        f"Preencha start_time e end_time com os segundos exatos dos trechos na transcrição."
     )
 
-    cortes: list[CorteVideo] = instructor_client.chat.completions.create(
+    messages = (
+        [{"role": "system", "content": EXTRACTOR_SYSTEM_PROMPT_TEMPLATE}]
+        + list(EXTRACTOR_FEW_SHOT_EXAMPLES)
+        + [{"role": "user", "content": user_prompt}]
+    )
+
+    extraction_response: CortesResponse = instructor_client.chat.completions.create(
         model=MODEL_NAME,
-        response_model=list[CorteVideo],
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
+        response_model=CortesResponse,
+        messages=messages,
         temperature=0.1,
     )
 
+    cortes: list[CorteVideo] = extraction_response.cortes
     logger.info("Extraction completed successfully: %d cuts validated.", len(cortes))
     for idx, corte in enumerate(cortes, start=1):
         logger.info(
@@ -328,7 +319,7 @@ def create_graph():
 
 
 if __name__ == "__main__":
-    video_url = os.getenv("YOUTUBE_URL")
+    video_url = YOUTUBE_URL
     if not video_url:
         logger.error("Environment variable 'YOUTUBE_URL' is not set.")
         raise ValueError("Environment variable 'YOUTUBE_URL' is required.")

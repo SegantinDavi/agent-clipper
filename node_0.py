@@ -4,6 +4,8 @@ import os
 import json
 import logging
 
+from config import OUTPUT_DIR
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,8 +29,11 @@ def get_silence_points(
 
 
 def node_0_preventive_slicing(
-    video_path: str, output_dir: str = "/app/output", max_chunk_sec: int = 600
+    video_path: str, output_dir: str | None = None, max_chunk_sec: int = 600
 ) -> list[dict]:
+    if output_dir is None:
+        output_dir = OUTPUT_DIR
+    os.makedirs(output_dir, exist_ok=True)
     full_audio_path = os.path.join(output_dir, "full_audio.wav")
     logger.info("Extracting full audio for silence detection: %s", full_audio_path)
     subprocess.run(
