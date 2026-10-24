@@ -316,7 +316,7 @@ def create_graph():
 
 
 if __name__ == "__main__":
-    video_url = os.getenv("YOUTUBE_URL")
+    video_url = YOUTUBE_URL
     if not video_url:
         logger.error("Environment variable 'YOUTUBE_URL' is not set.")
         raise ValueError("Environment variable 'YOUTUBE_URL' is required.")

@@ -6,6 +6,10 @@ import requests
 from yt_dlp import YoutubeDL
 from faster_whisper import WhisperModel
 
+from config import (
+    YOUTUBE_URL,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -111,8 +115,8 @@ def download_video_and_transcript(url: str, output_dir: str = "downloads") -> di
 
 
 if __name__ == "__main__":
-    test_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
-    result = download_video_and_transcript(test_url)
+    video_url = YOUTUBE_URL
+    result = download_video_and_transcript(video_url)
     logger.info("Status: %s", result.get("status"))
     if result.get("status") == "success":
         logger.info("Video ID: %s", result.get("video_id"))
