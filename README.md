@@ -54,19 +54,14 @@ docker build -t agent-clipper .
 
 ### 2. Configurar o link do vídeo
 
-Abra o arquivo `orchestrator.py` e altere a variável `url` no início da função principal:
-
-```python
-if __name__ == "__main__":
-    url = "https://www.youtube.com/watch?v=SEU_LINK_AQUI"
-```
+O sistema não utiliza mais links fixados no código-fonte. O link do vídeo que você deseja processar deve ser passado dinamicamente através da variável de ambiente `YOUTUBE_URL` no momento da execução.
 
 ### 3. Executar o container
 
-Rode o container mapeando a pasta `./output` para que os vídeos gerados e o banco de dados de estado fiquem salvos no seu computador:
+Rode o container mapeando a pasta `./output` para salvar os vídeos gerados e injetando a variável `YOUTUBE_URL`:
 
 ```bash
-docker run --rm --network host -v $(pwd)/output:/app/output agent-clipper
+docker run --rm --network host -e YOUTUBE_URL="https://www.youtube.com/watch?v=SEU_LINK_AQUI" -v $(pwd)/output:/app/output agent-clipper
 ```
 
 Os clipes curtos formatados e legendados estarão disponíveis na pasta `./output` do seu repositório ao término da execução!
@@ -98,8 +93,10 @@ Caso prefira rodar fora do Docker, você precisará instalar as dependências do
 
 4. **Executar o orquestrador:**
 
+   Passe a variável de ambiente diretamente antes do comando de execução:
+
    ```bash
-   python orchestrator.py
+   YOUTUBE_URL="https://www.youtube.com/watch?v=SEU_LINK_AQUI" python orchestrator.py
    ```
 
 ---
