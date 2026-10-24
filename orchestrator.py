@@ -11,6 +11,10 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 from schemas import CorteVideo
+from prompts import (
+    EXTRACTOR_FEW_SHOT_EXAMPLES,
+    EXTRACTOR_SYSTEM_PROMPT_TEMPLATE,
+)
 from ingestion import download_video, transcribe_audio_chunk
 from node_0 import node_0_preventive_slicing
 from editor import cut_and_format_video
@@ -225,29 +229,22 @@ def extractor_node(state: VideoState) -> dict:
     raw_client = openai.OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
     instructor_client = instructor.from_openai(raw_client, mode=instructor.Mode.JSON)
 
-    system_prompt = (
-        "Você é um Extrator de Dados Especialista para YouTube Shorts.\n"
-        "Com base estrita na transcrição e no raciocínio estratégico fornecido, extraia a lista com os melhores cortes.\n"
-        "Regras Inegociáveis:\n"
-        "1. Os tempos (start_time e end_time) em segundos DEVEM coincidir com timestamps presentes na transcrição.\n"
-        "2. A duração de cada corte deve ser ideal para Shorts (entre 15s e 60s).\n"
-        "3. Defina um título chamativo e viral para cada corte no campo 'title'.\n"
-        "4. Retorne exclusivamente a estrutura solicitada."
-    )
-
     user_prompt = (
         f"Transcrição do vídeo:\n{transcript}\n\n"
         f"Raciocínio Estratégico:\n{raciocinio}\n\n"
         f"Extraia a lista final dos cortes ideais conforme as instruções."
     )
 
+    messages = (
+        [{"role": "system", "content": EXTRACTOR_SYSTEM_PROMPT_TEMPLATE}]
+        + list(EXTRACTOR_FEW_SHOT_EXAMPLES)
+        + [{"role": "user", "content": user_prompt}]
+    )
+
     cortes: list[CorteVideo] = instructor_client.chat.completions.create(
         model=MODEL_NAME,
         response_model=list[CorteVideo],
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
+        messages=messages,
         temperature=0.1,
     )
 
