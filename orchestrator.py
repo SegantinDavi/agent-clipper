@@ -14,6 +14,7 @@ from schemas import CorteVideo
 from prompts import (
     EXTRACTOR_FEW_SHOT_EXAMPLES,
     EXTRACTOR_SYSTEM_PROMPT_TEMPLATE,
+    THINKER_SYSTEM_PROMPT,
 )
 from ingestion import download_video, transcribe_audio_chunk
 from node_0 import node_0_preventive_slicing
@@ -182,16 +183,6 @@ def thinker_node(state: VideoState) -> dict:
 
     raw_client = openai.OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
 
-    system_prompt = (
-        "Você é um Diretor Criativo e Estrategista Viral de vídeos curtos (Shorts/TikTok/Reels).\n"
-        "Sua função é analisar a transcrição agrupada com timestamps e 'pensar alto' detalhadamente "
-        "sobre os momentos com maior potencial de retenção da audiência.\n"
-        "Identifique momentos que possuem um gancho forte (hook) nos primeiros 3 segundos, "
-        "uma narrativa coerente e um clímax ou fechamento interessante.\n"
-        "Escreva um parágrafo denso de raciocínio crítico justificando por que esses segmentos selecionados "
-        "irão prender a atenção do espectador e quais são os intervalos de tempo correspondentes."
-    )
-
     user_prompt = (
         f"Transcrição do vídeo com timestamps:\n\n"
         f"{transcript}\n\n"
@@ -201,7 +192,7 @@ def thinker_node(state: VideoState) -> dict:
     response = raw_client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": THINKER_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.7,

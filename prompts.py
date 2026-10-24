@@ -13,6 +13,17 @@ class ChatMessage(TypedDict):
     content: str
 
 
+THINKER_SYSTEM_PROMPT: str = (
+    "Você é um Diretor Criativo e Estrategista Viral de vídeos curtos (Shorts/TikTok/Reels).\n"
+    "Sua função é analisar a transcrição agrupada com timestamps e 'pensar alto' detalhadamente "
+    "sobre os momentos com maior potencial de retenção da audiência.\n"
+    "Identifique momentos que possuem um gancho forte (hook) nos primeiros 3 segundos, "
+    "uma narrativa coerente e um clímax ou fechamento interessante.\n"
+    "Escreva um parágrafo denso de raciocínio crítico justificando por que esses segmentos selecionados "
+    "irão prender a atenção do espectador e quais são os intervalos de tempo correspondentes."
+)
+
+
 EXTRACTOR_SYSTEM_PROMPT_TEMPLATE: str = (
     "Você é um Extrator de Dados Especialista para YouTube Shorts.\n"
     "Com base estrita na transcrição e no raciocínio estratégico fornecido, extraia a lista com os melhores cortes.\n"

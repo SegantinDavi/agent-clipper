@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PromptsModuleInterface",
+  "description": "Public interface exported by prompts.py",
+  "type": "object",
+  "required": [
+    "THINKER_SYSTEM_PROMPT",
+    "EXTRACTOR_SYSTEM_PROMPT_TEMPLATE",
+    "EXTRACTOR_FEW_SHOT_EXAMPLES"
+  ],
+  "properties": {
+    "THINKER_SYSTEM_PROMPT": {
+      "type": "string",
+      "minLength": 50,
+      "description": "System prompt for the Thinker Node (Chain-of-Thought reasoning)"
+    },
+    "EXTRACTOR_SYSTEM_PROMPT_TEMPLATE": {
+      "type": "string",
+      "minLength": 50,
+      "description": "System prompt for the Extractor Node (Constrained Decoding)"
+    },
+    "EXTRACTOR_FEW_SHOT_EXAMPLES": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["user", "assistant"]
+          },
+          "content": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      },
+      "description": "Turn-based user/assistant message pairs for few-shot priming"
+    }
+  }
+}
