@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-few-shot-extractor`
 **Created**: 2026-10-23
-**Status**: Draft
+**Status**: Validated (PASS)
 **Input**: User description: "Few-Shot Prompting no `extractor_node` para ancoragem cognitiva do Qwen2.5:14b via exemplos injetados no `system_prompt`, resolvendo falhas de formatação em transcrições longas de podcasts."
 
 ---
