@@ -103,6 +103,9 @@
 - [X] T016 [P] Verify code style, English naming conventions and minimal comment guidelines in prompts.py and orchestrator.py
 - [X] T017 Verify that no Regex (`re.search`) or manual `json.loads` was introduced in orchestrator.py
 - [X] T018 Execute end-to-end quickstart validation suite from specs/001-few-shot-extractor/quickstart.md
+- [X] T019 [P1] Remove hardcoded video_id/video_url in config.py and ensure YOUTUBE_URL is strictly dynamic via os.getenv without fallback
+- [X] T020 [P3] Clean up duplicate inline gc imports and unused module-level imports in ingestion.py and editor.py
+- [X] T021 [P4] Remove hardcoded '/app/output' default argument in node_0.py by referencing OUTPUT_DIR from config.py
 
 ---
 
