@@ -9,8 +9,9 @@ RUN sed -i '/pattern="@\*"/d' /etc/ImageMagick*/policy.xml
 WORKDIR /app
 
 COPY requirements.txt .
+COPY requirements-cuda.txt .
 
-RUN pip install --no-cache-dir --prefer-binary faster-whisper ctranslate2 onnxruntime "av<19"
+RUN pip install --no-cache-dir --prefer-binary -r requirements-cuda.txt onnxruntime "av<19"
 
 RUN pip install --no-cache-dir --prefer-binary -r requirements.txt && \
     rm -rf /tmp/* /root/.cache/pip

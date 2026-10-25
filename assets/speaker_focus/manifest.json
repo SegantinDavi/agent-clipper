@@ -1,0 +1,17 @@
+{
+  "source_files_sha256": {
+    "model/Model.py": "6094bfaab7d5a701e1580ee6ec89c7cfea2baacf62b3ceafff5558f31dd3fc8d",
+    "model/Encoder.py": "c4a85b8aa5eaab428f79836c5d9511a01ac45bfeb6dccc75e06c1e9eff25520c",
+    "model/Classifier.py": "21fdebc3c08ee3a386111719035f06461b29548b9b900eff3e17e4083f4377f8",
+    "weight/pretrain_AVA_CVPR.model": "d44bc3ea7baa8e0946fa3921311714a630ed8b90a1928fab0dbe30d918909317"
+  },
+  "onnx_parity_max_errors": [
+    1.9073486328125e-06,
+    2.384185791015625e-06
+  ],
+  "torch_export_version": "2.10.0+cpu",
+  "files": {
+    "face_detection_yunet.onnx": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+    "light_asd.onnx": "0e1cba5296def8c86af40c15e9a42085411ef475d4828dd5065c6e897f8cc391"
+  }
+}

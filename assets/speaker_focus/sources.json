@@ -1,0 +1,19 @@
+{
+  "light_asd": {
+    "revision_url": "https://api.github.com/repos/Junhua-Liao/Light-ASD/commits/main",
+    "raw_base": "https://raw.githubusercontent.com/Junhua-Liao/Light-ASD/{revision}/",
+    "weight": "weight/pretrain_AVA_CVPR.model",
+    "sources": [
+      "model/Model.py",
+      "model/Encoder.py",
+      "model/Classifier.py"
+    ],
+    "revision": "ed38c232de5efe0261dbd68627c0ade7cdfe14eb"
+  },
+  "yunet": {
+    "revision_url": "https://api.github.com/repos/opencv/opencv_zoo/commits/main",
+    "model_url": "https://media.githubusercontent.com/media/opencv/opencv_zoo/{revision}/models/face_detection_yunet/face_detection_yunet_2023mar.onnx",
+    "license_url": "https://raw.githubusercontent.com/opencv/opencv_zoo/{revision}/models/face_detection_yunet/LICENSE",
+    "revision": "48b10fa505aeb51fbd127fc60a5c660040e823b7"
+  }
+}

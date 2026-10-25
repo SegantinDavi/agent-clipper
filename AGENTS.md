@@ -4,13 +4,13 @@
 
 #### 📌 Contexto do Projeto
 
-Este é o **agent-clipper** , um pipeline 100% autônomo, local, de custo zero e rodando em ambiente isolado (Docker) para ingestão de vídeos longos do YouTube e conversão para formatos curtos e verticais (Shorts/TikTok/Reels). Todo o processamento de linguagem (LLM) e transcrição roda localmente na máquina do usuário.
+Este é o **agent-clipper**, um pipeline em Docker para converter vídeos longos do YouTube em formatos curtos e verticais (Shorts/TikTok/Reels), com aprovação humana dos cortes. Existem dois perfis de LLM: local via Ollama (sem custo de API) e pago via API Gemini. Download, transcrição e edição são locais em ambos.
 
 #### 🛠️ Stack Tecnológico Restrito
 
 - **Python:** 3.12+
 - **Ambiente:** Docker (Debian-slim) sobre WSL2 (Ubuntu) limitados a 8GB RAM e 8GB Swap.
-- **LLM Backend Exclusivo:** Ollama (Qwen2.5:14b). NÃO use APIs externas (OpenAI) e NÃO sugira o uso de múltiplos modelos (ex: DeepSeek + Qwen) devido à restrição de 12GB VRAM. Use base_url="localhost".
+- **LLM Backends Autorizados:** Ollama local (`qwen2.5:14b`, endpoint padrão `http://localhost:11434/v1`) ou API paga Gemini (`GEMINI_MODEL`). `LLM_PROVIDER=ollama|gemini` seleciona o perfil. O SDK OpenAI é apenas cliente compatível desses endpoints; não autoriza a API OpenAI. Use o mesmo modelo nos nós Pensador e Extrator, sem múltiplos LLMs locais simultâneos.
 - **Orquestração e Extração:** langgraph, instructor, pydantic. (O uso de autogen é estritamente proibido).
 - **Edição de Vídeo:** moviepy==1.0.3 (NÃO utilize métodos da v2.x).
 - **Processamento de Imagem/Texto:** imagemagick + fonts-liberation
@@ -23,7 +23,7 @@ Este é o **agent-clipper** , um pipeline 100% autônomo, local, de custo zero e
 
 O ambiente opera no limite físico de memória.
 
-- **Transcrição na CPU:** O faster-whisper DEVE rodar na CPU (device="cpu", compute_type="int8"). A VRAM da CUDA é reservada 100% para o Qwen2.5.
+- **Transcrição por perfil (obrigatória):** Com Ollama local, faster-whisper roda em **CPU/int8**, reservando a VRAM ao Qwen. Com Gemini API, roda em **GPU CUDA/float16**. O perfil determina esses valores; exports antigos de `WHISPER_DEVICE` e `WHISPER_COMPUTE_TYPE` não os sobrescrevem. Não há fallback silencioso de GPU, CPU ou provedor. Selecione o perfil antes de importar config, CUDA ou bibliotecas de inferência; em modo local, não inicialize nem valide CUDA. No modo API, use o bootstrap de `cuda_runtime.py` e as versões fixadas em `requirements-cuda.txt`. Preserve a liberação de memória entre chunks.
 - **Prevenção de Memory Leak (RAM):** Após a conclusão da transcrição de qualquer vídeo ou chunk, é obrigatório destruir a instância do modelo e forçar a limpeza de memória (del model seguido de import gc; gc.collect()).
 - **Dependência Fixada:** A biblioteca av deve estar fixada em <19 no Dockerfile para evitar crash (metadata_errors) durante a extração de áudio.
 
@@ -44,7 +44,7 @@ O projeto abandonou a orquestração conversacional procedural. Todo o fluxo dev
 
 ##### 4. Padrão "Cognitive Routing" (Single-Model)
 
-Use dois nós sequenciais operando o MESMO modelo (Qwen2.5) para separar raciocínio de formatação, maximizando o QI do pipeline:
+Use dois nós sequenciais operando o MESMO modelo do perfil selecionado (Qwen2.5 local ou Gemini API) para separar análise editorial de formatação:
 
 - **Nó 1 (Pensador):** Recebe a transcrição e tem liberdade total para escrever parágrafos de raciocínio (Chain of Thought).
 - **Nó 2 (Extrator):** Lê o raciocínio do Nó 1 e formata os dados.
@@ -61,12 +61,16 @@ Use dois nós sequenciais operando o MESMO modelo (Qwen2.5) para separar racioc�
 - **Dimensões Pares:** O H.264 quebra (BrokenPipeError) se largura/altura forem ímpares. Sempre force pares no crop (if new_width % 2 != 0: new_width -= 1).
 - **Compatibilidade:** A exportação do vídeo (write_videofile) exige: ffmpeg_params=["-pix_fmt", "yuv420p", "-profile:v", "main"].
 - **Fontes:** Use estritamente fontes do fonts-liberation (ex: font="Liberation-Sans-Bold"). Nenhuma fonte do Windows.
+- **Cortes de silêncio:** Encurte apenas silêncios confirmados pelo FFmpeg em intervalos entre palavras do Whisper, com margens de proteção. Padrões: pausa mínima de 0,6s, retenção de pelo menos 0,2s, proteção de 0,1s por lado e limiar de -35dB, configuráveis por `SILENCE_*`. Preserve bordas do corte e trechos sem timestamps confiáveis/áudio. Não introduza outro modelo ou carga na GPU para esta função.
+- **Sincronização e aprovação:** Salve os intervalos mantidos em `review.json` e aplique o mesmo plano a áudio/vídeo no preview e no MP4 aprovado. Reutilize o plano salvo na retomada. Faça a análise de enquadramento no tempo original antes da concatenação; remapeie as legendas e não agrupe palavras através de uma remoção. Salve `.pauses.json` por MP4; `.focus.json` continua no tempo do corte original. Use uma única sequência de vídeo para os filtros de preview e concatenação MoviePy `method="chain"`, sem acumular frames em RAM.
 
 ##### 7. Containerização e Variáveis (Dockerfile)
 
 - A instalação de pacotes pesados (faster-whisper, ctranslate2, onnxruntime, av<19) deve ser feita isolada do resto do requirements.txt via --prefer-binary.
 - Nenhuma URL ou parâmetro deve ficar _hardcoded_ no Python. A inicialização deve ler a variável de ambiente via os.getenv (ex: injetada via docker run -e YOUTUBE_URL=...).
 - Todo o output final (vídeos, logs e estado) deve ser gerado no volume mapeado /app/output.
+- Chaves de API devem vir do ambiente ou do `.env` ignorado pelo Git/Docker, nunca do código, logs ou checkpoints. O `.env` não sobrescreve variáveis exportadas. O menu de terminal configura apenas a execução atual e deve aceitar operação sem interação via CLI/ambiente.
+- Checkpoints devem incluir vídeo, provedor, modelo, endpoint e configurações de cortes de silêncio na identidade, impedindo reaproveitamento cruzado de resultados/aprovações. Ao alterar esse escopo, documente que checkpoints antigos não serão retomados.
 
 ##### 8. Padrões de Código (Clean Code)
 
@@ -111,9 +115,9 @@ Sistemas procedurais e lineares (ou chat de agentes como AutoGen) são caóticos
 ```mermaid
 graph TD
     Z["Nó 0: Fatiamento Preventivo<br>(FFmpeg Silence Detect)"] --> A
-    A["Nó 1: Ingestão<br>YT-DLP + Whisper (CPU Int8)"] --> B
-    B["Nó 2: Raciocínio (Qwen2.5)<br>Chain of Thought Livre"] --> C
-    C["Nó 3: Extração (Qwen2.5)<br>Instructor + Pydantic"] --> D
+    A["Nó 1: Ingestão<br>Whisper CPU/int8 local ou CUDA/float16 API"] --> B
+    B["Nó 2: Análise editorial<br>Qwen local ou Gemini API"] --> C
+    C["Nó 3: Extração (mesmo modelo)<br>Instructor + Pydantic"] --> D
     D["Nó 4: Edição<br>MoviePy + Hardcoded Math Constraints"]
 
 ```
@@ -125,7 +129,7 @@ _A persistência do grafo (Checkpointer) via SQLite salva no volume externo gara
 #### 4. Padrão "Cognitive Routing" (Single-Model Adaptation)
 
 Na teoria clássica, divide-se o cérebro em dois modelos distintos (ex: R1 para raciocínio, Qwen para formatação). **No nosso hardware (12GB VRAM), essa alternância (hot-swap) esgotará a memória e causará gargalos massivos.**
-**A Solução Local (Single-Model Routing):** Utilizamos o **mesmo modelo** (Qwen2.5:14b) alocado em VRAM, mas dividimos o processo cognitivo em dois nós assíncronos no LangGraph:
+**A Solução Local (Single-Model Routing):** Utilizamos o **mesmo modelo** (Qwen2.5:14b) alocado em VRAM, com Whisper na CPU, dividindo o processamento em dois nós sequenciais no LangGraph. No perfil API, os dois nós usam o mesmo Gemini remoto e Whisper ocupa a GPU:
 
 1.  **Nó Pensador:** Recebe a transcrição e tem liberdade para "pensar alto", escrever parágrafos e analisar retenção sem obrigação de JSON.
 2.  **Nó Tradutor Estrito:** Lê a redação livre gerada pelo próprio Qwen no passo anterior e aplica _Constrained Decoding_ (Instructor) para extrair e engessar a resposta final em formato Python puro.

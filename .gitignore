@@ -8,3 +8,6 @@ __pycache__/
 downloads/
 output/
 *.mp4
+.env
+.env.*
+!.env.example

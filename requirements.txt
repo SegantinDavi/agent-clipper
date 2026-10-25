@@ -1,5 +1,6 @@
 # Agentes e Comunicação
 requests
+python-dotenv
 
 # Download e Extração
 yt-dlp
@@ -11,6 +12,10 @@ av<19
 
 # Edição de Vídeo
 moviepy==1.0.3
+Pillow>=9.2
+opencv-python-headless==5.0.0.93
+scipy==1.18.1
+python_speech_features==0.6
 
 # Constrained Decoding
 pydantic
