@@ -18,6 +18,7 @@ from review import (
     render_review_page, validate_approval, wait_for_approval,
 )
 from schemas import CorteVideo
+from pause_editing import PauseSettings, identity_plan
 
 
 class TokenParser(HTMLParser):
@@ -40,7 +41,10 @@ class ReviewTests(unittest.TestCase):
             CorteVideo(title="Second", description="Another topic", start_time=1, end_time=2),
         ]
         (self.root / "review.json").write_text(
-            ReviewManifest(cuts=self.cuts).model_dump_json(), encoding="utf-8",
+            ReviewManifest(cuts=self.cuts, pause_plans=[
+                identity_plan(cut.start_time, cut.end_time, PauseSettings(enabled=False))
+                for cut in self.cuts
+            ]).model_dump_json(), encoding="utf-8",
         )
 
     def test_page_escapes_metadata_and_starts_unselected(self):
@@ -144,6 +148,7 @@ class ReviewTests(unittest.TestCase):
                 self.assertEqual(result["approved_cut_ids"], [2])
                 self.assertEqual(len(calls), 1)
                 self.assertEqual(render.call_args.kwargs["cortes_validados"], [self.cuts[1]])
+                self.assertEqual(render.call_args.kwargs["pause_plans"][0].source_start, 1)
 
     def test_reject_all_skips_editor(self):
         (self.root / "decision.json").write_text(ApprovalDecision(approved_ids=[]).model_dump_json())

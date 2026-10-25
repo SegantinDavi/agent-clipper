@@ -61,6 +61,8 @@ Use dois nós sequenciais operando o MESMO modelo do perfil selecionado (Qwen2.5
 - **Dimensões Pares:** O H.264 quebra (BrokenPipeError) se largura/altura forem ímpares. Sempre force pares no crop (if new_width % 2 != 0: new_width -= 1).
 - **Compatibilidade:** A exportação do vídeo (write_videofile) exige: ffmpeg_params=["-pix_fmt", "yuv420p", "-profile:v", "main"].
 - **Fontes:** Use estritamente fontes do fonts-liberation (ex: font="Liberation-Sans-Bold"). Nenhuma fonte do Windows.
+- **Cortes de silêncio:** Encurte apenas silêncios confirmados pelo FFmpeg em intervalos entre palavras do Whisper, com margens de proteção. Padrões: pausa mínima de 0,6s, retenção de pelo menos 0,2s, proteção de 0,1s por lado e limiar de -35dB, configuráveis por `SILENCE_*`. Preserve bordas do corte e trechos sem timestamps confiáveis/áudio. Não introduza outro modelo ou carga na GPU para esta função.
+- **Sincronização e aprovação:** Salve os intervalos mantidos em `review.json` e aplique o mesmo plano a áudio/vídeo no preview e no MP4 aprovado. Reutilize o plano salvo na retomada. Faça a análise de enquadramento no tempo original antes da concatenação; remapeie as legendas e não agrupe palavras através de uma remoção. Salve `.pauses.json` por MP4; `.focus.json` continua no tempo do corte original. Use uma única sequência de vídeo para os filtros de preview e concatenação MoviePy `method="chain"`, sem acumular frames em RAM.
 
 ##### 7. Containerização e Variáveis (Dockerfile)
 
@@ -68,7 +70,7 @@ Use dois nós sequenciais operando o MESMO modelo do perfil selecionado (Qwen2.5
 - Nenhuma URL ou parâmetro deve ficar _hardcoded_ no Python. A inicialização deve ler a variável de ambiente via os.getenv (ex: injetada via docker run -e YOUTUBE_URL=...).
 - Todo o output final (vídeos, logs e estado) deve ser gerado no volume mapeado /app/output.
 - Chaves de API devem vir do ambiente ou do `.env` ignorado pelo Git/Docker, nunca do código, logs ou checkpoints. O `.env` não sobrescreve variáveis exportadas. O menu de terminal configura apenas a execução atual e deve aceitar operação sem interação via CLI/ambiente.
-- Checkpoints devem incluir vídeo, provedor, modelo e endpoint na identidade, impedindo reaproveitamento cruzado entre configurações de LLM. Ao alterar esse escopo, documente que checkpoints antigos não serão retomados.
+- Checkpoints devem incluir vídeo, provedor, modelo, endpoint e configurações de cortes de silêncio na identidade, impedindo reaproveitamento cruzado de resultados/aprovações. Ao alterar esse escopo, documente que checkpoints antigos não serão retomados.
 
 ##### 8. Padrões de Código (Clean Code)
 

@@ -29,6 +29,11 @@ LLM_MAX_COMPLETION_TOKENS = int(os.getenv("LLM_MAX_COMPLETION_TOKENS", "8192"))
 WHISPER_DEVICE = "cpu" if LLM_PROVIDER == "ollama" else "cuda"
 WHISPER_COMPUTE_TYPE = "int8" if LLM_PROVIDER == "ollama" else "float16"
 YOUTUBE_URL = os.getenv("YOUTUBE_URL", "")
+SILENCE_CUT_ENABLED = os.getenv("SILENCE_CUT_ENABLED", "1").lower() in {"1", "true", "yes"}
+SILENCE_MIN_PAUSE = float(os.getenv("SILENCE_MIN_PAUSE", "0.6"))
+SILENCE_KEEP_PAUSE = float(os.getenv("SILENCE_KEEP_PAUSE", "0.2"))
+SILENCE_SPEECH_PADDING = float(os.getenv("SILENCE_SPEECH_PADDING", "0.1"))
+SILENCE_THRESHOLD_DB = float(os.getenv("SILENCE_THRESHOLD_DB", "-35"))
 CAPTION_COLOR = os.getenv("CAPTION_COLOR", "#25E600")
 CAPTION_STROKE_COLOR = os.getenv("CAPTION_STROKE_COLOR", "#000000")
 CAPTION_FONT_SIZE = int(os.getenv("CAPTION_FONT_SIZE", "80"))

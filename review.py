@@ -8,15 +8,35 @@ import secrets
 import subprocess
 from urllib.parse import parse_qs, urlsplit
 
-from pydantic import BaseModel, StrictInt
+from pydantic import BaseModel, Field, StrictInt, model_validator
 
 from schemas import CorteVideo
+from pause_editing import PausePlan, PauseSettings, build_pause_plan, preview_filter
 
 logger = logging.getLogger(__name__)
 
 
 class ReviewManifest(BaseModel):
     cuts: list[CorteVideo]
+    pause_plans: list[PausePlan] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_plans(self):
+        if self.pause_plans:
+            if len(self.pause_plans) != len(self.cuts):
+                raise ValueError("Every reviewed cut must have a pause plan.")
+            for cut, plan in zip(self.cuts, self.pause_plans):
+                plan.validate_cut(cut.start_time, cut.end_time)
+        return self
+
+
+def load_review_plans(directory: str, cuts: list[CorteVideo]) -> list[PausePlan]:
+    manifest = ReviewManifest.model_validate_json(
+        (Path(directory) / "review.json").read_text(encoding="utf-8")
+    )
+    if manifest.cuts != cuts or len(manifest.pause_plans) != len(cuts):
+        raise ValueError("Saved pause plans are missing or differ from the approved cuts. Restart review.")
+    return manifest.pause_plans
 
 
 class ApprovalDecision(BaseModel):
@@ -32,14 +52,9 @@ def validate_approval(value: dict, cut_count: int) -> list[int]:
 
 
 def prepare_review(video_path: str, cuts: list[CorteVideo], output_dir: str,
-                   review_session: str = "") -> str:
+                   review_session: str = "", word_timestamps: list[dict] | None = None,
+                   pause_settings: PauseSettings | None = None) -> str:
     source = Path(video_path).resolve(strict=True)
-    manifest = ReviewManifest(cuts=cuts)
-    metadata = manifest.model_dump_json()
-    signature = f"{review_session}:{source}:{source.stat().st_size}:{source.stat().st_mtime_ns}:{metadata}"
-    review_id = hashlib.sha256(signature.encode()).hexdigest()[:20]
-    directory = Path(output_dir).resolve() / "reviews" / review_id
-    directory.mkdir(parents=True, exist_ok=True)
     duration = float(subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
          "-of", "default=noprint_wrappers=1:nokey=1", str(source)],
@@ -49,17 +64,34 @@ def prepare_review(video_path: str, cuts: list[CorteVideo], output_dir: str,
         if not (math.isfinite(cut.start_time) and math.isfinite(cut.end_time)
                 and 0 <= cut.start_time < cut.end_time <= duration):
             raise ValueError(f"Invalid preview interval for cut {index}.")
+    settings = pause_settings if pause_settings is not None else PauseSettings()
+    plans = [build_pause_plan(str(source), cut.start_time, cut.end_time,
+                              word_timestamps or [], settings) for cut in cuts]
+    manifest = ReviewManifest(cuts=cuts, pause_plans=plans)
+    metadata = manifest.model_dump_json()
+    signature = f"{review_session}:{source}:{source.stat().st_size}:{source.stat().st_mtime_ns}:{metadata}"
+    review_id = hashlib.sha256(signature.encode()).hexdigest()[:20]
+    directory = Path(output_dir).resolve() / "reviews" / review_id
+    directory.mkdir(parents=True, exist_ok=True)
+    for index, (cut, plan) in enumerate(zip(cuts, plans), 1):
         destination = directory / f"preview-{index}.mp4"
         if destination.exists():
             continue
         temporary = directory / f"preview-{index}.partial.mp4"
         logger.info("Generating preview %d/%d", index, len(cuts))
         try:
+            if len(plan.kept) > 1:
+                graph_path = directory / f"preview-{index}.filters.txt"
+                graph_path.write_text(preview_filter(plan), encoding="utf-8")
+                filter_args = ["-filter_complex_script", str(graph_path), "-map", "[outv]", "-map", "[a]"]
+            else:
+                filter_args = ["-map", "0:v:0", "-map", "0:a:0?", "-vf",
+                               "scale=w='min(640,iw)':h=-2:force_divisible_by=2"]
             result = subprocess.run(
                 ["ffmpeg", "-nostdin", "-y", "-v", "error", "-ss", str(cut.start_time),
-                 "-i", str(source), "-t", str(cut.end_time - cut.start_time),
-                 "-map", "0:v:0", "-map", "0:a:0?",
-                 "-vf", "scale=w='min(640,iw)':h=-2:force_divisible_by=2", "-r", "15",
+                 "-t", str(cut.end_time - cut.start_time), "-i", str(source),
+                 "-filter_complex_threads", "1", *filter_args, "-r", "15",
+                 "-t", str(plan.duration),
                  "-c:v", "libx264", "-preset", "ultrafast", "-crf", "30",
                  "-threads", "2", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "64k",
                  "-movflags", "+faststart", str(temporary)],
@@ -74,15 +106,20 @@ def prepare_review(video_path: str, cuts: list[CorteVideo], output_dir: str,
     return str(directory)
 
 
-def render_review_page(cuts: list[CorteVideo], token: str) -> str:
+def render_review_page(cuts: list[CorteVideo], token: str,
+                       pause_plans: list[PausePlan] | None = None) -> str:
     cards = []
     for index, cut in enumerate(cuts, 1):
+        duration = pause_plans[index - 1].duration if pause_plans else cut.end_time - cut.start_time
+        timing = (f"Original: {cut.end_time - cut.start_time:.1f}s · Após cortes de silêncio: {duration:.1f}s"
+                  if pause_plans else f"Duração: {duration:.1f}s")
         cards.append(f"""<article>
 <video controls preload="metadata" src="preview-{index}.mp4"></video>
-<div class="details"><span class="badge">CORTE {index} · {cut.end_time-cut.start_time:.1f}s</span>
+<div class="details"><span class="badge">CORTE {index} · {duration:.1f}s</span>
 <h2>{html.escape(cut.title)}</h2>
 <p>{html.escape(cut.description or 'Descrição indisponível neste processamento antigo.')}</p>
 <p class="time">No original: {cut.start_time:.2f}s – {cut.end_time:.2f}s</p>
+<p class="time">{timing}</p>
 <label><input type="checkbox" name="cut_id" value="{index}"> Aprovar este corte</label></div>
 </article>""")
     return """<!doctype html><html lang="pt-BR"><meta charset="utf-8">
@@ -101,7 +138,8 @@ button{border:0;border-radius:9px;background:#6ee7c5;color:#10241f;font:600 16px
 button.secondary{background:#303b50;color:white}</style><main>
 <span class="badge">AGENT CLIPPER · REVISÃO</span><h1>Escolha os cortes que vão para edição</h1>
 <p class="intro">Assista aos trechos e selecione os que deseja editar. Os previews mantêm o enquadramento original;
-o formato vertical e as legendas serão aplicados após sua confirmação.</p>
+o ritmo dos cortes de silêncio já está aplicado, quando habilitado.
+O formato vertical e as legendas serão aplicados após sua confirmação.</p>
 <form method="post" action="/approve"><input type="hidden" name="token" value="__TOKEN__">
 <div class="grid">__CARDS__</div><div class="actions">
 <button type="submit" name="action" value="approve">Confirmar seleção e editar</button>
@@ -113,7 +151,7 @@ def create_review_server(directory: str, port: int = 8765) -> ThreadingHTTPServe
     root = Path(directory).resolve(strict=True)
     manifest = ReviewManifest.model_validate_json((root / "review.json").read_text(encoding="utf-8"))
     token = secrets.token_urlsafe(32)
-    page = render_review_page(manifest.cuts, token).encode("utf-8")
+    page = render_review_page(manifest.cuts, token, manifest.pause_plans).encode("utf-8")
     allowed_files = {f"/preview-{index}.mp4" for index in range(1, len(manifest.cuts) + 1)}
 
     class ReviewHandler(SimpleHTTPRequestHandler):

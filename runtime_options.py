@@ -14,6 +14,8 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--provider", choices=("gemini", "ollama"), help="LLM runtime profile")
     parser.add_argument("--model", help="Model for the selected provider")
     parser.add_argument("--url", help="YouTube video URL")
+    parser.add_argument("--silence-cuts", action=argparse.BooleanOptionalAction, default=None,
+                        help="Shorten confirmed pauses between speech")
     parser.add_argument("--non-interactive", action="store_true", help="Use CLI/environment without prompts")
     parser.add_argument("--restart", action="store_true", help="Start this video's pipeline again")
     parser.add_argument("--review-port", type=int, default=8765, help="Local review page port")
@@ -52,6 +54,8 @@ def configure_runtime(argv=None) -> argparse.Namespace:
             model_variable, "qwen2.5:14b" if provider == "ollama" else "gemini-3.6-flash"
         )
         video_url = args.url or os.getenv("YOUTUBE_URL", "")
+        silence_cuts = (args.silence_cuts if args.silence_cuts is not None
+                        else os.getenv("SILENCE_CUT_ENABLED", "1").lower() in {"1", "true", "yes"})
         if interactive:
             if not args.model:
                 model = prompt_value("Modelo", model)
@@ -59,6 +63,13 @@ def configure_runtime(argv=None) -> argparse.Namespace:
                 video_url = prompt_value("URL do YouTube", video_url)
             if provider == "gemini" and os.getenv("GEMINI_API_KEY", "").strip() in {"", "COLE_SUA_API_KEY_AQUI"}:
                 os.environ["GEMINI_API_KEY"] = getpass.getpass("GEMINI_API_KEY (oculta): ").strip()
+            if args.silence_cuts is None:
+                while True:
+                    choice = prompt_value("Encurtar pausas? (s/n)", "s" if silence_cuts else "n").lower()
+                    if choice in {"s", "sim", "n", "não", "nao"}:
+                        silence_cuts = choice in {"s", "sim"}
+                        break
+                    print("Responda s ou n.")
     except (EOFError, KeyboardInterrupt):
         raise SystemExit("\nConfiguração cancelada.") from None
 
@@ -66,6 +77,7 @@ def configure_runtime(argv=None) -> argparse.Namespace:
         "LLM_PROVIDER": provider,
         model_variable: model,
         "YOUTUBE_URL": video_url,
+        "SILENCE_CUT_ENABLED": "1" if silence_cuts else "0",
         "_CLIPPER_RUNTIME_SELECTED": "1",
     })
     return args

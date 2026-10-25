@@ -4,12 +4,14 @@ import logging
 import subprocess
 import unicodedata
 from functools import lru_cache
+from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip
+from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip, concatenate_videoclips
 from moviepy.video.fx.all import crop
 from schemas import CorteVideo
+from pause_editing import PausePlan, PauseSettings, identity_plan, remap_word_groups
 from config import (
     CAPTION_CENTER_X_RATIO, CAPTION_CENTER_Y_RATIO, CAPTION_COLOR,
     CAPTION_FONT_SIZE, CAPTION_MAX_DURATION, CAPTION_MAX_GAP, CAPTION_MAX_WORDS,
@@ -115,17 +117,24 @@ def cut_and_format_video(
     cortes_validados: list[CorteVideo],
     word_timestamps: list,
     output_dir: str = "output",
+    pause_plans: list[PausePlan] | None = None,
 ) -> list:
+    if pause_plans is not None and len(pause_plans) != len(cortes_validados):
+        raise ValueError("Every approved cut must have a saved pause plan.")
     os.makedirs(output_dir, exist_ok=True)
     generated_files = []
     with VideoFileClip(video_path) as video:
-        for corte in cortes_validados:
+        for cut_index, corte in enumerate(cortes_validados):
+            pause_plan = (pause_plans[cut_index] if pause_plans is not None
+                          else identity_plan(corte.start_time, corte.end_time, PauseSettings(enabled=False)))
+            pause_plan.validate_cut(corte.start_time, corte.end_time)
             safe_title = re.sub(r"[^\w\s]", "", corte.title).replace(" ", "_")[:50]
             logger.info("Rendering clip: %s (%.2fs - %.2fs)",
                         safe_title, corte.start_time, corte.end_time)
             filepath = os.path.join(output_dir, f"{safe_title}.mp4")
             text_clips = []
             final_clip = None
+            joined_clip = None
             try:
                 clip = video.subclip(corte.start_time, corte.end_time)
                 if SPEAKER_FOCUS_ENABLED:
@@ -142,9 +151,15 @@ def cut_and_format_video(
                     width, height = portrait_size(clip.size)
                     clip = crop(clip, width=width, height=height,
                                 x_center=clip.w / 2, y_center=clip.h / 2)
-                caption_groups = group_caption_words(
-                    word_timestamps, corte.start_time, corte.end_time,
-                )
+                if len(pause_plan.kept) > 1:
+                    # Frame selection and speaker focus still use the original source clock.
+                    joined_clip = concatenate_videoclips(
+                        [clip.subclip(interval.start, interval.end) for interval in pause_plan.kept],
+                        method="chain",
+                    )
+                    clip = joined_clip
+                caption_groups = [group for words in remap_word_groups(word_timestamps, pause_plan)
+                                  for group in group_caption_words(words, 0, pause_plan.duration)]
                 for group in caption_groups:
                     caption = create_caption_clip(group["text"], frame_width=clip.w)
                     text_clips.append(
@@ -159,9 +174,14 @@ def cut_and_format_video(
                 )
                 logger.info("Saved clip to %s", filepath)
                 generated_files.append(filepath)
+                Path(filepath).with_suffix(".pauses.json").write_text(
+                    pause_plan.model_dump_json(indent=2), encoding="utf-8",
+                )
             finally:
                 if final_clip is not None:
                     final_clip.close()
                 for text_clip in text_clips:
                     text_clip.close()
+                if joined_clip is not None:
+                    joined_clip.close()
     return generated_files

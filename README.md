@@ -7,7 +7,7 @@ Um pipeline com aprovação humana dos cortes, LLM local via Ollama ou via API p
 | `ollama` | Qwen2.5:14b local, usando a VRAM | CPU / int8 |
 | `gemini` | Modelo configurado na API paga Gemini | GPU CUDA / float16 |
 
-Execute `python orchestrator.py` ou `bash run_pipeline.sh` em um terminal para escolher o perfil, modelo e URL. Enter aceita o padrão exibido. O menu aparece antes de inicializar CUDA; a chave Gemini, quando ausente, é solicitada sem eco. As escolhas valem para a execução atual; edite `.env` para mudar os padrões. O menu não grava credenciais.
+Execute `python orchestrator.py` ou `bash run_pipeline.sh` em um terminal para escolher o perfil, modelo, URL e se deseja encurtar pausas. Enter aceita o padrão exibido. O menu aparece antes de inicializar CUDA; a chave Gemini, quando ausente, é solicitada sem eco. As escolhas valem para a execução atual; edite `.env` para mudar os padrões. O menu não grava credenciais.
 
 Sem perguntas, use `--provider ollama` ou `--provider gemini`; também existem `--model`, `--url` e `--non-interactive`. Sem terminal interativo, o script usa CLI/ambiente automaticamente:
 
@@ -31,7 +31,7 @@ flowchart TD
     B --> C["Nó 3: Transcrição Local<br>CPU/int8 (Ollama) ou CUDA/float16 (Gemini)"]
     C --> D["Nó 4: Pensador (Thinker)<br>Qwen local ou Gemini API"]
     D --> E["Nó 5: Extrator (mesmo modelo)<br>Few-Shot + Instructor + JSON Schema"]
-    E --> P["Nó 6: Previews<br>FFmpeg"]
+    E --> P["Nó 6: Plano de pausas + Previews<br>FFmpeg na CPU"]
     P --> R["Nó 7: Aprovação humana<br>Página local + SQLite"]
     R --> F["Nó 8: Edição dos aprovados<br>MoviePy + Pillow (9:16)"]
 ```
@@ -74,6 +74,7 @@ agent-clipper/
 ├── node_0.py            # Fatiamento preventivo de áudio baseado em silêncio
 ├── ingestion.py         # Download via yt-dlp e transcrição via faster-whisper
 ├── editor.py            # Renderização vertical (9:16), corte e legendas com Pillow
+├── pause_editing.py     # Detecção de silêncio, intervalos mantidos e remapeamento de tempos
 ├── dockerfile           # Ambiente isolado com dependências pré-compiladas
 ├── requirements.txt     # Dependências Python pinadas
 └── specs/               # Especificações, planos, tarefas e relatórios SDD (Speckit)
@@ -223,13 +224,60 @@ bash run_pipeline.sh -m unittest test_cuda_runtime -v
 
 ## Revisão e aprovação antes da edição
 
+### Encurtamento de pausas entre falas
+
+Ativado por padrão nos dois perfis, sem outro modelo ou processamento na GPU.
+O sistema cruza intervalos entre palavras do Whisper com silêncio confirmado pelo
+FFmpeg. Apenas os trechos confirmados são removidos do áudio e do vídeo juntos.
+Palavras têm margens de proteção; pausas curtas e as bordas do clipe são preservadas.
+
+| Variável | Padrão | Efeito |
+| --- | --- | --- |
+| `SILENCE_CUT_ENABLED` | `1` | Liga/desliga o encurtamento |
+| `SILENCE_MIN_PAUSE` | `0.6` | Pausa mínima candidata, em segundos |
+| `SILENCE_KEEP_PAUSE` | `0.2` | Pausa total mínima preservada entre palavras |
+| `SILENCE_SPEECH_PADDING` | `0.1` | Proteção mínima junto a cada borda de fala |
+| `SILENCE_THRESHOLD_DB` | `-35` | Limiar de silêncio; mais negativo é mais conservador |
+
+Com os padrões, uma pausa de 1,5s totalmente silenciosa pode cair para cerca de
+0,2s. Se houver ruídos ou outros sons, mais tempo será preservado. Música de fundo
+pode impedir a detecção; o sistema não promete distinguir semanticamente uma pausa
+dramática. Sem áudio ou sem timestamps confiáveis, mantém o ritmo original. Falha
+do FFmpeg encerra a etapa com diagnóstico, sem aplicar outro critério silenciosamente.
+As margens devem ser positivas; tanto a pausa preservada quanto duas margens de
+fala precisam ser menores que a pausa mínima.
+
+Você pode alternar no menu ou na CLI:
+
+```bash
+bash run_pipeline.sh --provider ollama --silence-cuts
+bash run_pipeline.sh --provider gemini --no-silence-cuts
+```
+
+Os previews já mostram o ritmo final e a página compara a duração original com a
+editada. O plano aprovado fica em `output/reviews/<id>/review.json`; a edição final
+reutiliza esse plano sem detectar pausas novamente. As legendas usam os novos
+tempos e os closes seguem os mesmos instantes do vídeo original. Cada MP4 recebe
+um `.pauses.json` com os intervalos mantidos, relativos ao início do corte original.
+Quando presente, `.focus.json` continua usando a linha de tempo do corte original;
+o `.pauses.json` permite relacioná-la à saída. O log registra duração original/final,
+segundos removidos e quantidade de cortes. A duração final pode ficar abaixo da
+duração solicitada ao LLM, pois a seleção editorial considera o trecho original.
+
+Os checkpoints desta versão também incluem as configurações de pausas. Trocar
+esses ajustes inicia outro histórico; checkpoints antigos permanecem no banco,
+mas não são retomados nesta versão. Renderização e previews respeitam a precisão
+de quadros do vídeo; pequenas diferenças de duração de um quadro são esperadas.
+
+### Aprovar os cortes
+
 Execute normalmente com `bash run_pipeline.sh`. Depois da extração, o pipeline gera previews leves dos trechos originais e mostra no terminal:
 
 ```text
 Revise e aprove os cortes no navegador: http://127.0.0.1:8765/
 ```
 
-Abra o endereço no navegador do Windows/WSL. Cada cartão contém o vídeo do trecho, título, breve descrição do tema, intervalo no original e duração. Marque os cortes desejados e clique em **Confirmar seleção e editar**. Nenhum vem pré-selecionado. **Rejeitar todos** encerra o processamento sem gerar vídeos finais. Os previews têm resolução reduzida e não contêm o corte vertical nem as legendas finais.
+Abra o endereço no navegador do Windows/WSL. Cada cartão contém o vídeo do trecho, título, breve descrição do tema, intervalo no original e duração antes/depois dos cortes de silêncio. Marque os cortes desejados e clique em **Confirmar seleção e editar**. Nenhum vem pré-selecionado. **Rejeitar todos** encerra o processamento sem gerar vídeos finais. Os previews têm resolução reduzida, com as pausas já encurtadas quando habilitado, e não contêm o corte vertical nem as legendas finais.
 
 A página só é servida enquanto a revisão está pendente; após confirmar, a edição continua no terminal. O serviço escuta apenas em localhost. Previews, metadados e decisões ficam em `output/reviews/<identificador>/`. Não há dependência de um serviço web externo.
 
@@ -245,4 +293,4 @@ Se a porta estiver ocupada:
 bash run_pipeline.sh orchestrator.py --review-port 8766
 ```
 
-Os checkpoints agora incluem URL, provedor, modelo e endpoint na identidade. Retome usando a mesma configuração; trocar perfil/modelo/endpoint inicia um histórico separado. Checkpoints antigos permanecem no banco, mas não são reutilizados por esta versão. Essas instruções de acesso à página são para a venv no WSL/Linux; o container requer encaminhamento de rede compatível com o serviço em localhost.
+Os checkpoints incluem URL, provedor, modelo, endpoint e configurações de pausas na identidade. Retome usando a mesma configuração; trocar esses valores inicia um histórico separado. Checkpoints antigos permanecem no banco, mas não são reutilizados por esta versão. Essas instruções de acesso à página são para a venv no WSL/Linux; o container requer encaminhamento de rede compatível com o serviço em localhost.

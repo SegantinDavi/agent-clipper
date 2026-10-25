@@ -23,16 +23,17 @@ class RuntimeOptionsTests(unittest.TestCase):
             return dict(os.environ), prompt.call_count
 
     def test_local_menu_retries_invalid_choice_then_sets_model_and_url(self):
-        environment, count = self.configure([], ["invalid", "2", "", "video"])
+        environment, count = self.configure([], ["invalid", "2", "", "video", ""])
         self.assertEqual(environment["LLM_PROVIDER"], "ollama")
         self.assertEqual(environment["OLLAMA_MODEL"], "qwen2.5:14b")
         self.assertEqual(environment["YOUTUBE_URL"], "video")
         self.assertNotIn("GEMINI_API_KEY", environment)
-        self.assertEqual(count, 4)
+        self.assertEqual(count, 5)
+        self.assertEqual(environment["SILENCE_CUT_ENABLED"], "1")
 
     def test_gemini_menu_defaults_and_hidden_key(self):
         with patch.object(runtime_options.getpass, "getpass", return_value="secret") as hidden:
-            environment, _ = self.configure([], ["", "", ""], environment={"YOUTUBE_URL": "video"})
+            environment, _ = self.configure([], ["", "", "", ""], environment={"YOUTUBE_URL": "video"})
         self.assertEqual(environment["LLM_PROVIDER"], "gemini")
         self.assertEqual(environment["GEMINI_API_KEY"], "secret")
         self.assertEqual(environment["YOUTUBE_URL"], "video")
@@ -46,6 +47,16 @@ class RuntimeOptionsTests(unittest.TestCase):
         self.assertEqual(count, 0)
         self.assertEqual(environment["OLLAMA_MODEL"], "chosen")
         self.assertEqual(environment["LLM_PROVIDER"], "ollama")
+
+    def test_pause_menu_and_cli_override_environment(self):
+        environment, _ = self.configure([], ["2", "", "video", "invalid", "n"])
+        self.assertEqual(environment["SILENCE_CUT_ENABLED"], "0")
+        for flag, expected, default in [("--silence-cuts", "1", "0"), ("--no-silence-cuts", "0", "1")]:
+            with self.subTest(flag=flag):
+                environment, count = self.configure(["--provider", "ollama", flag],
+                    environment={"SILENCE_CUT_ENABLED": default})
+                self.assertEqual(environment["SILENCE_CUT_ENABLED"], expected)
+                self.assertEqual(count, 0)
 
     def test_noninteractive_and_no_tty_never_prompt(self):
         for args, interactive in [(["--non-interactive"], True), ([], False)]:

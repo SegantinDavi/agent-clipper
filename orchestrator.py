@@ -13,6 +13,9 @@ if __name__ == "__main__":
     from config import validate_llm_config
 
     validate_llm_config()
+    from pause_editing import PauseSettings
+
+    PauseSettings()
     from cuda_runtime import prepare_cuda_environment, validate_cuda_runtime
 
     prepare_cuda_environment()
@@ -33,7 +36,8 @@ from prompts import (
 from ingestion import download_video, transcribe_audio_chunk
 from node_0 import node_0_preventive_slicing
 from editor import cut_and_format_video
-from review import prepare_review, validate_approval, wait_for_approval
+from review import load_review_plans, prepare_review, validate_approval, wait_for_approval
+from pause_editing import PauseSettings
 
 from config import (
     DB_PATH,
@@ -314,7 +318,8 @@ def preview_node(state: VideoState) -> dict:
     cuts = [CorteVideo.model_validate(cut) for cut in state.get("cortes_finais", [])]
     if not cuts:
         return {"review_directory": ""}
-    directory = prepare_review(state["video_path"], cuts, OUTPUT_DIR, state.get("review_session", ""))
+    directory = prepare_review(state["video_path"], cuts, OUTPUT_DIR, state.get("review_session", ""),
+                               word_timestamps=state.get("word_timestamps", []))
     return {"review_directory": directory}
 
 
@@ -338,6 +343,7 @@ def editor_node(state: VideoState) -> dict:
     approved_ids = validate_approval(
         {"approved_ids": state.get("approved_cut_ids", [])}, len(cortes)
     )
+    all_cuts = [CorteVideo.model_validate(cut) for cut in cortes]
     cortes = [cortes[index - 1] for index in approved_ids]
 
     if not cortes:
@@ -356,11 +362,13 @@ def editor_node(state: VideoState) -> dict:
     ]
 
     logger.info("Rendering %d vertical videos (9:16)...", len(cortes_validados))
+    plans = load_review_plans(state["review_directory"], all_cuts)
     arquivos_gerados = cut_and_format_video(
         video_path=video_path,
         cortes_validados=cortes_validados,
         word_timestamps=word_timestamps,
         output_dir=OUTPUT_DIR,
+        pause_plans=[plans[index - 1] for index in approved_ids],
     )
 
     logger.info("Rendering completed! %d files created:", len(arquivos_gerados))
@@ -421,8 +429,9 @@ def run_with_review(app, initial_state: VideoState, graph_config: dict, restart:
 
 
 def checkpoint_thread_id(video_url: str) -> str:
-    identity = "\0".join((video_url, LLM_PROVIDER, MODEL_NAME, LLM_BASE_URL))
-    return "clipper_review_v2_" + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
+    identity = "\0".join((video_url, LLM_PROVIDER, MODEL_NAME, LLM_BASE_URL,
+                           PauseSettings().model_dump_json()))
+    return "clipper_review_v3_" + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
 
 
 def main(args=None):
