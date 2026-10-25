@@ -9,7 +9,7 @@ from moviepy.editor import ColorClip, VideoFileClip
 
 from editor import (
     create_caption_clip, cut_and_format_video, group_caption_words,
-    position_caption_clip,
+    position_caption_clip, remove_caption_punctuation,
 )
 from schemas import CorteVideo
 
@@ -30,8 +30,13 @@ class EditorRenderTests(unittest.TestCase):
                 self.assertTrue(np.any(np.all(frame == [0, 0, 0], axis=-1) & (mask > 0)))
 
     def test_phrase_grouping_respects_words_pauses_and_sentence_endings(self):
+        self.assertEqual(
+            remove_caption_punctuation('“Olá,” você — ação! (sim?) [não]; atenção…'),
+            "Olá você ação sim não atenção",
+        )
+        self.assertEqual(remove_caption_punctuation(' , ? . … ! '), "")
         words = [
-            {"word": " pra", "start": 0, "end": 0.2},
+            {"word": " pra,", "start": 0, "end": 0.2},
             {"word": " maior", "start": 0.2, "end": 0.4},
             {"word": " parte", "start": 0.4, "end": 0.6},
             {"word": " funciona.", "start": 0.6, "end": 0.8},
@@ -40,7 +45,7 @@ class EditorRenderTests(unittest.TestCase):
         ]
         groups = group_caption_words(words, 0, 3)
         self.assertEqual([group["text"] for group in groups], [
-            "pra maior parte", "funciona.", "Outra", "ideia",
+            "pra maior parte", "funciona", "Outra", "ideia",
         ])
         self.assertEqual(groups[0], {"text": "pra maior parte", "start": 0, "end": 0.6})
 

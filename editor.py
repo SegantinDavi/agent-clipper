@@ -2,6 +2,7 @@ import os
 import re
 import logging
 import subprocess
+import unicodedata
 from functools import lru_cache
 
 import numpy as np
@@ -31,8 +32,16 @@ def load_caption_font(size: int = CAPTION_FONT_SIZE) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(font_path, size=size)
 
 
+def remove_caption_punctuation(text: str) -> str:
+    return " ".join("".join(
+        character for character in text
+        if not unicodedata.category(character).startswith("P")
+    ).split())
+
+
 def create_caption_clip(text: str, frame_width: int = CAPTION_REFERENCE_WIDTH) -> ImageClip:
     # Pillow avoids TextClip's indirect @file reads blocked by ImageMagick policy.
+    text = remove_caption_punctuation(text)
     font_size = max(1, round(CAPTION_FONT_SIZE * frame_width / CAPTION_REFERENCE_WIDTH))
     padding = max(1, round(4 * frame_width / CAPTION_REFERENCE_WIDTH))
     max_width = max(1, int(frame_width * CAPTION_SAFE_WIDTH_RATIO))
@@ -72,11 +81,13 @@ def group_caption_words(
 
     def flush_group() -> None:
         if current_words:
-            groups.append({
-                "text": " ".join(word["word"] for word in current_words),
-                "start": current_words[0]["start"] - start_time,
-                "end": max(word["end"] for word in current_words) - start_time,
-            })
+            text = remove_caption_punctuation(" ".join(word["word"] for word in current_words))
+            if text:
+                groups.append({
+                    "text": text,
+                    "start": current_words[0]["start"] - start_time,
+                    "end": max(word["end"] for word in current_words) - start_time,
+                })
             current_words.clear()
 
     for word in word_timestamps:
