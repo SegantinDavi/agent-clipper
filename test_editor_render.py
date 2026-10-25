@@ -85,14 +85,15 @@ class EditorRenderTests(unittest.TestCase):
             source_path = os.path.join(directory, "source.mp4")
             with ColorClip((320, 240), color=(30, 40, 50), duration=1) as source:
                 source.write_videofile(source_path, fps=10, codec="libx264", audio=False, logger=None)
-            paths = cut_and_format_video(
-                source_path,
-                [CorteVideo(title="Caption test", start_time=0, end_time=1)],
-                [{"word": "pra", "start": 0.1, "end": 0.3},
-                 {"word": "maior", "start": 0.3, "end": 0.5},
-                 {"word": "parte", "start": 0.5, "end": 0.8}],
-                output_dir=directory,
-            )
+            with patch("editor.SPEAKER_FOCUS_ENABLED", False):
+                paths = cut_and_format_video(
+                    source_path,
+                    [CorteVideo(title="Caption test", start_time=0, end_time=1)],
+                    [{"word": "pra", "start": 0.1, "end": 0.3},
+                     {"word": "maior", "start": 0.3, "end": 0.5},
+                     {"word": "parte", "start": 0.5, "end": 0.8}],
+                    output_dir=directory,
+                )
             self.assertEqual(len(paths), 1)
             with VideoFileClip(paths[0]) as result:
                 self.assertEqual(result.w % 2, 0)

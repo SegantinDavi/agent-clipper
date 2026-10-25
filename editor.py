@@ -15,6 +15,7 @@ from config import (
     CAPTION_FONT_SIZE, CAPTION_MAX_DURATION, CAPTION_MAX_GAP, CAPTION_MAX_WORDS,
     CAPTION_REFERENCE_WIDTH, CAPTION_SAFE_WIDTH_RATIO, CAPTION_STROKE_COLOR,
     CAPTION_STROKE_WIDTH,
+    SPEAKER_FOCUS_ENABLED,
 )
 
 logger = logging.getLogger(__name__)
@@ -116,64 +117,51 @@ def cut_and_format_video(
     output_dir: str = "output",
 ) -> list:
     os.makedirs(output_dir, exist_ok=True)
-    video = VideoFileClip(video_path)
-
-    target_ratio = 9 / 16
-    if video.w / video.h > target_ratio:
-        new_width = int(video.h * target_ratio)
-
-        if new_width % 2 != 0:
-            new_width -= 1
-
-        new_height = video.h
-        if new_height % 2 != 0:
-            new_height -= 1
-
-        x_center = video.w / 2
-        video = crop(video, width=new_width, height=new_height, x_center=x_center)
-
     generated_files = []
-    for corte in cortes_validados:
-        titulo_limpo = re.sub(r"[^\w\s]", "", corte.title).replace(" ", "_")[:50]
+    with VideoFileClip(video_path) as video:
+        for corte in cortes_validados:
+            safe_title = re.sub(r"[^\w\s]", "", corte.title).replace(" ", "_")[:50]
+            logger.info("Rendering clip: %s (%.2fs - %.2fs)",
+                        safe_title, corte.start_time, corte.end_time)
+            filepath = os.path.join(output_dir, f"{safe_title}.mp4")
+            text_clips = []
+            final_clip = None
+            try:
+                clip = video.subclip(corte.start_time, corte.end_time)
+                if SPEAKER_FOCUS_ENABLED:
+                    from speaker_focus import apply_framing_plan, build_framing_plan
 
-        logger.info(
-            "Rendering clip: %s (%.2fs - %.2fs)",
-            titulo_limpo,
-            corte.start_time,
-            corte.end_time,
-        )
-        clip = video.subclip(corte.start_time, corte.end_time)
-        filepath = os.path.join(output_dir, f"{titulo_limpo}.mp4")
+                    plan = build_framing_plan(
+                        clip, video_path, corte.start_time,
+                        os.path.join(output_dir, f"{safe_title}.focus.json"),
+                    )
+                    clip = apply_framing_plan(clip, plan)
+                else:
+                    from speaker_focus import portrait_size
 
-        caption_groups = group_caption_words(
-            word_timestamps, corte.start_time, corte.end_time,
-        )
-
-        text_clips = []
-        for group in caption_groups:
-            caption = create_caption_clip(group["text"], frame_width=clip.w)
-            text_clip = (
-                position_caption_clip(caption, tuple(clip.size))
-                .set_start(group["start"])
-                .set_end(group["end"])
-            )
-            text_clips.append(text_clip)
-
-        final_clip = CompositeVideoClip([clip] + text_clips)
-        try:
-            final_clip.write_videofile(
-                filepath,
-                codec="libx264",
-                audio_codec="aac",
-                ffmpeg_params=["-pix_fmt", "yuv420p", "-profile:v", "main"],
-                logger=None,
-            )
-        finally:
-            final_clip.close()
-            for text_clip in text_clips:
-                text_clip.close()
-        logger.info("Saved clip to %s", filepath)
-        generated_files.append(filepath)
-
-    video.close()
+                    width, height = portrait_size(clip.size)
+                    clip = crop(clip, width=width, height=height,
+                                x_center=clip.w / 2, y_center=clip.h / 2)
+                caption_groups = group_caption_words(
+                    word_timestamps, corte.start_time, corte.end_time,
+                )
+                for group in caption_groups:
+                    caption = create_caption_clip(group["text"], frame_width=clip.w)
+                    text_clips.append(
+                        position_caption_clip(caption, tuple(clip.size))
+                        .set_start(group["start"]).set_end(group["end"])
+                    )
+                final_clip = CompositeVideoClip([clip] + text_clips)
+                final_clip.write_videofile(
+                    filepath, codec="libx264", audio_codec="aac",
+                    ffmpeg_params=["-pix_fmt", "yuv420p", "-profile:v", "main"],
+                    logger=None,
+                )
+                logger.info("Saved clip to %s", filepath)
+                generated_files.append(filepath)
+            finally:
+                if final_clip is not None:
+                    final_clip.close()
+                for text_clip in text_clips:
+                    text_clip.close()
     return generated_files

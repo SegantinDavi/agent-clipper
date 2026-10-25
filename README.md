@@ -156,6 +156,18 @@ O estilo das legendas segue a referência visual aprovada: verde vivo (`#25E600`
 
 Em largura de 1080 pixels, a fonte tem tamanho 80 e contorno de 8 pixels; ambos escalam com a largura real do vídeo. Frases longas reduzem o tamanho para caber em 90% da largura. Os valores podem ser ajustados com as variáveis `CAPTION_*` de `config.py`; os principais estão em `.env.example`.
 
+### Close automático em quem está falando
+
+O editor identifica rostos e usa áudio sincronizado com o vídeo para selecionar o falante visível com o detector audiovisual [Light-ASD](https://github.com/Junhua-Liao/Light-ASD). O close de cabeça e ombros fica estático durante cada fala: posição e zoom são calculados uma vez para o trecho, considerando a área ocupada pelo rosto ao longo dele. A câmera não acompanha movimentos de cabeça ou corpo. O enquadramento só muda por corte direto quando muda o falante selecionado ou a câmera do vídeo original. Há confirmação de troca para evitar oscilações entre participantes. A análise acontece somente nos cortes aprovados, antes de aplicar as legendas.
+
+Está ativado por padrão (`SPEAKER_FOCUS_ENABLED=1`). Os modelos de visão incluídos em `assets/speaker_focus` rodam na CPU, com dois threads por padrão e janelas de até quatro segundos. A transcrição continua na GPU. O editor usa OpenCV e ONNX Runtime; PyTorch fica restrito à ferramenta isolada de preparação dos modelos. Instale as dependências atualizadas com `pip install --prefer-binary -r requirements.txt`. O Docker inclui os mesmos modelos através do `COPY . .`; reconstrua imagens antigas.
+
+Para ajustar o close, use `SPEAKER_FOCUS_FACE_HEIGHT_RATIO` (padrão `0.38`; valores maiores aproximam mais) e `SPEAKER_FOCUS_MAX_ZOOM` (padrão `2.5`). As demais opções `SPEAKER_FOCUS_*` estão em `config.py`. `SPEAKER_FOCUS_ENABLED=0` mantém o recorte central fixo.
+
+A detecção é probabilística: não é possível garantir o close correto quando o falante está fora de quadro, encoberto ou quando há falas simultâneas. Sem confiança, o editor mantém a pessoa visível anterior; na ausência de um rosto anterior usa o rosto disponível mais proeminente, ou o centro se nenhum rosto estiver visível. Cada MP4 recebe um arquivo `.focus.json` com os enquadramentos e os trechos sem confiança, para conferência. Não há envio de áudio ou imagens a serviços externos nessa etapa.
+
+Licenças, procedência, checksums e instruções para reproduzir a conversão estão em [assets/speaker_focus/README.md](assets/speaker_focus/README.md).
+
 ### Transcrição na GPU (venv no WSL/Linux)
 
 A transcrição usa Whisper small na GPU com CUDA e float16. A instância e o iterador de segmentos são liberados após cada chunk, inclusive em caso de erro. A configuração validada está fixada em `requirements-cuda.txt`: faster-whisper 1.2.1, CTranslate2 4.8.3, cuBLAS 12.9.2.10 e cuDNN 9.27.0.42, para Linux/WSL.
