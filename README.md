@@ -90,7 +90,7 @@ docker build -t agent-clipper .
 Preencha `GEMINI_API_KEY` diretamente em `config.py` e copie `.env.example` para `.env`. Depois, passe a URL do vídeo desejado via variável `YOUTUBE_URL` e monte a pasta `./output` para salvar os vídeos gerados:
 
 ```bash
-docker run --rm --env-file .env \
+docker run --rm --gpus all --env-file .env \
   -e YOUTUBE_URL="https://www.youtube.com/watch?v=SEU_LINK_AQUI" \
   -v $(pwd)/output:/app/output \
   agent-clipper
@@ -152,22 +152,35 @@ O pacote `openai` permanece como cliente HTTP compatível, conforme a [documenta
 
 As legendas são renderizadas com Pillow e a fonte Liberation Sans Bold, localizada via `fc-match` (fontconfig). Isso evita o bloqueio de leitura `@/tmp` do ImageMagick ao executar na venv. Não é necessário editar `policy.xml`. Após atualizar, execute `pip install --prefer-binary -r requirements.txt` na venv.
 
+O estilo das legendas segue a referência visual aprovada: verde vivo (`#25E600`), negrito, contorno preto e fundo transparente. São exibidos grupos de até três palavras, respeitando pausas, pontuação e os tempos da transcrição. O centro do texto fica no meio horizontal e em 79% da altura do vídeo. Essa posição visual foi confirmada pelo usuário em substituição à interpretação literal de `(0, -1075)`, que ficaria fora da tela no MoviePy.
+
+Em largura de 1080 pixels, a fonte tem tamanho 80 e contorno de 8 pixels; ambos escalam com a largura real do vídeo. Frases longas reduzem o tamanho para caber em 90% da largura. Os valores podem ser ajustados com as variáveis `CAPTION_*` de `config.py`; os principais estão em `.env.example`.
+
 ### Transcrição na GPU (venv no WSL/Linux)
 
-O padrão é CUDA com float16, mantendo o modelo Whisper small. A instância e o iterador de segmentos são liberados após cada chunk, inclusive em caso de erro. O driver NVIDIA do host precisa disponibilizar a GPU no WSL (`nvidia-smi`). CTranslate2 requer cuBLAS CUDA 12 e cuDNN 9, conforme a [documentação do faster-whisper](https://github.com/SYSTRAN/faster-whisper#gpu).
+A transcrição usa Whisper small na GPU com CUDA e float16. A instância e o iterador de segmentos são liberados após cada chunk, inclusive em caso de erro. A configuração validada está fixada em `requirements-cuda.txt`: faster-whisper 1.2.1, CTranslate2 4.8.3, cuBLAS 12.9.2.10 e cuDNN 9.27.0.42, para Linux/WSL.
 
 ```bash
 source venv/bin/activate
 pip install --prefer-binary -r requirements-gpu.txt
+export WHISPER_DEVICE=cuda
+export WHISPER_COMPUTE_TYPE=float16
 export YOUTUBE_URL="https://www.youtube.com/watch?v=SEU_VIDEO"
 bash run_pipeline.sh
 ```
 
-O script usa `venv/bin/python` e configura `LD_LIBRARY_PATH` com as bibliotecas NVIDIA instaladas na venv. Se usar outra venv, passe `PYTHON_BIN=/caminho/da/venv/bin/python`. Para executar `python orchestrator.py` diretamente, disponibilize essas bibliotecas no `LD_LIBRARY_PATH` antes de iniciar o Python.
+O script usa `venv/bin/python`. Se usar outra venv, passe `PYTHON_BIN=/caminho/da/venv/bin/python`. Também é possível executar `python orchestrator.py` na venv ativa. Ambos usam `cuda_runtime.py` para localizar as bibliotecas NVIDIA da venv e configurar `LD_LIBRARY_PATH` antes de importar CTranslate2. Se necessário, o Python é reiniciado antes do processamento, preservando argumentos e variáveis de ambiente. Definir `LD_LIBRARY_PATH` apenas dentro de um processo já iniciado não é suficiente, conforme a [documentação do faster-whisper](https://github.com/SYSTRAN/faster-whisper#install-with-pip-linux-only).
 
-`WHISPER_DEVICE` (padrão `cuda`) e `WHISPER_COMPUTE_TYPE` (padrão `float16`) podem ser configurados pelo ambiente. A configuração de CPU requer ambos: `WHISPER_DEVICE=cpu WHISPER_COMPUTE_TYPE=int8`. Falhas CUDA são reportadas; não há troca automática para CPU.
+Os padrões são `WHISPER_DEVICE=cuda` e `WHISPER_COMPUTE_TYPE=float16`. Atualize exports antigos de CPU no shell e no `.env` do Docker. A inicialização verifica o carregamento de cuBLAS/cuDNN, a disponibilidade da GPU e o suporte à precisão antes do download. Falhas produzem uma mensagem de diagnóstico, sem fallback silencioso. Para escolher CPU explicitamente, configure ambos: `WHISPER_DEVICE=cpu WHISPER_COMPUTE_TYPE=int8`.
 
-A imagem Docker atual não inclui o runtime CUDA. As instruções acima destinam-se à venv WSL/Linux.
+A imagem Docker instala as mesmas dependências CUDA fixadas. Execute com `--gpus all`; o host precisa disponibilizar a GPU ao Docker pelo NVIDIA Container Toolkit. Reconstrua imagens antigas para incluir o runtime.
+
+Para testar somente a GPU com o modelo já armazenado no cache, sem baixar vídeos nem chamar a API:
+
+```bash
+bash run_pipeline.sh -m unittest test_cuda_runtime -v
+```
+
 ## Revisão e aprovação antes da edição
 
 Execute normalmente com `bash run_pipeline.sh`. Depois da extração, o pipeline gera previews leves dos trechos originais e mostra no terminal:

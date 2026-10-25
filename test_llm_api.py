@@ -82,6 +82,44 @@ class LlmApiTests(unittest.TestCase):
                 orchestrator.thinker_node({"transcript_grouped": "Example"})
         client.close.assert_called_once()
 
+    def test_no_valid_cuts_skip_preview_approval_and_render(self):
+        requests = []
+
+        def respond(request):
+            requests.append(request)
+            return httpx.Response(200, json={
+                "id": "test", "object": "chat.completion", "created": 0,
+                "model": config.MODEL_NAME,
+                "choices": [{"index": 0, "finish_reason": "stop",
+                             "message": {"role": "assistant", "content": '{"cortes":[]}'}}],
+            })
+
+        client = openai.OpenAI(
+            api_key="test-only", base_url=config.GEMINI_BASE_URL, max_retries=0,
+            http_client=httpx.Client(transport=httpx.MockTransport(respond)),
+        )
+        state = {
+            "transcript_grouped": "[0 - 5] Obrigado por assistir.",
+            "raciocinio_bruto": "SEM CORTES VÁLIDOS: duração insuficiente.",
+        }
+        with patch.object(orchestrator, "create_llm_client", return_value=client):
+            state.update(orchestrator.extractor_node(state))
+
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(state["cortes_finais"], [])
+        with patch.object(orchestrator, "prepare_review") as preview, \
+             patch.object(orchestrator, "interrupt") as approval, \
+             patch.object(orchestrator, "cut_and_format_video") as render:
+            state.update(orchestrator.preview_node(state))
+            state.update(orchestrator.approval_node(state))
+            result = orchestrator.editor_node(state)
+        self.assertEqual(result, {})
+        self.assertTrue(state["approval_complete"])
+        self.assertEqual(state["approved_cut_ids"], [])
+        preview.assert_not_called()
+        approval.assert_not_called()
+        render.assert_not_called()
+
     def test_python_sources_parse(self):
         for path in Path(__file__).parent.glob("*.py"):
             ast.parse(path.read_text(encoding="utf-8"))

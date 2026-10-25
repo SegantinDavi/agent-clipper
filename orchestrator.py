@@ -7,6 +7,12 @@ import argparse
 import uuid
 from typing import TypedDict
 
+if __name__ == "__main__":
+    from cuda_runtime import prepare_cuda_environment, validate_cuda_runtime
+
+    prepare_cuda_environment()
+    validate_cuda_runtime()
+
 import openai
 import instructor
 from langgraph.graph import StateGraph, START, END
@@ -209,7 +215,7 @@ def thinker_node(state: VideoState) -> dict:
     user_prompt = (
         f"Transcrição do vídeo com timestamps:\n\n"
         f"{transcript}\n\n"
-        f"Identifique de 1 a 3 momentos com alto potencial de viralização. "
+        f"Identifique todos os momentos adequados com alto potencial editorial, sem quantidade predefinida. "
         f"Indique os intervalos de tempo exatos [INÍCIO - FIM] na transcrição e descreva a estratégia de retenção de cada corte."
     )
 
@@ -252,7 +258,7 @@ def extractor_node(state: VideoState) -> dict:
     user_prompt = (
         f"Transcrição do vídeo:\n{transcript}\n\n"
         f"Raciocínio Estratégico:\n{raciocinio}\n\n"
-        f"Com base na transcrição e no raciocínio acima, extraia entre 1 e 3 cortes ideais, respeitando as regras de duração fornecidas. "
+        f"Com base na transcrição e no raciocínio acima, extraia todos os cortes adequados, sem quantidade predefinida, respeitando as regras de duração fornecidas. "
         f"Preencha start_time e end_time com os segundos exatos dos trechos na transcrição e description com um breve resumo do tema."
     )
 

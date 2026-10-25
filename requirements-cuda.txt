@@ -1,0 +1,5 @@
+# Validated together on the local RTX 3060 / Linux WSL environment.
+faster-whisper==1.2.1
+ctranslate2==4.8.3
+nvidia-cublas-cu12==12.9.2.10; sys_platform == "linux"
+nvidia-cudnn-cu12==9.27.0.42; sys_platform == "linux"

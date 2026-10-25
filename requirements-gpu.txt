@@ -1,5 +1,3 @@
 -r requirements.txt
 
-# CTranslate2 GPU runtime for Linux/WSL; cuDNN must match the CUDA 12 build.
-nvidia-cublas-cu12; sys_platform == "linux"
-nvidia-cudnn-cu12>=9,<10; sys_platform == "linux"
+-r requirements-cuda.txt

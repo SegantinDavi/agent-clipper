@@ -13,5 +13,5 @@ class CorteVideo(BaseModel):
 class CortesResponse(BaseModel):
     cortes: list[CorteVideo] = Field(
         description="Lista contendo os melhores cortes selecionados para Shorts.",
-        min_length=1,
+        min_length=0,
     )

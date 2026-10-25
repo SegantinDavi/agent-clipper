@@ -23,7 +23,7 @@ Este é o **agent-clipper** , um pipeline 100% autônomo, local, de custo zero e
 
 O ambiente opera no limite físico de memória.
 
-- **Transcrição na CPU:** O faster-whisper DEVE rodar na CPU (device="cpu", compute_type="int8"). A VRAM da CUDA é reservada 100% para o Qwen2.5.
+- **Transcrição na GPU:** Por autorização do usuário, o faster-whisper usa CUDA com `compute_type="float16"` por padrão. A diretriz de CPU obrigatória e reserva exclusiva da VRAM para Qwen foi removida. Use o bootstrap de `cuda_runtime.py` antes de importar bibliotecas de inferência e as versões validadas em `requirements-cuda.txt`. CPU/int8 é uma opção explícita, sem fallback silencioso. Preserve a liberação de memória entre chunks e evite carregar simultaneamente modelos locais que excedam a VRAM disponível.
 - **Prevenção de Memory Leak (RAM):** Após a conclusão da transcrição de qualquer vídeo ou chunk, é obrigatório destruir a instância do modelo e forçar a limpeza de memória (del model seguido de import gc; gc.collect()).
 - **Dependência Fixada:** A biblioteca av deve estar fixada em <19 no Dockerfile para evitar crash (metadata_errors) durante a extração de áudio.
 
@@ -111,7 +111,7 @@ Sistemas procedurais e lineares (ou chat de agentes como AutoGen) são caóticos
 ```mermaid
 graph TD
     Z["Nó 0: Fatiamento Preventivo<br>(FFmpeg Silence Detect)"] --> A
-    A["Nó 1: Ingestão<br>YT-DLP + Whisper (CPU Int8)"] --> B
+    A["Nó 1: Ingestão<br>YT-DLP + Whisper (CUDA float16)"] --> B
     B["Nó 2: Raciocínio (Qwen2.5)<br>Chain of Thought Livre"] --> C
     C["Nó 3: Extração (Qwen2.5)<br>Instructor + Pydantic"] --> D
     D["Nó 4: Edição<br>MoviePy + Hardcoded Math Constraints"]

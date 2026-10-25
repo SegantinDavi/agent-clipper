@@ -34,7 +34,7 @@ class TranscriptionTests(unittest.TestCase):
         self.assertEqual(iterator_closed, [True])
         return result
 
-    def test_cuda_transcription_preserves_segment_and_word_timestamps(self):
+    def test_gpu_transcription_preserves_segment_and_word_timestamps(self):
         result = self.run_transcription()
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["transcript"], "[1.00 - 2.00] Example ")
@@ -46,6 +46,16 @@ class TranscriptionTests(unittest.TestCase):
         result = self.run_transcription(fail=True)
         self.assertEqual(result["status"], "error")
         self.assertEqual(result["message"], "Decoding failed")
+
+    def test_explicit_cpu_configuration_remains_available(self):
+        model = MagicMock()
+        model.transcribe.return_value = ((segment for segment in []), None)
+        with patch.object(ingestion, "WHISPER_DEVICE", "cpu"), \
+             patch.object(ingestion, "WHISPER_COMPUTE_TYPE", "int8"), \
+             patch.object(ingestion, "WhisperModel", return_value=model) as constructor:
+            result = ingestion.transcribe_audio_chunk("example.wav")
+        self.assertEqual(result["status"], "success")
+        constructor.assert_called_once_with("small", device="cpu", compute_type="int8")
 
 
 if __name__ == "__main__":
