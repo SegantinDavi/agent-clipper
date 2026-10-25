@@ -11,6 +11,7 @@ av<19
 
 # Edição de Vídeo
 moviepy==1.0.3
+Pillow>=9.2
 
 # Constrained Decoding
 pydantic

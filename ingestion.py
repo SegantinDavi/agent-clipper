@@ -5,6 +5,8 @@ import logging
 from yt_dlp import YoutubeDL
 from faster_whisper import WhisperModel
 
+from config import WHISPER_DEVICE, WHISPER_COMPUTE_TYPE
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,9 +43,16 @@ def download_video(url: str, output_dir: str = "downloads") -> dict:
 
 
 def transcribe_audio_chunk(audio_path: str) -> dict:
+    model = None
+    segments = None
     try:
-        logger.info("Starting Whisper transcription on CPU: %s", audio_path)
-        model = WhisperModel("small", device="cpu", compute_type="int8")
+        logger.info(
+            "Starting Whisper transcription on %s (%s): %s",
+            WHISPER_DEVICE, WHISPER_COMPUTE_TYPE, audio_path,
+        )
+        model = WhisperModel(
+            "small", device=WHISPER_DEVICE, compute_type=WHISPER_COMPUTE_TYPE
+        )
         segments, info = model.transcribe(audio_path, beam_size=5, word_timestamps=True)
 
         word_timestamps_list = []
@@ -59,9 +68,6 @@ def transcribe_audio_chunk(audio_path: str) -> dict:
                         {"word": word.word, "start": word.start, "end": word.end}
                     )
 
-        del model
-        gc.collect()
-
         logger.info("Transcription completed for %s", audio_path)
         return {
             "status": "success",
@@ -72,10 +78,14 @@ def transcribe_audio_chunk(audio_path: str) -> dict:
         logger.error(
             "Failed to transcribe audio chunk %s: %s", audio_path, e, exc_info=True
         )
-        if "model" in locals():
-            del model
-            gc.collect()
         return {"status": "error", "message": str(e)}
+    finally:
+        # The lazy segment iterator can retain the model after decoding fails.
+        if segments is not None:
+            segments.close()
+        del segments
+        del model
+        gc.collect()
 
 
 def download_video_and_transcript(url: str, output_dir: str = "downloads") -> dict:

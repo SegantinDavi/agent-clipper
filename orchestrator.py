@@ -3,12 +3,15 @@ import re
 import gc
 import hashlib
 import logging
+import argparse
+import uuid
 from typing import TypedDict
 
 import openai
 import instructor
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.types import Command, interrupt
 
 from schemas import CorteVideo, CortesResponse
 from prompts import (
@@ -19,13 +22,19 @@ from prompts import (
 from ingestion import download_video, transcribe_audio_chunk
 from node_0 import node_0_preventive_slicing
 from editor import cut_and_format_video
+from review import prepare_review, validate_approval, wait_for_approval
 
 from config import (
     DB_PATH,
     DOWNLOADS_DIR,
     LOG_FILE,
     MODEL_NAME,
-    OLLAMA_BASE_URL,
+    GEMINI_API_KEY,
+    GEMINI_BASE_URL,
+    LLM_MAX_COMPLETION_TOKENS,
+    WHISPER_DEVICE,
+    WHISPER_COMPUTE_TYPE,
+    validate_llm_config,
     OUTPUT_DIR,
     YOUTUBE_URL,
 )
@@ -50,6 +59,18 @@ class VideoState(TypedDict):
     word_timestamps: list
     raciocinio_bruto: str
     cortes_finais: list
+    review_directory: str
+    review_session: str
+    approved_cut_ids: list[int]
+    approval_complete: bool
+
+
+def create_llm_client() -> openai.OpenAI:
+    validate_llm_config()
+    return openai.OpenAI(
+        api_key=GEMINI_API_KEY, base_url=GEMINI_BASE_URL,
+        timeout=180.0, max_retries=2,
+    )
 
 
 def download_node(state: VideoState) -> dict:
@@ -89,15 +110,17 @@ def fatiamento_node(state: VideoState) -> dict:
 
 
 def transcription_node(state: VideoState) -> dict:
-    """Nó 3: Transcrição local na CPU com faster-whisper iterando sobre os chunks."""
+    """Nó 3: Transcrição local com faster-whisper iterando sobre os chunks."""
     audio_chunks = state.get("audio_chunks", [])
     if not audio_chunks:
         logger.error("No audio chunks found in state for transcription.")
         raise ValueError("Nenhum chunk de áudio encontrado no estado para transcrição.")
 
     logger.info(
-        "Transcribing %d chunks via faster-whisper (CPU int8)...",
+        "Transcribing %d chunks via faster-whisper (%s %s)...",
         len(audio_chunks),
+        WHISPER_DEVICE,
+        WHISPER_COMPUTE_TYPE,
     )
 
     aggregated_transcript_parts: list[str] = []
@@ -168,7 +191,7 @@ def transcription_node(state: VideoState) -> dict:
 
 def thinker_node(state: VideoState) -> dict:
     """
-    Nó 4 (Pensador): Analisa a transcrição e 'pensa alto' em formato livre (Chain of Thought),
+    Nó 4 (Pensador): Analisa a transcrição e produz recomendações editoriais concisas,
     identificando ganchos, quebras de padrão e momentos de retenção viral.
     Sem Pydantic/Instructor para máxima liberdade de raciocínio.
     """
@@ -178,10 +201,10 @@ def thinker_node(state: VideoState) -> dict:
         raise ValueError("Transcrição vazia ou ausente no estado para o nó pensador.")
 
     logger.info(
-        "Analyzing retention moments and generating strategic reasoning (Qwen2.5:14b)..."
+        "Analyzing retention moments with %s...", MODEL_NAME
     )
 
-    raw_client = openai.OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
+    raw_client = create_llm_client()
 
     user_prompt = (
         f"Transcrição do vídeo com timestamps:\n\n"
@@ -190,16 +213,21 @@ def thinker_node(state: VideoState) -> dict:
         f"Indique os intervalos de tempo exatos [INÍCIO - FIM] na transcrição e descreva a estratégia de retenção de cada corte."
     )
 
-    response = raw_client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": THINKER_SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.7,
-    )
+    try:
+        response = raw_client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": THINKER_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            max_tokens=LLM_MAX_COMPLETION_TOKENS,
+        )
+    finally:
+        raw_client.close()
 
     raciocinio = response.choices[0].message.content or ""
+    if not raciocinio.strip():
+        raise RuntimeError("The thinker returned no editorial recommendations.")
     logger.info("Strategic reasoning generated (%d characters).", len(raciocinio))
     return {"raciocinio_bruto": raciocinio}
 
@@ -207,7 +235,7 @@ def thinker_node(state: VideoState) -> dict:
 def extractor_node(state: VideoState) -> dict:
     """
     Nó 5 (Extrator): Lê o raciocínio livre do Pensador e a transcrição,
-    forçando a saída estrita via Instructor (JSON Mode) com o schema CorteVideo.
+    forçando a saída estrita via Instructor (JSON Schema) com o schema CorteVideo.
     """
     transcript = state.get("transcript_grouped", "")
     raciocinio = state.get("raciocinio_bruto", "")
@@ -218,14 +246,14 @@ def extractor_node(state: VideoState) -> dict:
 
     logger.info("Formatting final decisions into Pydantic schema via Instructor...")
 
-    raw_client = openai.OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
-    instructor_client = instructor.from_openai(raw_client, mode=instructor.Mode.JSON)
+    raw_client = create_llm_client()
+    instructor_client = instructor.from_openai(raw_client, mode=instructor.Mode.JSON_SCHEMA)
 
     user_prompt = (
         f"Transcrição do vídeo:\n{transcript}\n\n"
         f"Raciocínio Estratégico:\n{raciocinio}\n\n"
-        f"Com base na transcrição e no raciocínio acima, extraia entre 1 e 3 cortes ideais (entre 15s e 60s cada). "
-        f"Preencha start_time e end_time com os segundos exatos dos trechos na transcrição."
+        f"Com base na transcrição e no raciocínio acima, extraia entre 1 e 3 cortes ideais, respeitando as regras de duração fornecidas. "
+        f"Preencha start_time e end_time com os segundos exatos dos trechos na transcrição e description com um breve resumo do tema."
     )
 
     messages = (
@@ -234,12 +262,27 @@ def extractor_node(state: VideoState) -> dict:
         + [{"role": "user", "content": user_prompt}]
     )
 
-    extraction_response: CortesResponse = instructor_client.chat.completions.create(
-        model=MODEL_NAME,
-        response_model=CortesResponse,
-        messages=messages,
-        temperature=0.1,
-    )
+    try:
+        extraction_response: CortesResponse = instructor_client.chat.completions.create(
+            model=MODEL_NAME,
+            response_model=CortesResponse,
+            messages=messages,
+            max_tokens=LLM_MAX_COMPLETION_TOKENS,
+            max_retries=2,
+            # Instructor JSON_SCHEMA does not enable API strictness by default.
+            extra_body={
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": CortesResponse.__name__,
+                        "strict": True,
+                        "schema": openai.pydantic_function_tool(CortesResponse)["function"]["parameters"],
+                    },
+                },
+            },
+        )
+    finally:
+        raw_client.close()
 
     cortes: list[CorteVideo] = extraction_response.cortes
     logger.info("Extraction completed successfully: %d cuts validated.", len(cortes))
@@ -252,24 +295,48 @@ def extractor_node(state: VideoState) -> dict:
             corte.end_time,
         )
 
-    return {"cortes_finais": cortes}
+    return {"cortes_finais": [cut.model_dump() for cut in cortes]}
+
+
+def preview_node(state: VideoState) -> dict:
+    cuts = [CorteVideo.model_validate(cut) for cut in state.get("cortes_finais", [])]
+    if not cuts:
+        return {"review_directory": ""}
+    directory = prepare_review(state["video_path"], cuts, OUTPUT_DIR, state.get("review_session", ""))
+    return {"review_directory": directory}
+
+
+def approval_node(state: VideoState) -> dict:
+    cuts = state.get("cortes_finais", [])
+    if not cuts:
+        return {"approved_cut_ids": [], "approval_complete": True}
+    decision = interrupt({"review_directory": state["review_directory"], "cut_count": len(cuts)})
+    ids = validate_approval(decision, len(cuts))
+    logger.info("User approved cuts: %s", ids)
+    return {"approved_cut_ids": ids, "approval_complete": True}
 
 
 def editor_node(state: VideoState) -> dict:
-    """Nó 6: Edição e renderização vertical com MoviePy e ImageMagick."""
+    """Renderiza apenas cortes explicitamente aprovados pelo usuário."""
+    if state.get("approval_complete") is not True:
+        raise ValueError("Cut approval is required before editing.")
     video_path = state.get("video_path", "")
     cortes = state.get("cortes_finais", [])
     word_timestamps = state.get("word_timestamps", [])
+    approved_ids = validate_approval(
+        {"approved_ids": state.get("approved_cut_ids", [])}, len(cortes)
+    )
+    cortes = [cortes[index - 1] for index in approved_ids]
+
+    if not cortes:
+        logger.info("No approved cuts. Skipping final editing.")
+        return {}
 
     if not video_path or not os.path.exists(video_path):
         logger.error("Video file not found for editing: %s", video_path)
         raise FileNotFoundError(
             f"Arquivo de vídeo não encontrado para edição: {video_path}"
         )
-
-    if not cortes:
-        logger.warning("No structured cuts found to render.")
-        return {}
 
     cortes_validados = [
         corte if isinstance(corte, CorteVideo) else CorteVideo(**corte)
@@ -305,6 +372,8 @@ def create_graph():
     workflow.add_node("transcricao", transcription_node)
     workflow.add_node("pensador", thinker_node)
     workflow.add_node("extrator", extractor_node)
+    workflow.add_node("preview", preview_node)
+    workflow.add_node("approval", approval_node)
     workflow.add_node("editor", editor_node)
 
     workflow.add_edge(START, "download")
@@ -312,13 +381,39 @@ def create_graph():
     workflow.add_edge("fatiamento", "transcricao")
     workflow.add_edge("transcricao", "pensador")
     workflow.add_edge("pensador", "extrator")
-    workflow.add_edge("extrator", "editor")
+    workflow.add_edge("extrator", "preview")
+    workflow.add_edge("preview", "approval")
+    workflow.add_edge("approval", "editor")
     workflow.add_edge("editor", END)
 
     return workflow
 
 
-if __name__ == "__main__":
+def run_with_review(app, initial_state: VideoState, graph_config: dict, restart: bool = False,
+                    review_port: int = 8765):
+    snapshot = app.get_state(graph_config)
+    if restart or not snapshot.values:
+        result = app.invoke(initial_state, config=graph_config)
+    elif any(task.interrupts for task in snapshot.tasks):
+        result = {"__interrupt__": True}
+    elif snapshot.next:
+        result = app.invoke(None, config=graph_config)
+    else:
+        logger.info("This run is already complete. Use --restart to process it again.")
+        return snapshot.values
+    while result.get("__interrupt__"):
+        snapshot = app.get_state(graph_config)
+        ids = wait_for_approval(snapshot.values["review_directory"], port=review_port)
+        result = app.invoke(Command(resume={"approved_ids": ids}), config=graph_config)
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Agent Clipper with cut approval")
+    parser.add_argument("--restart", action="store_true", help="Start this video's pipeline again")
+    parser.add_argument("--review-port", type=int, default=8765, help="Local review page port")
+    args = parser.parse_args()
+    validate_llm_config()
     video_url = YOUTUBE_URL
     if not video_url:
         logger.error("Environment variable 'YOUTUBE_URL' is not set.")
@@ -327,7 +422,7 @@ if __name__ == "__main__":
     logger.info("AGENT-CLIPPER: Autonomous LangGraph Pipeline")
     logger.info("Target URL: %s", video_url)
     logger.info("Output Dir: %s", OUTPUT_DIR)
-    logger.info("LLM Model: %s (%s)", MODEL_NAME, OLLAMA_BASE_URL)
+    logger.info("LLM Model: %s (%s)", MODEL_NAME, GEMINI_BASE_URL)
     logger.info("==================================================")
 
     initial_state: VideoState = {
@@ -338,10 +433,14 @@ if __name__ == "__main__":
         "word_timestamps": [],
         "raciocinio_bruto": "",
         "cortes_finais": [],
+        "review_directory": "",
+        "review_session": uuid.uuid4().hex,
+        "approved_cut_ids": [],
+        "approval_complete": False,
     }
 
     thread_id = hashlib.md5(video_url.encode("utf-8")).hexdigest()[:12]
-    config = {"configurable": {"thread_id": f"clipper_{thread_id}"}}
+    config = {"configurable": {"thread_id": f"clipper_review_v1_{thread_id}"}}
 
     workflow = create_graph()
 
@@ -353,6 +452,14 @@ if __name__ == "__main__":
             "Graph compiled. Starting execution (Thread: clipper_%s)...",
             thread_id,
         )
-        final_state = app.invoke(initial_state, config=config)
+        try:
+            run_with_review(app, initial_state, config, restart=args.restart, review_port=args.review_port)
+        except KeyboardInterrupt:
+            logger.info("Pipeline paused. Run the same URL again to resume the saved checkpoint.")
+            return
 
     logger.info("Pipeline completed successfully!")
+
+
+if __name__ == "__main__":
+    main()

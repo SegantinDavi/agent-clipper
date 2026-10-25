@@ -1,11 +1,45 @@
 import os
 import re
 import logging
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
+import subprocess
+from functools import lru_cache
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip
 from moviepy.video.fx.all import crop
 from schemas import CorteVideo
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def load_caption_font() -> ImageFont.FreeTypeFont:
+    result = subprocess.run(
+        ["fc-match", "-f", "%{file}", "Liberation Sans:style=Bold"],
+        capture_output=True, text=True, check=True,
+    )
+    font_path = result.stdout.strip()
+    if os.path.basename(font_path) != "LiberationSans-Bold.ttf":
+        raise RuntimeError("Liberation Sans Bold is required. Install fonts-liberation.")
+    return ImageFont.truetype(font_path, size=70)
+
+
+def create_caption_clip(text: str) -> ImageClip:
+    # Pillow avoids TextClip's indirect @file reads blocked by ImageMagick policy.
+    font = load_caption_font()
+    stroke_width = 3
+    padding = 4
+    left, top, right, bottom = font.getbbox(text, stroke_width=stroke_width)
+    image = Image.new(
+        "RGBA", (max(1, right - left + 2 * padding), max(1, bottom - top + 2 * padding)),
+        (0, 0, 0, 0),
+    )
+    ImageDraw.Draw(image).text(
+        (padding - left, padding - top), text, font=font, fill="yellow",
+        stroke_fill="black", stroke_width=stroke_width,
+    )
+    return ImageClip(np.array(image))
 
 
 def cut_and_format_video(
@@ -56,15 +90,10 @@ def cut_and_format_video(
 
         text_clips = []
         for word in local_word_timestamps:
+            if not word["word"].strip():
+                continue
             text_clip = (
-                TextClip(
-                    word["word"],
-                    fontsize=70,
-                    font="Liberation-Sans-Bold",
-                    color="yellow",
-                    stroke_color="black",
-                    stroke_width=3,
-                )
+                create_caption_clip(word["word"])
                 .set_position(("center", "center"))
                 .set_start(word["start"])
                 .set_end(word["end"])
