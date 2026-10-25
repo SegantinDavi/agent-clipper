@@ -3,11 +3,16 @@ import re
 import gc
 import hashlib
 import logging
-import argparse
 import uuid
 from typing import TypedDict
 
 if __name__ == "__main__":
+    from runtime_options import configure_runtime
+
+    startup_args = configure_runtime()
+    from config import validate_llm_config
+
+    validate_llm_config()
     from cuda_runtime import prepare_cuda_environment, validate_cuda_runtime
 
     prepare_cuda_environment()
@@ -35,8 +40,9 @@ from config import (
     DOWNLOADS_DIR,
     LOG_FILE,
     MODEL_NAME,
-    GEMINI_API_KEY,
-    GEMINI_BASE_URL,
+    LLM_API_KEY,
+    LLM_BASE_URL,
+    LLM_PROVIDER,
     LLM_MAX_COMPLETION_TOKENS,
     WHISPER_DEVICE,
     WHISPER_COMPUTE_TYPE,
@@ -74,7 +80,7 @@ class VideoState(TypedDict):
 def create_llm_client() -> openai.OpenAI:
     validate_llm_config()
     return openai.OpenAI(
-        api_key=GEMINI_API_KEY, base_url=GEMINI_BASE_URL,
+        api_key=LLM_API_KEY, base_url=LLM_BASE_URL,
         timeout=180.0, max_retries=2,
     )
 
@@ -414,11 +420,16 @@ def run_with_review(app, initial_state: VideoState, graph_config: dict, restart:
     return result
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Agent Clipper with cut approval")
-    parser.add_argument("--restart", action="store_true", help="Start this video's pipeline again")
-    parser.add_argument("--review-port", type=int, default=8765, help="Local review page port")
-    args = parser.parse_args()
+def checkpoint_thread_id(video_url: str) -> str:
+    identity = "\0".join((video_url, LLM_PROVIDER, MODEL_NAME, LLM_BASE_URL))
+    return "clipper_review_v2_" + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
+
+
+def main(args=None):
+    if args is None:
+        from runtime_options import create_parser
+
+        args = create_parser().parse_args()
     validate_llm_config()
     video_url = YOUTUBE_URL
     if not video_url:
@@ -428,7 +439,8 @@ def main():
     logger.info("AGENT-CLIPPER: Autonomous LangGraph Pipeline")
     logger.info("Target URL: %s", video_url)
     logger.info("Output Dir: %s", OUTPUT_DIR)
-    logger.info("LLM Model: %s (%s)", MODEL_NAME, GEMINI_BASE_URL)
+    logger.info("LLM Provider: %s; Model: %s", LLM_PROVIDER, MODEL_NAME)
+    logger.info("Whisper profile: %s/%s", WHISPER_DEVICE, WHISPER_COMPUTE_TYPE)
     logger.info("==================================================")
 
     initial_state: VideoState = {
@@ -445,8 +457,8 @@ def main():
         "approval_complete": False,
     }
 
-    thread_id = hashlib.md5(video_url.encode("utf-8")).hexdigest()[:12]
-    config = {"configurable": {"thread_id": f"clipper_review_v1_{thread_id}"}}
+    thread_id = checkpoint_thread_id(video_url)
+    config = {"configurable": {"thread_id": thread_id}}
 
     workflow = create_graph()
 
@@ -468,4 +480,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(startup_args)

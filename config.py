@@ -1,4 +1,9 @@
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).with_name(".env"), override=False)
 
 OUTPUT_DIR = os.getenv(
     "OUTPUT_DIR", "/app/output" if os.path.exists("/app") else "output"
@@ -7,14 +12,22 @@ DOWNLOADS_DIR = os.getenv("DOWNLOADS_DIR", os.path.join(OUTPUT_DIR, "downloads")
 DB_PATH = os.getenv("DB_PATH", os.path.join(OUTPUT_DIR, "estado.db"))
 LOG_FILE = os.getenv("LOG_FILE", os.path.join(OUTPUT_DIR, "pipeline.log"))
 
-GEMINI_API_KEY = "COLE_SUA_API_KEY_AQUI"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_BASE_URL = os.getenv(
     "GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"
 )
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini").strip().lower()
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+MODEL_NAME = (
+    os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
+    if LLM_PROVIDER == "ollama"
+    else os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+)
+LLM_BASE_URL = OLLAMA_BASE_URL if LLM_PROVIDER == "ollama" else GEMINI_BASE_URL
+LLM_API_KEY = "ollama" if LLM_PROVIDER == "ollama" else GEMINI_API_KEY
 LLM_MAX_COMPLETION_TOKENS = int(os.getenv("LLM_MAX_COMPLETION_TOKENS", "8192"))
-WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cuda")
-WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "float16")
+WHISPER_DEVICE = "cpu" if LLM_PROVIDER == "ollama" else "cuda"
+WHISPER_COMPUTE_TYPE = "int8" if LLM_PROVIDER == "ollama" else "float16"
 YOUTUBE_URL = os.getenv("YOUTUBE_URL", "")
 CAPTION_COLOR = os.getenv("CAPTION_COLOR", "#25E600")
 CAPTION_STROKE_COLOR = os.getenv("CAPTION_STROKE_COLOR", "#000000")
@@ -52,9 +65,15 @@ os.makedirs(DOWNLOADS_DIR, exist_ok=True)
 
 
 def validate_llm_config() -> None:
-    if not GEMINI_API_KEY.strip() or GEMINI_API_KEY == "COLE_SUA_API_KEY_AQUI":
-        raise ValueError("Set GEMINI_API_KEY in config.py before running the pipeline.")
+    if LLM_PROVIDER not in {"gemini", "ollama"}:
+        raise ValueError("LLM_PROVIDER must be 'gemini' or 'ollama'.")
+    if LLM_PROVIDER == "gemini" and (
+        not GEMINI_API_KEY.strip() or GEMINI_API_KEY == "COLE_SUA_API_KEY_AQUI"
+    ):
+        raise ValueError("Set GEMINI_API_KEY in the environment or .env before running the pipeline.")
     if not MODEL_NAME.strip():
-        raise ValueError("Environment variable 'GEMINI_MODEL' must not be empty.")
+        raise ValueError("The selected provider's model must not be empty.")
+    if not LLM_BASE_URL.strip():
+        raise ValueError("The selected provider's base URL must not be empty.")
     if LLM_MAX_COMPLETION_TOKENS <= 0:
         raise ValueError("LLM_MAX_COMPLETION_TOKENS must be positive.")

@@ -6,6 +6,12 @@ python_bin="${PYTHON_BIN:-$project_dir/venv/bin/python}"
 
 cd -- "$project_dir"
 if (($#)); then
+    if [[ "${1##*/}" == "orchestrator.py" ]]; then
+        exec "$python_bin" "$@"
+    fi
+    if [[ "$1" == --* || "$1" == "-h" ]]; then
+        exec "$python_bin" "$project_dir/orchestrator.py" "$@"
+    fi
     exec "$python_bin" "$project_dir/cuda_runtime.py" "$@"
 fi
-exec "$python_bin" "$project_dir/cuda_runtime.py" orchestrator.py
+exec "$python_bin" "$project_dir/orchestrator.py"

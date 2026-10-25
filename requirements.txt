@@ -1,5 +1,6 @@
 # Agentes e Comunicação
 requests
+python-dotenv
 
 # Download e Extração
 yt-dlp
