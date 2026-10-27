@@ -7,14 +7,14 @@ Um pipeline com aprovação humana dos cortes, LLM local via Ollama ou via API p
 | `ollama` | Qwen2.5:14b local, usando a VRAM | CPU / int8 |
 | `gemini` | Modelo configurado na API paga Gemini | GPU CUDA / float16 |
 
-Execute `python orchestrator.py` ou `bash run_pipeline.sh` em um terminal para escolher o perfil, modelo, URL e se deseja encurtar pausas. Enter aceita o padrão exibido. O menu aparece antes de inicializar CUDA; a chave Gemini, quando ausente, é solicitada sem eco. As escolhas valem para a execução atual; edite `.env` para mudar os padrões. O menu não grava credenciais.
+Execute `bash run_pipeline.sh` ou `python -m clipper.core.orchestrator` em um terminal para escolher o perfil, modelo, URL e se deseja encurtar pausas. Enter aceita o padrão exibido. O menu aparece antes de inicializar CUDA; a chave Gemini, quando ausente, é solicitada sem eco. As escolhas valem para a execução atual; edite `.env` para mudar os padrões. O menu não grava credenciais.
 
 Sem perguntas, use `--provider ollama` ou `--provider gemini`; também existem `--model`, `--url` e `--non-interactive`. Sem terminal interativo, o script usa CLI/ambiente automaticamente:
 
 ```bash
 bash run_pipeline.sh --provider ollama --url "https://www.youtube.com/watch?v=SEU_VIDEO"
 bash run_pipeline.sh --provider gemini --model gemini-3.6-flash --url "https://www.youtube.com/watch?v=SEU_VIDEO"
-python orchestrator.py --non-interactive --restart
+bash run_pipeline.sh --non-interactive --restart
 ```
 
 O sistema adota os princípios de **AI Systems Engineering**: abandona chat procedurais caóticos em favor de fluxos determinísticos baseados em grafos direcionados (**LangGraph**), decodificação restrita (**Constrained Decoding**) e **Cognitive Routing** de modelo único.
@@ -67,17 +67,30 @@ flowchart TD
 
 ```text
 agent-clipper/
-├── orchestrator.py      # DAG LangGraph (download -> fatiamento -> transcricao -> pensador -> extrator -> editor)
-├── prompts.py           # Templates de prompt imutáveis e exemplos Few-Shot multi-turno
-├── schemas.py           # Modelos Pydantic (CorteVideo, CortesResponse)
-├── config.py            # Configurações centralizadas e variáveis de ambiente
-├── node_0.py            # Fatiamento preventivo de áudio baseado em silêncio
-├── ingestion.py         # Download via yt-dlp e transcrição via faster-whisper
-├── editor.py            # Renderização vertical (9:16), corte e legendas com Pillow
-├── pause_editing.py     # Detecção de silêncio, intervalos mantidos e remapeamento de tempos
-├── dockerfile           # Ambiente isolado com dependências pré-compiladas
-├── requirements.txt     # Dependências Python pinadas
-└── specs/               # Especificações, planos, tarefas e relatórios SDD (Speckit)
+├── src/
+│   └── clipper/
+│       ├── core/                # Orquestração (LangGraph DAG), schemas, prompts, ingestão
+│       │   ├── orchestrator.py  # DAG LangGraph (download -> fatiamento -> transcrição -> pensador -> extrator -> editor)
+│       │   ├── prompts.py       # Templates de prompt imutáveis e exemplos Few-Shot multi-turno
+│       │   ├── schemas.py       # Modelos Pydantic (CorteVideo, CortesResponse)
+│       │   ├── node_0.py        # Fatiamento preventivo de áudio baseado em silêncio
+│       │   └── ingestion.py     # Download via yt-dlp e transcrição via faster-whisper
+│       ├── video/               # Composição de vídeo, enquadramento e corte de pausas
+│       │   ├── editor.py        # Renderização vertical (9:16), corte e legendas com Pillow
+│       │   ├── pause_editing.py # Detecção de silêncio, intervalos mantidos e remapeamento de tempos
+│       │   └── speaker_focus.py # Rastreamento e enquadramento visual de orador ativo
+│       ├── review/              # Interface e servidor de aprovação humana de cortes
+│       │   └── review.py        # Servidor web local de revisão e validação de aprovação
+│       └── runtime/             # Infraestrutura, bootstrap de hardware e configuração
+│           ├── config.py        # Configurações centralizadas ancoradas no PROJECT_ROOT
+│           ├── cuda_runtime.py  # Bootstrap de bibliotecas dinâmicas CUDA (cuBLAS, cuDNN)
+│           └── runtime_options.py # Menu interativo de seleção de perfil LLM e flags CLI
+├── tests/                       # Suíte de testes unitários automatizados (9 suítes)
+├── docs/                        # Documentação e rascunhos de desenvolvimento
+├── dockerfile                   # Ambiente isolado com dependências pré-compiladas
+├── run_pipeline.sh              # Script de entrada para execução local com export de PYTHONPATH
+├── requirements.txt             # Dependências Python pinadas
+└── specs/                       # Especificações, planos, tarefas e relatórios SDD (Speckit)
 ```
 
 ---
@@ -122,7 +135,7 @@ docker run --rm --env-file .env \
   -e LLM_PROVIDER=ollama \
   -e OLLAMA_BASE_URL=http://host.docker.internal:11434/v1 \
   -v $(pwd)/output:/app/output \
-  agent-clipper python orchestrator.py --non-interactive
+  agent-clipper python -m clipper.core.orchestrator --non-interactive
 ```
 
 ---
@@ -152,14 +165,14 @@ Caso queira executar diretamente no ambiente host WSL2/Linux:
 
 4. **Executar o pipeline:**
    ```bash
-   YOUTUBE_URL="https://www.youtube.com/watch?v=SEU_LINK_AQUI" python orchestrator.py
+   YOUTUBE_URL="https://www.youtube.com/watch?v=SEU_LINK_AQUI" bash run_pipeline.sh
    ```
 
 ---
 
 ## 🛠️ Variáveis de Ambiente Suportadas
 
-Todas as configurações possuem valores padrão defensivos definidos em [`config.py`](config.py):
+Todas as configurações possuem valores padrão defensivos definidos em [`src/clipper/runtime/config.py`](src/clipper/runtime/config.py):
 
 | Variável          | Padrão                      | Descrição                                     |
 | ----------------- | --------------------------- | --------------------------------------------- |
@@ -210,7 +223,7 @@ export YOUTUBE_URL="https://www.youtube.com/watch?v=SEU_VIDEO"
 bash run_pipeline.sh
 ```
 
-O script usa `venv/bin/python`. Se usar outra venv, passe `PYTHON_BIN=/caminho/da/venv/bin/python`. Também é possível executar `python orchestrator.py` na venv ativa. Ambos usam `cuda_runtime.py` para localizar as bibliotecas NVIDIA da venv e configurar `LD_LIBRARY_PATH` antes de importar CTranslate2. Se necessário, o Python é reiniciado antes do processamento, preservando argumentos e variáveis de ambiente. Definir `LD_LIBRARY_PATH` apenas dentro de um processo já iniciado não é suficiente, conforme a [documentação do faster-whisper](https://github.com/SYSTRAN/faster-whisper#install-with-pip-linux-only).
+O script usa `venv/bin/python`. Se usar outra venv, passe `PYTHON_BIN=/caminho/da/venv/bin/python`. Também é possível executar `python -m clipper.core.orchestrator` na venv ativa. Ambos usam `src/clipper/runtime/cuda_runtime.py` para localizar as bibliotecas NVIDIA da venv e configurar `LD_LIBRARY_PATH` antes de importar CTranslate2. Se necessário, o Python é reiniciado antes do processamento, preservando argumentos e variáveis de ambiente. Definir `LD_LIBRARY_PATH` apenas dentro de um processo já iniciado não é suficiente, conforme a [documentação do faster-whisper](https://github.com/SYSTRAN/faster-whisper#install-with-pip-linux-only).
 
 O perfil determina o dispositivo: `ollama` força CPU/int8; `gemini` força CUDA/float16. Exports antigos de `WHISPER_DEVICE` e `WHISPER_COMPUTE_TYPE` são ignorados. No perfil Gemini, a inicialização verifica cuBLAS/cuDNN, GPU e precisão antes do download; falhas encerram a execução, sem fallback silencioso. No perfil Ollama, a inicialização não exige bibliotecas CUDA. `--help` também funciona sem inicializar CUDA.
 
@@ -219,7 +232,7 @@ A imagem Docker instala as mesmas dependências CUDA fixadas. Para o perfil Gemi
 Para testar somente a GPU com o modelo já armazenado no cache, sem baixar vídeos nem chamar a API:
 
 ```bash
-bash run_pipeline.sh -m unittest test_cuda_runtime -v
+bash run_pipeline.sh -m unittest tests/test_cuda_runtime.py -v
 ```
 
 ## Revisão e aprovação antes da edição
@@ -284,13 +297,13 @@ A página só é servida enquanto a revisão está pendente; após confirmar, a 
 Você pode pressionar **Ctrl+C** enquanto aguarda e executar o mesmo comando, com a mesma `YOUTUBE_URL`, para retomar o checkpoint pendente sem repetir as etapas anteriores. Se a decisão já tiver sido enviada, ela será reaproveitada. Para processar novamente um vídeo já concluído, criando uma nova revisão:
 
 ```bash
-bash run_pipeline.sh orchestrator.py --restart
+bash run_pipeline.sh --restart
 ```
 
 Se a porta estiver ocupada:
 
 ```bash
-bash run_pipeline.sh orchestrator.py --review-port 8766
+bash run_pipeline.sh --review-port 8766
 ```
 
 Os checkpoints incluem URL, provedor, modelo, endpoint e configurações de pausas na identidade. Retome usando a mesma configuração; trocar esses valores inicia um histórico separado. Checkpoints antigos permanecem no banco, mas não são reutilizados por esta versão. Essas instruções de acesso à página são para a venv no WSL/Linux; o container requer encaminhamento de rede compatível com o serviço em localhost.

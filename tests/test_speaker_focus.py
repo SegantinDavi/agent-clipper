@@ -1,3 +1,4 @@
+import tests
 from pathlib import Path
 import tempfile
 import unittest
@@ -6,9 +7,9 @@ from unittest.mock import patch
 import numpy as np
 from moviepy.editor import AudioClip, VideoClip, VideoFileClip
 
-from editor import cut_and_format_video
-from schemas import CorteVideo
-from speaker_focus import (
+from clipper.video.editor import cut_and_format_video
+from clipper.core.schemas import CorteVideo
+from clipper.video.speaker_focus import (
     FaceTracker, FramingPlan, SpeakerSelector, face_crop,
     intersection_over_union, lock_static_crops, portrait_size,
 )
@@ -115,8 +116,8 @@ class SpeakerFocusTests(unittest.TestCase):
                               duration=2, fps=16000)
             with VideoClip(lambda time: frame, duration=2).set_audio(audio) as source:
                 source.write_videofile(source_path, fps=25, codec="libx264", audio_codec="aac", logger=None)
-            with patch("editor.SPEAKER_FOCUS_ENABLED", True), \
-                 patch("speaker_focus.build_framing_plan", return_value=plan):
+            with patch("clipper.video.editor.SPEAKER_FOCUS_ENABLED", True), \
+                 patch("clipper.video.speaker_focus.build_framing_plan", return_value=plan):
                 outputs = cut_and_format_video(
                     source_path, [CorteVideo(title="Focus test", start_time=0, end_time=2)],
                     [{"word": "Pessoa,", "start": 0.1, "end": 0.7}], directory,

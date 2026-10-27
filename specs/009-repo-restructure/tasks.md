@@ -83,16 +83,16 @@
 
 ### Implementation for User Story 3
 
-- [ ] T020 [P] [US3] Move and update `test_cuda_bootstrap.py` to `tests/test_cuda_bootstrap.py` updating mock targets to `clipper.runtime.cuda_runtime`
-- [ ] T021 [P] [US3] Move and update `test_cuda_runtime.py` to `tests/test_cuda_runtime.py`, updating subprocess execution from `orchestrator.py` to `"-m", "clipper.core.orchestrator"` with `cwd=PROJECT_ROOT` and `PYTHONPATH=src`
-- [ ] T022 [P] [US3] Move and update `test_runtime_options.py` to `tests/test_runtime_options.py`, updating imports, mock targets, and subprocess execution from `orchestrator.py` to `"-m", "clipper.core.orchestrator"` with `cwd=PROJECT_ROOT` and `PYTHONPATH=src`
-- [ ] T023 [P] [US3] Move and update `test_transcription.py` to `tests/test_transcription.py` updating imports to `clipper.core.ingestion`
-- [ ] T024 [P] [US3] Move and update `test_llm_api.py` to `tests/test_llm_api.py` updating imports and patches to `clipper.core.orchestrator`
-- [ ] T025 [P] [US3] Move and update `test_editor_render.py` to `tests/test_editor_render.py` updating imports and patches to `clipper.video.editor`
-- [ ] T026 [P] [US3] Move and update `test_pause_editing.py` to `tests/test_pause_editing.py` updating imports and patches across `clipper.video` and `clipper.review`
-- [ ] T027 [P] [US3] Move and update `test_review.py` to `tests/test_review.py` updating imports and patches to `clipper.review.review` and `clipper.core.orchestrator`
-- [ ] T028 [P] [US3] Move and update `test_speaker_focus.py` to `tests/test_speaker_focus.py` updating imports and patches to `clipper.video.speaker_focus`
-- [ ] T029 [US3] Execute full test suite via `PYTHONPATH=src venv/bin/python -m unittest discover tests/ -p "test_*.py"` and verify zero regressions
+- [X] T020 [P] [US3] Move and update `test_cuda_bootstrap.py` to `tests/test_cuda_bootstrap.py` updating mock targets to `clipper.runtime.cuda_runtime`
+- [X] T021 [P] [US3] Move and update `test_cuda_runtime.py` to `tests/test_cuda_runtime.py`, updating subprocess execution from `orchestrator.py` to `"-m", "clipper.core.orchestrator"` with `cwd=PROJECT_ROOT` and `PYTHONPATH=src`
+- [X] T022 [P] [US3] Move and update `test_runtime_options.py` to `tests/test_runtime_options.py`, updating imports, mock targets, and subprocess execution from `orchestrator.py` to `"-m", "clipper.core.orchestrator"` with `cwd=PROJECT_ROOT` and `PYTHONPATH=src`
+- [X] T023 [P] [US3] Move and update `test_transcription.py` to `tests/test_transcription.py` updating imports to `clipper.core.ingestion`
+- [X] T024 [P] [US3] Move and update `test_llm_api.py` to `tests/test_llm_api.py` updating imports and patches to `clipper.core.orchestrator`
+- [X] T025 [P] [US3] Move and update `test_editor_render.py` to `tests/test_editor_render.py` updating imports and patches to `clipper.video.editor`
+- [X] T026 [P] [US3] Move and update `test_pause_editing.py` to `tests/test_pause_editing.py` updating imports and patches across `clipper.video` and `clipper.review`
+- [X] T027 [P] [US3] Move and update `test_review.py` to `tests/test_review.py` updating imports and patches to `clipper.review.review` and `clipper.core.orchestrator`
+- [X] T028 [P] [US3] Move and update `test_speaker_focus.py` to `tests/test_speaker_focus.py` updating imports and patches to `clipper.video.speaker_focus`
+- [X] T029 [US3] Execute full test suite via `PYTHONPATH=src venv/bin/python -m unittest discover tests/ -p "test_*.py"` and verify zero regressions
 
 **Checkpoint**: All user stories (US1, US2, US3) are fully functional and verified by tests.
 
@@ -102,9 +102,9 @@
 
 **Purpose**: Update documentation, clean up residual artifacts, and verify repository state.
 
-- [ ] T030 [P] Update `README.md` to document the new `src/clipper` layout, tests directory, and updated execution commands
-- [ ] T031 [P] Update `AGENTS.md` to reference `src/clipper/` path conventions (path updates only; architectural constraints remain unchanged)
-- [ ] T032 Clean up root `__pycache__` directories and verify clean working tree with `git status`
+- [X] T030 [P] Update `README.md` to document the new `src/clipper` layout, tests directory, and updated execution commands
+- [X] T031 [P] Update `AGENTS.md` to reference `src/clipper/` path conventions (path updates only; architectural constraints remain unchanged)
+- [X] T032 Clean up root `__pycache__` directories and verify clean working tree with `git status`
 
 ---
 

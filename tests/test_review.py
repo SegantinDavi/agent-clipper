@@ -1,3 +1,4 @@
+import tests
 from html.parser import HTMLParser
 from pathlib import Path
 import tempfile
@@ -12,13 +13,13 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import StateGraph, START, END
 from moviepy.editor import ColorClip, VideoFileClip
 
-import orchestrator
-from review import (
+import clipper.core.orchestrator as orchestrator
+from clipper.review.review import (
     ApprovalDecision, ReviewManifest, create_review_server, prepare_review,
     render_review_page, validate_approval, wait_for_approval,
 )
-from schemas import CorteVideo
-from pause_editing import PauseSettings, identity_plan
+from clipper.core.schemas import CorteVideo
+from clipper.video.pause_editing import PauseSettings, identity_plan
 
 
 class TokenParser(HTMLParser):

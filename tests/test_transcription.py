@@ -1,8 +1,9 @@
+import tests
 from types import SimpleNamespace
 import unittest
 from unittest.mock import MagicMock, patch
 
-import ingestion
+import clipper.core.ingestion as ingestion
 
 
 class TranscriptionTests(unittest.TestCase):
