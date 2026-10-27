@@ -28,7 +28,8 @@ def prompt_value(label: str, default: str) -> str:
 
 def configure_runtime(argv=None) -> argparse.Namespace:
     args = create_parser().parse_args(argv)
-    load_dotenv(Path(__file__).with_name(".env"), override=False)
+    project_root = Path(__file__).resolve().parents[3]
+    load_dotenv(project_root / ".env", override=False)
     if os.getenv("_CLIPPER_RUNTIME_SELECTED") == "1":
         return args
 

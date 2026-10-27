@@ -3,10 +3,12 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).with_name(".env"), override=False)
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+load_dotenv(PROJECT_ROOT / ".env", override=False)
 
 OUTPUT_DIR = os.getenv(
-    "OUTPUT_DIR", "/app/output" if os.path.exists("/app") else "output"
+    "OUTPUT_DIR", "/app/output" if os.path.exists("/app") else str(PROJECT_ROOT / "output")
 )
 DOWNLOADS_DIR = os.getenv("DOWNLOADS_DIR", os.path.join(OUTPUT_DIR, "downloads"))
 DB_PATH = os.getenv("DB_PATH", os.path.join(OUTPUT_DIR, "estado.db"))
@@ -47,7 +49,7 @@ CAPTION_MAX_GAP = float(os.getenv("CAPTION_MAX_GAP", "0.5"))
 CAPTION_MAX_DURATION = float(os.getenv("CAPTION_MAX_DURATION", "2.0"))
 SPEAKER_FOCUS_ENABLED = os.getenv("SPEAKER_FOCUS_ENABLED", "1").lower() in {"1", "true", "yes"}
 SPEAKER_FOCUS_MODEL_DIR = os.getenv(
-    "SPEAKER_FOCUS_MODEL_DIR", os.path.join(os.path.dirname(__file__), "assets", "speaker_focus")
+    "SPEAKER_FOCUS_MODEL_DIR", str(PROJECT_ROOT / "assets" / "speaker_focus")
 )
 SPEAKER_FOCUS_THREADS = int(os.getenv("SPEAKER_FOCUS_THREADS", "2"))
 SPEAKER_FOCUS_DETECTION_WIDTH = int(os.getenv("SPEAKER_FOCUS_DETECTION_WIDTH", "640"))

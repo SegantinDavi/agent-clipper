@@ -28,10 +28,10 @@
 
 **⚠️ CRITICAL**: Must be completed before relocating domain services or running tests.
 
-- [ ] T004 Move and update `config.py` to `src/clipper/runtime/config.py` anchoring `PROJECT_ROOT = Path(__file__).resolve().parents[3]`
-- [ ] T005 [P] Move and update `cuda_runtime.py` to `src/clipper/runtime/cuda_runtime.py` with imports from `clipper.runtime.config`
-- [ ] T006 [P] Move and update `runtime_options.py` to `src/clipper/runtime/runtime_options.py`
-- [ ] T007 [P] Move and update `schemas.py` to `src/clipper/core/schemas.py`
+- [X] T004 Move and update `config.py` to `src/clipper/runtime/config.py` anchoring `PROJECT_ROOT = Path(__file__).resolve().parents[3]`
+- [X] T005 [P] Move and update `cuda_runtime.py` to `src/clipper/runtime/cuda_runtime.py` with imports from `clipper.runtime.config`
+- [X] T006 [P] Move and update `runtime_options.py` to `src/clipper/runtime/runtime_options.py`
+- [X] T007 [P] Move and update `schemas.py` to `src/clipper/core/schemas.py`
 
 **Checkpoint**: Foundation ready — domain services and user story implementation can proceed.
 
