@@ -7,7 +7,7 @@ import subprocess
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from config import (
+from clipper.runtime.config import (
     SILENCE_CUT_ENABLED, SILENCE_KEEP_PAUSE, SILENCE_MIN_PAUSE,
     SILENCE_SPEECH_PADDING, SILENCE_THRESHOLD_DB,
 )

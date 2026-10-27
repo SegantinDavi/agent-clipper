@@ -7,16 +7,16 @@ import uuid
 from typing import TypedDict
 
 if __name__ == "__main__":
-    from runtime_options import configure_runtime
+    from clipper.runtime.runtime_options import configure_runtime
 
     startup_args = configure_runtime()
-    from config import validate_llm_config
+    from clipper.runtime.config import validate_llm_config
 
     validate_llm_config()
-    from pause_editing import PauseSettings
+    from clipper.video.pause_editing import PauseSettings
 
     PauseSettings()
-    from cuda_runtime import prepare_cuda_environment, validate_cuda_runtime
+    from clipper.runtime.cuda_runtime import prepare_cuda_environment, validate_cuda_runtime
 
     prepare_cuda_environment()
     validate_cuda_runtime()
@@ -27,19 +27,19 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Command, interrupt
 
-from schemas import CorteVideo, CortesResponse
-from prompts import (
+from clipper.core.schemas import CorteVideo, CortesResponse
+from clipper.core.prompts import (
     EXTRACTOR_FEW_SHOT_EXAMPLES,
     EXTRACTOR_SYSTEM_PROMPT_TEMPLATE,
     THINKER_SYSTEM_PROMPT,
 )
-from ingestion import download_video, transcribe_audio_chunk
-from node_0 import node_0_preventive_slicing
-from editor import cut_and_format_video
-from review import load_review_plans, prepare_review, validate_approval, wait_for_approval
-from pause_editing import PauseSettings
+from clipper.core.ingestion import download_video, transcribe_audio_chunk
+from clipper.core.node_0 import node_0_preventive_slicing
+from clipper.video.editor import cut_and_format_video
+from clipper.review.review import load_review_plans, prepare_review, validate_approval, wait_for_approval
+from clipper.video.pause_editing import PauseSettings
 
-from config import (
+from clipper.runtime.config import (
     DB_PATH,
     DOWNLOADS_DIR,
     LOG_FILE,
@@ -436,7 +436,7 @@ def checkpoint_thread_id(video_url: str) -> str:
 
 def main(args=None):
     if args is None:
-        from runtime_options import create_parser
+        from clipper.runtime.runtime_options import create_parser
 
         args = create_parser().parse_args()
     validate_llm_config()

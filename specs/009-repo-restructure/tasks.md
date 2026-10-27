@@ -45,15 +45,15 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [P] [US1] Move and update `prompts.py` to `src/clipper/core/prompts.py`
-- [ ] T009 [P] [US1] Move and update `node_0.py` to `src/clipper/core/node_0.py` importing `from clipper.runtime.config import OUTPUT_DIR`
-- [ ] T010 [P] [US1] Move and update `ingestion.py` to `src/clipper/core/ingestion.py` importing from `clipper.runtime.config`
-- [ ] T011 [P] [US1] Move and update `pause_editing.py` to `src/clipper/video/pause_editing.py` importing from `clipper.runtime.config`
-- [ ] T012 [P] [US1] Move and update `speaker_focus.py` to `src/clipper/video/speaker_focus.py` importing from `clipper.runtime.config`
-- [ ] T013 [US1] Move and update `editor.py` to `src/clipper/video/editor.py` importing from `clipper.core.schemas`, `clipper.video.pause_editing`, and `clipper.runtime.config`
-- [ ] T014 [US1] Move and update `review.py` to `src/clipper/review/review.py` importing from `clipper.core.schemas`, `clipper.video.pause_editing`, and `clipper.runtime.config`
-- [ ] T015 [US1] Move and update `orchestrator.py` to `src/clipper/core/orchestrator.py` importing from `clipper.core.*`, `clipper.video.*`, `clipper.review.*`, and `clipper.runtime.*`
-- [ ] T016 [US1] Verify no deprecated root `.py` source files remain (using `git mv` in preceding steps) and verify module resolution with `PYTHONPATH=src python -c "import clipper.core.orchestrator"`
+- [X] T008 [P] [US1] Move and update `prompts.py` to `src/clipper/core/prompts.py`
+- [X] T009 [P] [US1] Move and update `node_0.py` to `src/clipper/core/node_0.py` importing `from clipper.runtime.config import OUTPUT_DIR`
+- [X] T010 [P] [US1] Move and update `ingestion.py` to `src/clipper/core/ingestion.py` importing from `clipper.runtime.config`
+- [X] T011 [P] [US1] Move and update `pause_editing.py` to `src/clipper/video/pause_editing.py` importing from `clipper.runtime.config`
+- [X] T012 [P] [US1] Move and update `speaker_focus.py` to `src/clipper/video/speaker_focus.py` importing from `clipper.runtime.config`
+- [X] T013 [US1] Move and update `editor.py` to `src/clipper/video/editor.py` importing from `clipper.core.schemas`, `clipper.video.pause_editing`, and `clipper.runtime.config`
+- [X] T014 [US1] Move and update `review.py` to `src/clipper/review/review.py` importing from `clipper.core.schemas`, `clipper.video.pause_editing`, and `clipper.runtime.config`
+- [X] T015 [US1] Move and update `orchestrator.py` to `src/clipper/core/orchestrator.py` importing from `clipper.core.*`, `clipper.video.*`, `clipper.review.*`, and `clipper.runtime.*`
+- [X] T016 [US1] Verify no deprecated root `.py` source files remain (using `git mv` in preceding steps) and verify module resolution with `PYTHONPATH=src python -c "import clipper.core.orchestrator"`
 
 **Checkpoint**: At this point, User Story 1 is complete. Codebase is modularized and importable under `src/clipper`.
 

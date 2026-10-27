@@ -10,8 +10,8 @@ from urllib.parse import parse_qs, urlsplit
 
 from pydantic import BaseModel, Field, StrictInt, model_validator
 
-from schemas import CorteVideo
-from pause_editing import PausePlan, PauseSettings, build_pause_plan, preview_filter
+from clipper.core.schemas import CorteVideo
+from clipper.video.pause_editing import PausePlan, PauseSettings, build_pause_plan, preview_filter
 
 logger = logging.getLogger(__name__)
 

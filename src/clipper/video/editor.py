@@ -10,9 +10,9 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip, concatenate_videoclips
 from moviepy.video.fx.all import crop
-from schemas import CorteVideo
-from pause_editing import PausePlan, PauseSettings, identity_plan, remap_word_groups
-from config import (
+from clipper.core.schemas import CorteVideo
+from clipper.video.pause_editing import PausePlan, PauseSettings, identity_plan, remap_word_groups
+from clipper.runtime.config import (
     CAPTION_CENTER_X_RATIO, CAPTION_CENTER_Y_RATIO, CAPTION_COLOR,
     CAPTION_FONT_SIZE, CAPTION_MAX_DURATION, CAPTION_MAX_GAP, CAPTION_MAX_WORDS,
     CAPTION_REFERENCE_WIDTH, CAPTION_SAFE_WIDTH_RATIO, CAPTION_STROKE_COLOR,
@@ -138,7 +138,7 @@ def cut_and_format_video(
             try:
                 clip = video.subclip(corte.start_time, corte.end_time)
                 if SPEAKER_FOCUS_ENABLED:
-                    from speaker_focus import apply_framing_plan, build_framing_plan
+                    from clipper.video.speaker_focus import apply_framing_plan, build_framing_plan
 
                     plan = build_framing_plan(
                         clip, video_path, corte.start_time,
@@ -146,7 +146,7 @@ def cut_and_format_video(
                     )
                     clip = apply_framing_plan(clip, plan)
                 else:
-                    from speaker_focus import portrait_size
+                    from clipper.video.speaker_focus import portrait_size
 
                     width, height = portrait_size(clip.size)
                     clip = crop(clip, width=width, height=height,
