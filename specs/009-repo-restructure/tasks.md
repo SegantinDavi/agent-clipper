@@ -67,9 +67,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Update `run_pipeline.sh` to export `PYTHONPATH="$project_dir/src${PYTHONPATH:+:$PYTHONPATH}"` and route execution through `clipper.core.orchestrator`, `clipper.runtime.cuda_runtime`, or pass-through for `-m` and custom python commands
-- [ ] T018 [P] [US2] Update `dockerfile` with `ENV PYTHONPATH=/app/src` and `CMD ["python", "-m", "clipper.core.orchestrator"]`
-- [ ] T019 [US2] Verify entrypoint execution by running `./run_pipeline.sh --help` from repository root
+- [X] T017 [US2] Update `run_pipeline.sh` to export `PYTHONPATH="$project_dir/src${PYTHONPATH:+:$PYTHONPATH}"` and route execution through `clipper.core.orchestrator`, `clipper.runtime.cuda_runtime`, or pass-through for `-m` and custom python commands
+- [X] T018 [P] [US2] Update `dockerfile` with `ENV PYTHONPATH=/app/src` and `CMD ["python", "-m", "clipper.core.orchestrator"]`
+- [X] T019 [US2] Verify entrypoint execution by running `./run_pipeline.sh --help` from repository root
 
 **Checkpoint**: User Stories 1 and 2 are complete. Pipeline can be launched locally and in Docker without regressions.
 
