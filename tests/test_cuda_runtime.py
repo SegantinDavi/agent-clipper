@@ -31,6 +31,12 @@ class CudaRuntimeTests(unittest.TestCase):
         self.assertIn("--restart", result.stdout)
 
     def test_cached_model_transcribes_silence_on_gpu(self):
+        try:
+            from clipper.runtime.cuda_runtime import validate_cuda_runtime
+            validate_cuda_runtime()
+        except RuntimeError as error:
+            self.skipTest(f"CUDA runtime unavailable or uninitialized: {error}")
+
         self.assertGreater(ctranslate2.get_cuda_device_count(), 0)
         model = WhisperModel(
             "small", device="cuda", compute_type="float16", local_files_only=True,
