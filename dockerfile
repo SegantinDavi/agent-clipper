@@ -18,4 +18,6 @@ RUN pip install --no-cache-dir --prefer-binary -r requirements.txt && \
 
 COPY . .
 
-CMD ["python", "orchestrator.py"]
+ENV PYTHONPATH=/app/src
+
+CMD ["python", "-m", "clipper.core.orchestrator"]

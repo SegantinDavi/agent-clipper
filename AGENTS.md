@@ -23,7 +23,7 @@ Este é o **agent-clipper**, um pipeline em Docker para converter vídeos longos
 
 O ambiente opera no limite físico de memória.
 
-- **Transcrição por perfil (obrigatória):** Com Ollama local, faster-whisper roda em **CPU/int8**, reservando a VRAM ao Qwen. Com Gemini API, roda em **GPU CUDA/float16**. O perfil determina esses valores; exports antigos de `WHISPER_DEVICE` e `WHISPER_COMPUTE_TYPE` não os sobrescrevem. Não há fallback silencioso de GPU, CPU ou provedor. Selecione o perfil antes de importar config, CUDA ou bibliotecas de inferência; em modo local, não inicialize nem valide CUDA. No modo API, use o bootstrap de `cuda_runtime.py` e as versões fixadas em `requirements-cuda.txt`. Preserve a liberação de memória entre chunks.
+- **Transcrição por perfil (obrigatória):** Com Ollama local, faster-whisper roda em **CPU/int8**, reservando a VRAM ao Qwen. Com Gemini API, roda em **GPU CUDA/float16**. O perfil determina esses valores; exports antigos de `WHISPER_DEVICE` e `WHISPER_COMPUTE_TYPE` não os sobrescrevem. Não há fallback silencioso de GPU, CPU ou provedor. Selecione o perfil antes de importar config, CUDA ou bibliotecas de inferência; em modo local, não inicialize nem valide CUDA. No modo API, use o bootstrap de `src/clipper/runtime/cuda_runtime.py` e as versões fixadas em `requirements-cuda.txt`. Preserve a liberação de memória entre chunks.
 - **Prevenção de Memory Leak (RAM):** Após a conclusão da transcrição de qualquer vídeo ou chunk, é obrigatório destruir a instância do modelo e forçar a limpeza de memória (del model seguido de import gc; gc.collect()).
 - **Dependência Fixada:** A biblioteca av deve estar fixada em <19 no Dockerfile para evitar crash (metadata_errors) durante a extração de áudio.
 

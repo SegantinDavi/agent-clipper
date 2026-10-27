@@ -1,3 +1,4 @@
+import tests
 import math
 from pathlib import Path
 import subprocess
@@ -8,15 +9,15 @@ from unittest.mock import patch
 import numpy as np
 from moviepy.editor import AudioClip, VideoClip, VideoFileClip
 
-from editor import cut_and_format_video, group_caption_words
-from pause_editing import (
+from clipper.video.editor import cut_and_format_video, group_caption_words
+from clipper.video.pause_editing import (
     PausePlan, PauseSettings, TimeInterval, build_pause_plan, detect_silences,
     identity_plan, parse_silences, plan_from_silences, remap_word_groups, speech_intervals,
 )
-from review import ReviewManifest, load_review_plans, prepare_review, render_review_page
-from schemas import CorteVideo
-from speaker_focus import FramingPlan, face_crop
-import orchestrator
+from clipper.review.review import ReviewManifest, load_review_plans, prepare_review, render_review_page
+from clipper.core.schemas import CorteVideo
+from clipper.video.speaker_focus import FramingPlan, face_crop
+import clipper.core.orchestrator as orchestrator
 
 
 class PauseMathTests(unittest.TestCase):
@@ -80,7 +81,7 @@ class PauseMathTests(unittest.TestCase):
     def test_invalid_missing_words_and_disabled_mode_skip_ffmpeg(self):
         for words, enabled in [([], True), ([{"word": "bad", "start": math.nan, "end": 1}], True),
                                ([{"word": "bad"}], True), (self.words, False)]:
-            with self.subTest(words=words), patch("pause_editing.detect_silences") as detect:
+            with self.subTest(words=words), patch("clipper.video.pause_editing.detect_silences") as detect:
                 plan = build_pause_plan("unused", 9, 17, words, PauseSettings(enabled=enabled))
                 detect.assert_not_called()
                 self.assertEqual(plan.duration, 8)
@@ -110,8 +111,8 @@ class PauseMathTests(unittest.TestCase):
         self.assertEqual(parse_silences("silence_start: 6.25e-05\nsilence_end: 1", 2)[0].start, 0.0000625)
 
     def test_ffmpeg_failures_do_not_silently_change_editing_policy(self):
-        with patch("pause_editing.has_audio", return_value=True), \
-             patch("pause_editing.subprocess.run", return_value=subprocess.CompletedProcess([], 1, "", "decode failed")):
+        with patch("clipper.video.pause_editing.has_audio", return_value=True), \
+             patch("clipper.video.pause_editing.subprocess.run", return_value=subprocess.CompletedProcess([], 1, "", "decode failed")):
             with self.assertRaisesRegex(RuntimeError, "decode failed"):
                 detect_silences("source", 0, 5, self.settings)
 
@@ -157,9 +158,9 @@ class PauseMediaTests(unittest.TestCase):
         samples = [{"rect": face_crop((320, 240), [20 if index < 50 else 240, 50, 40, 60]),
                     "reset": index in (0, 50)} for index in range(100)]
         focus = FramingPlan((320, 240), samples)
-        with patch("editor.SPEAKER_FOCUS_ENABLED", True), \
-             patch("speaker_focus.build_framing_plan", return_value=focus), \
-             patch("pause_editing.detect_silences", side_effect=AssertionError("Approved plan must be reused")):
+        with patch("clipper.video.editor.SPEAKER_FOCUS_ENABLED", True), \
+             patch("clipper.video.speaker_focus.build_framing_plan", return_value=focus), \
+             patch("clipper.video.pause_editing.detect_silences", side_effect=AssertionError("Approved plan must be reused")):
             outputs = cut_and_format_video(self.source_path, [self.cut], self.words, str(self.root), pause_plans=plans)
         with VideoFileClip(str(Path(directory) / "preview-1.mp4")) as preview, VideoFileClip(outputs[0]) as result:
             self.assertAlmostEqual(preview.duration, plan.duration, delta=0.12)
@@ -180,7 +181,7 @@ class PauseMediaTests(unittest.TestCase):
         self.assertEqual(saved, plan)
 
     def test_disabled_preview_preserves_duration_and_review_identity_changes(self):
-        with patch("pause_editing.detect_silences", side_effect=AssertionError("Disabled")):
+        with patch("clipper.video.pause_editing.detect_silences", side_effect=AssertionError("Disabled")):
             disabled = prepare_review(self.source_path, [self.cut], str(self.root),
                 word_timestamps=self.words, pause_settings=PauseSettings(enabled=False))
         enabled = prepare_review(self.source_path, [self.cut], str(self.root), word_timestamps=self.words)
@@ -203,7 +204,7 @@ class PauseMediaTests(unittest.TestCase):
     def test_two_final_clips_share_source_reader_safely(self):
         cuts = [self.cut, self.cut.model_copy(update={"title": "Second export"})]
         plan = build_pause_plan(self.source_path, 1, 5, self.words, PauseSettings())
-        with patch("editor.SPEAKER_FOCUS_ENABLED", False):
+        with patch("clipper.video.editor.SPEAKER_FOCUS_ENABLED", False):
             outputs = cut_and_format_video(self.source_path, cuts, self.words, str(self.root),
                                           pause_plans=[plan, plan])
         self.assertEqual(len(outputs), 2)
@@ -239,7 +240,7 @@ class PauseMediaTests(unittest.TestCase):
         plan = load_review_plans(directory, [cut])[0]
         self.assertEqual(len(plan.kept), 8)
         self.assertAlmostEqual(plan.duration, 6.4, delta=0.1)
-        with patch("editor.SPEAKER_FOCUS_ENABLED", False):
+        with patch("clipper.video.editor.SPEAKER_FOCUS_ENABLED", False):
             paths = cut_and_format_video(source_path, [cut], words, str(self.root), pause_plans=[plan])
         with VideoFileClip(str(Path(directory) / "preview-1.mp4")) as preview, VideoFileClip(paths[0]) as final:
             self.assertAlmostEqual(preview.duration, plan.duration, delta=0.08)

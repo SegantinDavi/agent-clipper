@@ -1,3 +1,4 @@
+import tests
 import ast
 from pathlib import Path
 import unittest
@@ -6,8 +7,8 @@ from unittest.mock import patch
 import httpx
 import openai
 
-import config
-import orchestrator
+import clipper.runtime.config as config
+import clipper.core.orchestrator as orchestrator
 
 
 class LlmApiTests(unittest.TestCase):
@@ -168,7 +169,8 @@ class LlmApiTests(unittest.TestCase):
         render.assert_not_called()
 
     def test_python_sources_parse(self):
-        for path in Path(__file__).parent.glob("*.py"):
+        project_root = Path(__file__).resolve().parents[1]
+        for path in list(project_root.glob("src/**/*.py")) + list(project_root.glob("tests/**/*.py")):
             ast.parse(path.read_text(encoding="utf-8"))
 
 

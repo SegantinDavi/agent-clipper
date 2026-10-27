@@ -1,3 +1,4 @@
+import tests
 import contextlib
 import importlib
 import io
@@ -8,8 +9,8 @@ import sys
 import unittest
 from unittest.mock import patch
 
-import config
-import runtime_options
+import clipper.runtime.config as config
+import clipper.runtime.runtime_options as runtime_options
 
 
 class RuntimeOptionsTests(unittest.TestCase):
@@ -102,9 +103,11 @@ class RuntimeOptionsTests(unittest.TestCase):
         environment = os.environ.copy()
         environment.update({"LLM_PROVIDER": "gemini", "GEMINI_API_KEY": ""})
         environment.pop("LD_LIBRARY_PATH", None)
+        project_root = Path(__file__).resolve().parents[1]
+        environment["PYTHONPATH"] = str(project_root / "src") + (f":{environment['PYTHONPATH']}" if "PYTHONPATH" in environment else "")
         result = subprocess.run(
-            [sys.executable, "orchestrator.py", "--help"],
-            cwd=Path(__file__).parent, env=environment,
+            [sys.executable, "-m", "clipper.core.orchestrator", "--help"],
+            cwd=project_root, env=environment,
             capture_output=True, text=True, timeout=15,
         )
         self.assertEqual(result.returncode, 0, result.stderr)

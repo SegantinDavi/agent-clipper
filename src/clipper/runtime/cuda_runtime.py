@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import sys
 
-from config import WHISPER_COMPUTE_TYPE, WHISPER_DEVICE
+from clipper.runtime.config import WHISPER_COMPUTE_TYPE, WHISPER_DEVICE
 
 
 def cuda_library_directories() -> list[str]:

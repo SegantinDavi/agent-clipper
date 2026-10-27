@@ -1,3 +1,4 @@
+import tests
 import os
 from pathlib import Path
 import tempfile
@@ -7,17 +8,17 @@ from unittest.mock import patch
 import numpy as np
 from moviepy.editor import ColorClip, VideoFileClip
 
-from editor import (
+from clipper.video.editor import (
     create_caption_clip, cut_and_format_video, group_caption_words,
     position_caption_clip, remove_caption_punctuation,
 )
-from schemas import CorteVideo
+from clipper.core.schemas import CorteVideo
 
 
 class EditorRenderTests(unittest.TestCase):
     def test_caption_has_transparency_fill_and_outline_without_imagemagick(self):
         # Only font discovery may spawn a process; text rendering must stay in Pillow.
-        from editor import load_caption_font
+        from clipper.video.editor import load_caption_font
 
         load_caption_font()
         with patch("subprocess.run", side_effect=AssertionError("Unexpected subprocess")):
@@ -85,7 +86,7 @@ class EditorRenderTests(unittest.TestCase):
             source_path = os.path.join(directory, "source.mp4")
             with ColorClip((320, 240), color=(30, 40, 50), duration=1) as source:
                 source.write_videofile(source_path, fps=10, codec="libx264", audio=False, logger=None)
-            with patch("editor.SPEAKER_FOCUS_ENABLED", False):
+            with patch("clipper.video.editor.SPEAKER_FOCUS_ENABLED", False):
                 paths = cut_and_format_video(
                     source_path,
                     [CorteVideo(title="Caption test", start_time=0, end_time=1)],

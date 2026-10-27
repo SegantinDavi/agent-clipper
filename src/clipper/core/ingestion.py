@@ -5,7 +5,7 @@ import logging
 from yt_dlp import YoutubeDL
 from faster_whisper import WhisperModel
 
-from config import WHISPER_DEVICE, WHISPER_COMPUTE_TYPE
+from clipper.runtime.config import WHISPER_DEVICE, WHISPER_COMPUTE_TYPE
 
 logger = logging.getLogger(__name__)
 

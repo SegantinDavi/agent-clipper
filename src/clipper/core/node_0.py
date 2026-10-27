@@ -4,7 +4,7 @@ import os
 import json
 import logging
 
-from config import OUTPUT_DIR
+from clipper.runtime.config import OUTPUT_DIR
 
 logger = logging.getLogger(__name__)
 

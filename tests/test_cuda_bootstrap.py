@@ -1,3 +1,5 @@
+import tests
+
 from importlib.metadata import PackageNotFoundError
 import os
 from pathlib import Path
@@ -5,7 +7,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-import cuda_runtime
+import clipper.runtime.cuda_runtime as cuda_runtime
 
 
 class CudaBootstrapTests(unittest.TestCase):
