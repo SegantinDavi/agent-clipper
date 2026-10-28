@@ -411,6 +411,15 @@ def create_graph():
 
 def run_with_review(app, initial_state: VideoState, graph_config: dict, restart: bool = False,
                     review_port: int = 8765):
+    if restart:
+        thread_id = (graph_config or {}).get("configurable", {}).get("thread_id")
+        checkpointer = getattr(app, "checkpointer", None)
+        if thread_id and checkpointer:
+            purge_thread_checkpoints(checkpointer, thread_id)
+            logger.info("Purged existing checkpoints for thread '%s' due to --restart.", thread_id)
+        if isinstance(initial_state, dict):
+            initial_state["review_session"] = uuid.uuid4().hex
+
     snapshot = app.get_state(graph_config)
     if restart or not snapshot.values:
         result = app.invoke(initial_state, config=graph_config)

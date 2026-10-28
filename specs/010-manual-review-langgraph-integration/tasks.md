@@ -50,14 +50,14 @@
 
 ### Tests for User Story 1
 
-- [ ] T005 [P] [US1] Add unit test for completed run early exit in `tests/test_review.py`
-- [ ] T006 [P] [US1] Add unit test for `--restart` purging SQLite checkpoints in `tests/test_review.py`
-- [ ] T007 [P] [US1] Add integration test for crash-safe resumption after interrupt without `--restart` in `tests/test_review.py`
+- [X] T005 [P] [US1] Add unit test for completed run early exit in `tests/test_review.py`
+- [X] T006 [P] [US1] Add unit test for `--restart` purging SQLite checkpoints in `tests/test_review.py`
+- [X] T007 [P] [US1] Add integration test for crash-safe resumption after interrupt without `--restart` in `tests/test_review.py`
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement `--restart` checkpoint purge and completed run handling in `run_with_review` in `src/clipper/core/orchestrator.py`
-- [ ] T009 [US1] Update `run_with_review` to access `app.checkpointer` for SQLite thread purge on `--restart` without altering CLI caller signature in `src/clipper/core/orchestrator.py`
+- [X] T008 [US1] Implement `--restart` checkpoint purge and completed run handling in `run_with_review` in `src/clipper/core/orchestrator.py`
+- [X] T009 [US1] Update `run_with_review` to access `app.checkpointer` for SQLite thread purge on `--restart` without altering CLI caller signature in `src/clipper/core/orchestrator.py`
 
 **Checkpoint**: User Story 1 is functional and verifiable independently as the MVP increment.
 

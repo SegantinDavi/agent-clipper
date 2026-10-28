@@ -245,6 +245,105 @@ class ReviewTests(unittest.TestCase):
             self.assertEqual(self.get_sqlite_checkpoint_count(db_path, target_thread), (0, 0))
             self.assertEqual(self.get_sqlite_checkpoint_count(db_path, other_thread), (1, 0))
 
+    def test_completed_run_exits_early_without_reprocessing(self):
+        calls = []
+        editor_calls = []
+        thread_id = "test-completed-thread"
+        graph_config = {"configurable": {"thread_id": thread_id}}
+        database = str(self.root / "state_completed.db")
+        state = self.build_test_state()
+
+        with patch.object(orchestrator, "cut_and_format_video", return_value=[]):
+            with SqliteSaver.from_conn_string(database) as saver:
+                app = self.build_graph(upstream_calls=calls, editor_calls=editor_calls).compile(checkpointer=saver)
+                with patch.object(orchestrator, "wait_for_approval", return_value=[1]):
+                    first_run = orchestrator.run_with_review(app, state, graph_config)
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(len(editor_calls), 1)
+                self.assertTrue(first_run.get("approval_complete"))
+
+                # Second run on completed thread without restart must exit immediately
+                with patch.object(orchestrator, "wait_for_approval") as mock_wait:
+                    second_run = orchestrator.run_with_review(app, state, graph_config, restart=False)
+                    mock_wait.assert_not_called()
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(len(editor_calls), 1)
+                self.assertEqual(second_run.get("approved_cut_ids"), [1])
+
+    def test_restart_purges_checkpoints_and_restarts_from_beginning(self):
+        calls = []
+        target_thread = "target-restart-thread"
+        other_thread = "other-preserved-thread"
+        database = str(self.root / "state_restart.db")
+        state = self.build_test_state()
+        state["review_session"] = "old-session"
+
+        with patch.object(orchestrator, "cut_and_format_video", return_value=[]):
+            with SqliteSaver.from_conn_string(database) as saver:
+                saver.setup()
+                # Populate other_thread
+                with saver.conn:
+                    saver.conn.execute(
+                        "INSERT INTO checkpoints (thread_id, checkpoint_ns, checkpoint_id, type) VALUES (?, '', 'other-chk', 'test')",
+                        (other_thread,)
+                    )
+                app = self.build_graph(upstream_calls=calls).compile(checkpointer=saver)
+
+                # Run target_thread to completion
+                with patch.object(orchestrator, "wait_for_approval", return_value=[1]):
+                    orchestrator.run_with_review(app, state, {"configurable": {"thread_id": target_thread}})
+                self.assertEqual(len(calls), 1)
+                chk_count, _ = self.get_sqlite_checkpoint_count(database, target_thread)
+                self.assertGreater(chk_count, 0)
+
+                # Now run with restart=True
+                with patch.object(orchestrator, "purge_thread_checkpoints", wraps=orchestrator.purge_thread_checkpoints) as spy_purge:
+                    with patch.object(orchestrator, "wait_for_approval", return_value=[2]):
+                        result = orchestrator.run_with_review(app, state, {"configurable": {"thread_id": target_thread}}, restart=True)
+                    spy_purge.assert_called_once_with(app.checkpointer, target_thread)
+
+                # Upstream must have run again (count 2)
+                self.assertEqual(len(calls), 2)
+                self.assertEqual(result.get("approved_cut_ids"), [2])
+                self.assertNotEqual(state["review_session"], "old-session")
+                # other_thread must remain untouched
+                other_chk, _ = self.get_sqlite_checkpoint_count(database, other_thread)
+                self.assertEqual(other_chk, 1)
+
+    def test_crash_safe_resumption_after_interrupt_without_restart(self):
+        calls = []
+        editor_calls = []
+        thread_id = "crash-resume-thread"
+        graph_config = {"configurable": {"thread_id": thread_id}}
+        database = str(self.root / "state_crash.db")
+        state = self.build_test_state()
+
+        with patch.object(orchestrator, "cut_and_format_video", return_value=[]):
+            # Phase 1: Initial run crashes while waiting for approval
+            with SqliteSaver.from_conn_string(database) as saver:
+                app = self.build_graph(upstream_calls=calls, editor_calls=editor_calls).compile(checkpointer=saver)
+                with patch.object(orchestrator, "wait_for_approval", side_effect=KeyboardInterrupt):
+                    with self.assertRaises(KeyboardInterrupt):
+                        orchestrator.run_with_review(app, state, graph_config, restart=False)
+
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(len(editor_calls), 0)
+                snapshot = app.get_state(graph_config)
+                self.assertTrue(any(task.interrupts for task in snapshot.tasks))
+
+            # Phase 2: Relaunch container / new run_with_review call with same thread_id and restart=False
+            with SqliteSaver.from_conn_string(database) as saver:
+                app = self.build_graph(upstream_calls=calls, editor_calls=editor_calls).compile(checkpointer=saver)
+                with patch.object(orchestrator, "wait_for_approval", return_value=[2]):
+                    result = orchestrator.run_with_review(app, state, graph_config, restart=False)
+
+                # Upstream must NOT have been re-executed
+                self.assertEqual(len(calls), 1)
+                # Editor must have executed
+                self.assertEqual(len(editor_calls), 1)
+                self.assertEqual(result.get("approved_cut_ids"), [2])
+                self.assertTrue(result.get("approval_complete"))
+
 
 if __name__ == "__main__":
     unittest.main()
