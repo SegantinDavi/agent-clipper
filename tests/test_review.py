@@ -1,6 +1,7 @@
 import tests
 from html.parser import HTMLParser
 from pathlib import Path
+import sqlite3
 import tempfile
 from threading import Thread
 import unittest
@@ -15,8 +16,9 @@ from moviepy.editor import ColorClip, VideoFileClip
 
 import clipper.core.orchestrator as orchestrator
 from clipper.review.review import (
-    ApprovalDecision, ReviewManifest, create_review_server, prepare_review,
-    render_review_page, validate_approval, wait_for_approval,
+    ApprovalDecision, ReviewManifest, create_review_server, load_approval_decision,
+    prepare_review, render_review_page, save_approval_decision, validate_approval,
+    wait_for_approval,
 )
 from clipper.core.schemas import CorteVideo
 from clipper.video.pause_editing import PauseSettings, identity_plan
@@ -110,15 +112,56 @@ class ReviewTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             prepare_review(str(source_path), [CorteVideo(title="Bad", start_time=-1, end_time=9)], str(self.root))
 
-    def build_graph(self, upstream_calls):
+    def create_test_checkpointer(self, db_filename="state.db"):
+        return SqliteSaver.from_conn_string(str(self.root / db_filename))
+
+    def get_sqlite_checkpoint_count(self, db_path: str, thread_id: str) -> tuple[int, int]:
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='checkpoints'")
+            if not cursor.fetchone():
+                return 0, 0
+            cursor.execute("SELECT COUNT(*) FROM checkpoints WHERE thread_id = ?", (thread_id,))
+            checkpoints_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM writes WHERE thread_id = ?", (thread_id,))
+            writes_count = cursor.fetchone()[0]
+            return checkpoints_count, writes_count
+
+    def build_test_state(self, **overrides) -> dict:
+        source_path = self.root / "source.mp4"
+        if not source_path.exists():
+            source_path.touch()
+        state = {
+            "video_url": "https://www.youtube.com/watch?v=mock",
+            "video_path": str(source_path),
+            "audio_chunks": [],
+            "transcript_grouped": "Mock transcription",
+            "word_timestamps": [],
+            "raciocinio_bruto": "Mock reasoning",
+            "cortes_finais": [cut.model_dump() for cut in self.cuts],
+            "review_directory": str(self.root),
+            "review_session": "test-session-token",
+            "approved_cut_ids": [],
+            "approval_complete": False,
+        }
+        state.update(overrides)
+        return state
+
+    def build_graph(self, upstream_calls=None, editor_calls=None, custom_approval=None):
         def upstream(state):
-            upstream_calls.append(True)
+            if upstream_calls is not None:
+                upstream_calls.append(True)
             return state
+
+        def editor(state):
+            if editor_calls is not None:
+                editor_calls.append(True)
+            return orchestrator.editor_node(state)
 
         graph = StateGraph(orchestrator.VideoState)
         graph.add_node("upstream", upstream)
-        graph.add_node("approval", orchestrator.approval_node)
-        graph.add_node("editor", orchestrator.editor_node)
+        graph.add_node("approval", custom_approval or orchestrator.approval_node)
+        graph.add_node("editor", editor if editor_calls is not None else orchestrator.editor_node)
         graph.add_edge(START, "upstream")
         graph.add_edge("upstream", "approval")
         graph.add_edge("approval", "editor")
@@ -162,6 +205,45 @@ class ReviewTests(unittest.TestCase):
     def test_editor_cannot_bypass_approval(self):
         with self.assertRaisesRegex(ValueError, "approval"):
             orchestrator.editor_node({"cortes_finais": [self.cuts[0].model_dump()]})
+
+    def test_atomic_decision_serialization_and_loading(self):
+        rev_dir = self.root / "atomic_rev"
+        rev_dir.mkdir()
+        self.assertIsNone(load_approval_decision(rev_dir))
+        dest = save_approval_decision(rev_dir, [1, 2])
+        self.assertTrue(dest.exists())
+        self.assertFalse((rev_dir / "decision.partial.json").exists())
+        self.assertEqual(load_approval_decision(rev_dir, cut_count=2), [1, 2])
+        # Corrupted decision returns None
+        dest.write_text("not json", encoding="utf-8")
+        self.assertIsNone(load_approval_decision(rev_dir, cut_count=2))
+
+    def test_purge_thread_checkpoints_clears_only_target_thread(self):
+        db_path = str(self.root / "test_purge.db")
+        with SqliteSaver.from_conn_string(db_path) as saver:
+            saver.setup()
+            target_thread = "target-thread"
+            other_thread = "other-thread"
+            with saver.conn:
+                saver.conn.execute(
+                    "INSERT INTO checkpoints (thread_id, checkpoint_ns, checkpoint_id, type) VALUES (?, '', 'chk-1', 'test')",
+                    (target_thread,)
+                )
+                saver.conn.execute(
+                    "INSERT INTO writes (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type) VALUES (?, '', 'chk-1', 'task-1', 0, 'c', 't')",
+                    (target_thread,)
+                )
+                saver.conn.execute(
+                    "INSERT INTO checkpoints (thread_id, checkpoint_ns, checkpoint_id, type) VALUES (?, '', 'chk-2', 'test')",
+                    (other_thread,)
+                )
+            self.assertEqual(self.get_sqlite_checkpoint_count(db_path, target_thread), (1, 1))
+            self.assertEqual(self.get_sqlite_checkpoint_count(db_path, other_thread), (1, 0))
+
+            orchestrator.purge_thread_checkpoints(saver, target_thread)
+
+            self.assertEqual(self.get_sqlite_checkpoint_count(db_path, target_thread), (0, 0))
+            self.assertEqual(self.get_sqlite_checkpoint_count(db_path, other_thread), (1, 0))
 
 
 if __name__ == "__main__":

@@ -428,6 +428,23 @@ def run_with_review(app, initial_state: VideoState, graph_config: dict, restart:
     return result
 
 
+def purge_thread_checkpoints(conn_or_checkpointer, thread_id: str) -> None:
+    """Deletes all checkpoints and write records for a given thread_id from SQLite.
+
+    Accepts either an active sqlite3.Connection or an object with a .conn attribute
+    (such as LangGraph's SqliteSaver or CompiledStateGraph.checkpointer).
+    """
+    conn = getattr(conn_or_checkpointer, "conn", conn_or_checkpointer)
+    with conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('checkpoints', 'writes')")
+        existing_tables = {row[0] for row in cursor.fetchall()}
+        if "checkpoints" in existing_tables:
+            conn.execute("DELETE FROM checkpoints WHERE thread_id = ?", (thread_id,))
+        if "writes" in existing_tables:
+            conn.execute("DELETE FROM writes WHERE thread_id = ?", (thread_id,))
+
+
 def checkpoint_thread_id(video_url: str) -> str:
     identity = "\0".join((video_url, LLM_PROVIDER, MODEL_NAME, LLM_BASE_URL,
                            PauseSettings().model_dump_json()))

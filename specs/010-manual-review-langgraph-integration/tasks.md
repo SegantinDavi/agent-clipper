@@ -24,8 +24,8 @@
 
 **Purpose**: Test harness preparation and environment baseline
 
-- [ ] T001 Verify testing environment and dependencies in `src/clipper/core/orchestrator.py` and `tests/test_review.py`
-- [ ] T002 [P] Set up test fixture helpers for SQLite checkpoint database and mock graph runners in `tests/test_review.py`
+- [X] T001 Verify testing environment and dependencies in `src/clipper/core/orchestrator.py` and `tests/test_review.py`
+- [X] T002 [P] Set up test fixture helpers for SQLite checkpoint database and mock graph runners in `tests/test_review.py`
 
 ---
 
@@ -35,8 +35,8 @@
 
 **⚠️ CRITICAL**: Must be completed before implementing user stories
 
-- [ ] T003 Implement SQLite thread checkpoint purge function `purge_thread_checkpoints` in `src/clipper/core/orchestrator.py`
-- [ ] T004 [P] Verify and enforce `ApprovalDecision` schema and atomic serialization helper in `src/clipper/review/review.py`
+- [X] T003 Implement SQLite thread checkpoint purge function `purge_thread_checkpoints` in `src/clipper/core/orchestrator.py`
+- [X] T004 [P] Verify and enforce `ApprovalDecision` schema and atomic serialization helper in `src/clipper/review/review.py`
 
 **Checkpoint**: Foundation ready - user story implementation can begin
 
