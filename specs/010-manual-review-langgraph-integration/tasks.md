@@ -71,13 +71,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T010 [P] [US2] Add unit test verifying `approval_node` calls `interrupt()` with payload and commits interrupt state in `tests/test_review.py`
-- [ ] T011 [P] [US2] Add unit test for `run_with_review` managing external HTTP server and resuming with `Command(resume=...)` in `tests/test_review.py`
+- [X] T010 [P] [US2] Add unit test verifying `approval_node` calls `interrupt()` with payload and commits interrupt state in `tests/test_review.py`
+- [X] T011 [P] [US2] Add unit test for `run_with_review` managing external HTTP server and resuming with `Command(resume=...)` in `tests/test_review.py`
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Refactor `approval_node` to strictly adhere to the HITL interrupt and resume contract in `src/clipper/core/orchestrator.py`
-- [ ] T013 [US2] Refactor `run_with_review` external loop to drive review server without blocking graph threads in `src/clipper/core/orchestrator.py`
+- [X] T012 [US2] Refactor `approval_node` to strictly adhere to the HITL interrupt and resume contract in `src/clipper/core/orchestrator.py`
+- [X] T013 [US2] Refactor `run_with_review` external loop to drive review server without blocking graph threads in `src/clipper/core/orchestrator.py`
 
 **Checkpoint**: User Story 2 is complete. Review server operates completely decoupled from graph threads.
 

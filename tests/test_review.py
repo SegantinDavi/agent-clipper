@@ -12,6 +12,7 @@ from urllib.request import Request, urlopen
 
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
 from moviepy.editor import ColorClip, VideoFileClip
 
 import clipper.core.orchestrator as orchestrator
@@ -343,6 +344,80 @@ class ReviewTests(unittest.TestCase):
                 self.assertEqual(len(editor_calls), 1)
                 self.assertEqual(result.get("approved_cut_ids"), [2])
                 self.assertTrue(result.get("approval_complete"))
+
+    def test_approval_node_interrupt_payload_and_state_commitment(self):
+        """T010: Verify approval_node calls interrupt() with structured payload and commits interrupt snapshot."""
+        db_path = str(self.root / "state_t010.db")
+        thread_id = "test-t010-thread"
+        graph_config = {"configurable": {"thread_id": thread_id}}
+        state = self.build_test_state()
+
+        with SqliteSaver.from_conn_string(db_path) as saver:
+            app = self.build_graph().compile(checkpointer=saver)
+
+            result = app.invoke(state, config=graph_config)
+            self.assertTrue(result.get("__interrupt__"))
+
+            snapshot = app.get_state(graph_config)
+            self.assertEqual(len(snapshot.tasks), 1)
+            task = snapshot.tasks[0]
+            self.assertEqual(task.name, "approval")
+            self.assertEqual(len(task.interrupts), 1)
+
+            payload = task.interrupts[0].value
+            self.assertEqual(payload, {"review_directory": str(self.root), "cut_count": len(self.cuts)})
+
+            # Checkpoint snapshot must NOT have committed approval_complete or approved_cut_ids
+            self.assertFalse(snapshot.values.get("approval_complete"))
+            self.assertEqual(snapshot.values.get("approved_cut_ids"), [])
+
+            # Check SQLite tables directly to verify durability
+            chk_count, write_count = self.get_sqlite_checkpoint_count(db_path, thread_id)
+            self.assertGreater(chk_count, 0)
+
+            # Test resumption with invalid cut ID raises ValueError without mutating state
+            with self.assertRaises(ValueError):
+                app.invoke(Command(resume={"approved_ids": [99]}), config=graph_config)
+
+        # Empty candidate cuts must bypass interrupt
+        state_empty = self.build_test_state(cortes_finais=[])
+        with SqliteSaver.from_conn_string(str(self.root / "state_t010_empty.db")) as saver:
+            app = self.build_graph().compile(checkpointer=saver)
+            res_empty = app.invoke(state_empty, config={"configurable": {"thread_id": "empty-cuts"}})
+            self.assertFalse(res_empty.get("__interrupt__"))
+            self.assertTrue(res_empty.get("approval_complete"))
+            self.assertEqual(res_empty.get("approved_cut_ids"), [])
+
+    def test_run_with_review_manages_server_and_resumes_with_command(self):
+        """T011: Verify run_with_review drives external server and resumes with Command(resume=...)."""
+        db_path = str(self.root / "state_t011.db")
+        thread_id = "test-t011-thread"
+        graph_config = {"configurable": {"thread_id": thread_id}}
+        state = self.build_test_state()
+        editor_calls = []
+
+        with patch.object(orchestrator, "cut_and_format_video", return_value=[str(self.root / "out.mp4")]) as mock_cut:
+            with SqliteSaver.from_conn_string(db_path) as saver:
+                app = self.build_graph(editor_calls=editor_calls).compile(checkpointer=saver)
+
+                with patch.object(orchestrator, "wait_for_approval", return_value=[2]) as mock_wait:
+                    result = orchestrator.run_with_review(app, state, graph_config, review_port=9123)
+
+                    mock_wait.assert_called_once_with(str(self.root), port=9123)
+                    mock_cut.assert_called_once()
+                    self.assertEqual(len(editor_calls), 1)
+                    self.assertTrue(result.get("approval_complete"))
+                    self.assertEqual(result.get("approved_cut_ids"), [2])
+
+                # Server abort (e.g. KeyboardInterrupt) leaves interrupt state in checkpointer
+                thread_id_abort = "test-t011-abort"
+                config_abort = {"configurable": {"thread_id": thread_id_abort}}
+                with patch.object(orchestrator, "wait_for_approval", side_effect=KeyboardInterrupt):
+                    with self.assertRaises(KeyboardInterrupt):
+                        orchestrator.run_with_review(app, state, config_abort)
+
+                snap_abort = app.get_state(config_abort)
+                self.assertTrue(any(t.interrupts for t in snap_abort.tasks))
 
 
 if __name__ == "__main__":
