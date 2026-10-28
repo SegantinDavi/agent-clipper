@@ -419,6 +419,94 @@ class ReviewTests(unittest.TestCase):
                 snap_abort = app.get_state(config_abort)
                 self.assertTrue(any(t.interrupts for t in snap_abort.tasks))
 
+    def test_resuming_with_valid_decision_bypasses_http_server(self):
+        """T014: Verify resuming with pre-existing valid decision.json bypasses HTTP server."""
+        db_path = str(self.root / "state_t014.db")
+        thread_id = "test-t014-thread"
+        graph_config = {"configurable": {"thread_id": thread_id}}
+        state = self.build_test_state()
+        editor_calls = []
+
+        save_approval_decision(self.root, [1])
+
+        with patch.object(orchestrator, "cut_and_format_video", return_value=[str(self.root / "out.mp4")]) as mock_cut:
+            with SqliteSaver.from_conn_string(db_path) as saver:
+                app = self.build_graph(editor_calls=editor_calls).compile(checkpointer=saver)
+
+                with patch.object(orchestrator, "wait_for_approval") as mock_wait:
+                    result = orchestrator.run_with_review(app, state, graph_config, restart=False)
+
+                    mock_wait.assert_not_called()
+                    mock_cut.assert_called_once()
+                    self.assertEqual(len(editor_calls), 1)
+                    self.assertTrue(result.get("approval_complete"))
+                    self.assertEqual(result.get("approved_cut_ids"), [1])
+
+                thread_id_resume = "test-t014-resume"
+                config_resume = {"configurable": {"thread_id": thread_id_resume}}
+                rev_dir_resume = self.root / "rev_resume"
+                rev_dir_resume.mkdir()
+                (rev_dir_resume / "review.json").write_text((self.root / "review.json").read_text(encoding="utf-8"), encoding="utf-8")
+                state_resume = self.build_test_state(review_directory=str(rev_dir_resume))
+
+                app.invoke(state_resume, config=config_resume)
+                snap = app.get_state(config_resume)
+                self.assertTrue(any(t.interrupts for t in snap.tasks))
+
+                save_approval_decision(rev_dir_resume, [2])
+
+                with patch.object(orchestrator, "wait_for_approval") as mock_wait_resume:
+                    res_resume = orchestrator.run_with_review(app, state_resume, config_resume, restart=False)
+                    mock_wait_resume.assert_not_called()
+                    self.assertTrue(res_resume.get("approval_complete"))
+                    self.assertEqual(res_resume.get("approved_cut_ids"), [2])
+
+    def test_corrupted_or_missing_decision_triggers_fallback_to_server(self):
+        """T015: Verify corrupted or missing decision.json triggers fallback to review server."""
+        db_path = str(self.root / "state_t015.db")
+        thread_id_missing = "test-t015-missing"
+        config_missing = {"configurable": {"thread_id": thread_id_missing}}
+        state_missing = self.build_test_state()
+
+        with patch.object(orchestrator, "cut_and_format_video", return_value=[]):
+            with SqliteSaver.from_conn_string(db_path) as saver:
+                app = self.build_graph().compile(checkpointer=saver)
+
+                # Scenario 1: Missing decision.json -> falls back to wait_for_approval
+                self.assertFalse((self.root / "decision.json").exists())
+                with patch.object(orchestrator, "wait_for_approval", return_value=[1]) as mock_wait:
+                    res1 = orchestrator.run_with_review(app, state_missing, config_missing, restart=False)
+                    mock_wait.assert_called_once_with(str(self.root), port=8765)
+                    self.assertEqual(res1.get("approved_cut_ids"), [1])
+
+                # Scenario 2: Corrupted decision.json (invalid JSON) -> falls back to wait_for_approval
+                thread_id_corrupt1 = "test-t015-corrupt1"
+                config_corrupt1 = {"configurable": {"thread_id": thread_id_corrupt1}}
+                rev_dir_corrupt = self.root / "rev_corrupt"
+                rev_dir_corrupt.mkdir()
+                (rev_dir_corrupt / "review.json").write_text((self.root / "review.json").read_text(encoding="utf-8"), encoding="utf-8")
+                (rev_dir_corrupt / "decision.json").write_text("invalid json content {{{", encoding="utf-8")
+                state_corrupt = self.build_test_state(review_directory=str(rev_dir_corrupt))
+
+                with patch.object(orchestrator, "wait_for_approval", return_value=[2]) as mock_wait_corrupt:
+                    res2 = orchestrator.run_with_review(app, state_corrupt, config_corrupt1, restart=False)
+                    mock_wait_corrupt.assert_called_once_with(str(rev_dir_corrupt), port=8765)
+                    self.assertEqual(res2.get("approved_cut_ids"), [2])
+
+                # Scenario 3: Invalid decision.json content (out of range cut IDs) -> falls back to wait_for_approval
+                thread_id_corrupt2 = "test-t015-corrupt2"
+                config_corrupt2 = {"configurable": {"thread_id": thread_id_corrupt2}}
+                rev_dir_invalid = self.root / "rev_invalid"
+                rev_dir_invalid.mkdir()
+                (rev_dir_invalid / "review.json").write_text((self.root / "review.json").read_text(encoding="utf-8"), encoding="utf-8")
+                (rev_dir_invalid / "decision.json").write_text('{"approved_ids": [999]}', encoding="utf-8")
+                state_invalid = self.build_test_state(review_directory=str(rev_dir_invalid))
+
+                with patch.object(orchestrator, "wait_for_approval", return_value=[1]) as mock_wait_invalid:
+                    res3 = orchestrator.run_with_review(app, state_invalid, config_corrupt2, restart=False)
+                    mock_wait_invalid.assert_called_once_with(str(rev_dir_invalid), port=8765)
+                    self.assertEqual(res3.get("approved_cut_ids"), [1])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -91,12 +91,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T014 [P] [US3] Add unit test for resuming with pre-existing valid `decision.json` bypassing HTTP server in `tests/test_review.py`
-- [ ] T015 [P] [US3] Add unit test for corrupted or missing `decision.json` triggering fallback to review server in `tests/test_review.py`
+- [X] T014 [P] [US3] Add unit test for resuming with pre-existing valid `decision.json` bypassing HTTP server in `tests/test_review.py`
+- [X] T015 [P] [US3] Add unit test for corrupted or missing `decision.json` triggering fallback to review server in `tests/test_review.py`
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Implement pre-server `decision.json` check and validation before launching HTTP server in `run_with_review` in `src/clipper/core/orchestrator.py`
+- [X] T016 [US3] Implement pre-server `decision.json` check and validation before launching HTTP server in `run_with_review` in `src/clipper/core/orchestrator.py`
 
 **Checkpoint**: All user stories (US1, US2, US3) are fully functional and integrated.
 

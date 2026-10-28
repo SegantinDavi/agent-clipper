@@ -36,7 +36,13 @@ from clipper.core.prompts import (
 from clipper.core.ingestion import download_video, transcribe_audio_chunk
 from clipper.core.node_0 import node_0_preventive_slicing
 from clipper.video.editor import cut_and_format_video
-from clipper.review.review import load_review_plans, prepare_review, validate_approval, wait_for_approval
+from clipper.review.review import (
+    load_approval_decision,
+    load_review_plans,
+    prepare_review,
+    validate_approval,
+    wait_for_approval,
+)
 from clipper.video.pause_editing import PauseSettings
 
 from clipper.runtime.config import (
@@ -434,15 +440,25 @@ def run_with_review(app, initial_state: VideoState, graph_config: dict, restart:
     while isinstance(result, dict) and result.get("__interrupt__"):
         snapshot = app.get_state(graph_config)
         review_dir = snapshot.values.get("review_directory")
-        if not review_dir:
+        cut_count = None
+        if isinstance(snapshot.values.get("cortes_finais"), list):
+            cut_count = len(snapshot.values["cortes_finais"])
+        if not review_dir or cut_count is None:
             for task in snapshot.tasks:
                 if task.interrupts and isinstance(task.interrupts[0].value, dict):
-                    review_dir = task.interrupts[0].value.get("review_directory")
-                    if review_dir:
+                    if not review_dir:
+                        review_dir = task.interrupts[0].value.get("review_directory")
+                    if cut_count is None:
+                        cut_count = task.interrupts[0].value.get("cut_count")
+                    if review_dir and cut_count is not None:
                         break
         if not review_dir:
             raise RuntimeError("Review directory not found in interrupted graph state.")
-        ids = wait_for_approval(review_dir, port=review_port)
+        ids = load_approval_decision(review_dir, cut_count=cut_count)
+        if ids is not None:
+            logger.info("Found existing valid decision in %s: %s. Resuming without starting review server.", review_dir, ids)
+        else:
+            ids = wait_for_approval(review_dir, port=review_port)
         result = app.invoke(Command(resume={"approved_ids": ids}), config=graph_config)
     return result
 
