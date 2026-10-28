@@ -15,7 +15,16 @@ tests/
 
 ## Commands
 
-cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] pytest [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] ruff check .
+```bash
+# Run all unit and integration tests
+PYTHONPATH=src venv/bin/python -m unittest discover tests/ -p "test_*.py"
+
+# Run review & HITL crash recovery tests
+PYTHONPATH=src venv/bin/python -m unittest tests/test_review.py
+
+# Run pipeline execution
+bash run_pipeline.sh
+```
 
 ## Code Style
 

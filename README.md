@@ -2,10 +2,10 @@
 
 Um pipeline com aprovação humana dos cortes, LLM local via Ollama ou via API paga Gemini e processamento de mídia local em Docker para converter vídeos do YouTube em formatos curtos verticais (YouTube Shorts / TikTok / Reels).
 
-| Perfil (`LLM_PROVIDER`) | LLM | faster-whisper |
-| --- | --- | --- |
-| `ollama` | Qwen2.5:14b local, usando a VRAM | CPU / int8 |
-| `gemini` | Modelo configurado na API paga Gemini | GPU CUDA / float16 |
+| Perfil (`LLM_PROVIDER`) | LLM                                   | faster-whisper     |
+| ----------------------- | ------------------------------------- | ------------------ |
+| `ollama`                | Qwen2.5:14b local, usando a VRAM      | CPU / int8         |
+| `gemini`                | Modelo configurado na API paga Gemini | GPU CUDA / float16 |
 
 Execute `bash run_pipeline.sh` ou `python -m clipper.core.orchestrator` em um terminal para escolher o perfil, modelo, URL e se deseja encurtar pausas. Enter aceita o padrão exibido. O menu aparece antes de inicializar CUDA; a chave Gemini, quando ausente, é solicitada sem eco. As escolhas valem para a execução atual; edite `.env` para mudar os padrões. O menu não grava credenciais.
 
@@ -46,7 +46,7 @@ flowchart TD
    - Com Ollama, `faster-whisper` roda na CPU/int8 e a VRAM fica para o Qwen. Com Gemini, Whisper roda na GPU/float16 e a LLM permanece na API.
    - Fatiamento preventivo de áudio via FFmpeg em pausas silenciosas (`node_0.py`) para evitar estouro de contexto e esgotamento de memória.
    - Coleta de lixo forçada (`gc.collect()`) após processamento de chunks.
-4. **Resiliência e Persistência**: Grafo compilado com `SqliteSaver` gravando checkpoints em `/app/output/estado.db`.
+4. **Resiliência e Persistência**: Grafo compilado com `SqliteSaver` gravando checkpoints em `/app/output/estado.db`. A etapa de aprovação humana utiliza **Human-in-the-Loop nativo** (`interrupt()` e `Command(resume=...)`), persistindo o estado de suspensão antes de iniciar o servidor web e tolerando reinicializações do container sem reprocessamento de nós anteriores.
 
 ---
 
@@ -174,20 +174,20 @@ Caso queira executar diretamente no ambiente host WSL2/Linux:
 
 Todas as configurações possuem valores padrão defensivos definidos em [`src/clipper/runtime/config.py`](src/clipper/runtime/config.py):
 
-| Variável          | Padrão                      | Descrição                                     |
-| ----------------- | --------------------------- | --------------------------------------------- |
-| `YOUTUBE_URL`     | _Obrigatória_               | Link do vídeo do YouTube a ser processado     |
-| `OUTPUT_DIR`      | `/app/output` ou `output`   | Diretório de destino de vídeos, logs e estado |
-| `DOWNLOADS_DIR`   | `<OUTPUT_DIR>/downloads`    | Diretório temporário dos vídeos baixados      |
-| `DB_PATH`         | `<OUTPUT_DIR>/estado.db`    | Banco SQLite para persistência do LangGraph   |
-| `LOG_FILE`        | `<OUTPUT_DIR>/pipeline.log` | Arquivo físico de logs do sistema             |
-| `LLM_PROVIDER` | `gemini` | `gemini` (API/GPU) ou `ollama` (local/CPU) |
-| `GEMINI_API_KEY` | _Obrigatória no perfil Gemini_ | Chave via ambiente, `.env` ou entrada oculta no menu |
-| `GEMINI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai/` | Endpoint Gemini compatível com o SDK OpenAI |
-| `GEMINI_MODEL` | `gemini-3.6-flash` | Modelo usado nos dois nós |
-| `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Endpoint Ollama; ajuste para alcançar o host no Docker |
-| `OLLAMA_MODEL` | `qwen2.5:14b` | Mesmo modelo local nos dois nós |
-| `LLM_MAX_COMPLETION_TOKENS` | `8192` | Limite por chamada, incluindo tokens de raciocínio |
+| Variável                    | Padrão                                                     | Descrição                                              |
+| --------------------------- | ---------------------------------------------------------- | ------------------------------------------------------ |
+| `YOUTUBE_URL`               | _Obrigatória_                                              | Link do vídeo do YouTube a ser processado              |
+| `OUTPUT_DIR`                | `/app/output` ou `output`                                  | Diretório de destino de vídeos, logs e estado          |
+| `DOWNLOADS_DIR`             | `<OUTPUT_DIR>/downloads`                                   | Diretório temporário dos vídeos baixados               |
+| `DB_PATH`                   | `<OUTPUT_DIR>/estado.db`                                   | Banco SQLite para persistência do LangGraph            |
+| `LOG_FILE`                  | `<OUTPUT_DIR>/pipeline.log`                                | Arquivo físico de logs do sistema                      |
+| `LLM_PROVIDER`              | `gemini`                                                   | `gemini` (API/GPU) ou `ollama` (local/CPU)             |
+| `GEMINI_API_KEY`            | _Obrigatória no perfil Gemini_                             | Chave via ambiente, `.env` ou entrada oculta no menu   |
+| `GEMINI_BASE_URL`           | `https://generativelanguage.googleapis.com/v1beta/openai/` | Endpoint Gemini compatível com o SDK OpenAI            |
+| `GEMINI_MODEL`              | `gemini-3.6-flash`                                         | Modelo usado nos dois nós                              |
+| `OLLAMA_BASE_URL`           | `http://localhost:11434/v1`                                | Endpoint Ollama; ajuste para alcançar o host no Docker |
+| `OLLAMA_MODEL`              | `qwen2.5:14b`                                              | Mesmo modelo local nos dois nós                        |
+| `LLM_MAX_COMPLETION_TOKENS` | `8192`                                                     | Limite por chamada, incluindo tokens de raciocínio     |
 
 O Python carrega `.env` automaticamente com `python-dotenv`, preservando variáveis já exportadas. No Docker, use `--env-file .env` (o arquivo não é copiado para a imagem). A precedência é CLI/menu > ambiente exportado > `.env` > padrão. No PowerShell, configure `$env:YOUTUBE_URL="..."` antes de executar. Não inclua chaves em commits. Atualize a venv com `pip install --prefer-binary -r requirements.txt`.
 
@@ -244,13 +244,13 @@ O sistema cruza intervalos entre palavras do Whisper com silêncio confirmado pe
 FFmpeg. Apenas os trechos confirmados são removidos do áudio e do vídeo juntos.
 Palavras têm margens de proteção; pausas curtas e as bordas do clipe são preservadas.
 
-| Variável | Padrão | Efeito |
-| --- | --- | --- |
-| `SILENCE_CUT_ENABLED` | `1` | Liga/desliga o encurtamento |
-| `SILENCE_MIN_PAUSE` | `0.6` | Pausa mínima candidata, em segundos |
-| `SILENCE_KEEP_PAUSE` | `0.2` | Pausa total mínima preservada entre palavras |
-| `SILENCE_SPEECH_PADDING` | `0.1` | Proteção mínima junto a cada borda de fala |
-| `SILENCE_THRESHOLD_DB` | `-35` | Limiar de silêncio; mais negativo é mais conservador |
+| Variável                 | Padrão | Efeito                                               |
+| ------------------------ | ------ | ---------------------------------------------------- |
+| `SILENCE_CUT_ENABLED`    | `1`    | Liga/desliga o encurtamento                          |
+| `SILENCE_MIN_PAUSE`      | `0.6`  | Pausa mínima candidata, em segundos                  |
+| `SILENCE_KEEP_PAUSE`     | `0.2`  | Pausa total mínima preservada entre palavras         |
+| `SILENCE_SPEECH_PADDING` | `0.1`  | Proteção mínima junto a cada borda de fala           |
+| `SILENCE_THRESHOLD_DB`   | `-35`  | Limiar de silêncio; mais negativo é mais conservador |
 
 Com os padrões, uma pausa de 1,5s totalmente silenciosa pode cair para cerca de
 0,2s. Se houver ruídos ou outros sons, mais tempo será preservado. Música de fundo
@@ -292,13 +292,20 @@ Revise e aprove os cortes no navegador: http://127.0.0.1:8765/
 
 Abra o endereço no navegador do Windows/WSL. Cada cartão contém o vídeo do trecho, título, breve descrição do tema, intervalo no original e duração antes/depois dos cortes de silêncio. Marque os cortes desejados e clique em **Confirmar seleção e editar**. Nenhum vem pré-selecionado. **Rejeitar todos** encerra o processamento sem gerar vídeos finais. Os previews têm resolução reduzida, com as pausas já encurtadas quando habilitado, e não contêm o corte vertical nem as legendas finais.
 
-A página só é servida enquanto a revisão está pendente; após confirmar, a edição continua no terminal. O serviço escuta apenas em localhost. Previews, metadados e decisões ficam em `output/reviews/<identificador>/`. Não há dependência de um serviço web externo.
+A página só é servida enquanto a revisão está pendente; após confirmar, a edição continua no terminal. O serviço escuta apenas em localhost. Previews, metadados e decisões ficam em `output/reviews/<identificador>/`. Não há dependência de um serviço web externo. A decisão humana é gravada atomicamente em `decision.json`.
 
-Você pode pressionar **Ctrl+C** enquanto aguarda e executar o mesmo comando, com a mesma `YOUTUBE_URL`, para retomar o checkpoint pendente sem repetir as etapas anteriores. Se a decisão já tiver sido enviada, ela será reaproveitada. Para processar novamente um vídeo já concluído, criando uma nova revisão:
+O nó de aprovação utiliza a primitiva nativa `interrupt()` do LangGraph, garantindo que o estado fique salvo no SQLite antes de abrir o servidor. Caso o container ou processo seja interrompido (via **Ctrl+C**, reinicialização do Docker ou falha do sistema), ao executar novamente o mesmo comando com a mesma `YOUTUBE_URL`:
+
+- Se a decisão já tiver sido confirmada no navegador (`decision.json`), o pipeline ignora o servidor HTTP e retoma imediatamente no nó de edição (`editor_node`).
+- Se a decisão ainda estava pendente, o pipeline reabre o servidor de revisão na mesma URL sem reprocessar download, transcrição ou análise do LLM.
+
+Para reprocessar um vídeo do início ou limpar um histórico:
 
 ```bash
 bash run_pipeline.sh --restart
 ```
+
+O uso de `--restart` purga os checkpoints e escritas específicos daquela thread no SQLite (`purge_thread_checkpoints`) e gera uma nova sessão com identificador limpo, garantindo uma execução completa do início.
 
 Se a porta estiver ocupada:
 
