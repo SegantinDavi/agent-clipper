@@ -106,9 +106,9 @@
 
 **Purpose**: Verification, non-regression testing, and static analysis
 
-- [ ] T017 [P] Execute full test suite `PYTHONPATH=src venv/bin/python -m unittest discover tests/ -p "test_*.py"` to ensure zero regressions
-- [ ] T018 [P] Run static analysis and style checks with `ruff check .` across `src/` and `tests/`
-- [ ] T019 Validate crash resilience validation scenarios per `specs/010-manual-review-langgraph-integration/quickstart.md`
+- [X] T017 [P] Execute full test suite `PYTHONPATH=src venv/bin/python -m unittest discover tests/ -p "test_*.py"` to ensure zero regressions
+- [X] T018 [P] Run static analysis and style checks with `ruff check .` across `src/` and `tests/`
+- [X] T019 Validate crash resilience validation scenarios per `specs/010-manual-review-langgraph-integration/quickstart.md`
 
 ---
 
