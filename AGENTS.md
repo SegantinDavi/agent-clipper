@@ -41,6 +41,8 @@ O projeto abandonou a orquestração conversacional procedural. Todo o fluxo dev
 - Use StateGraph do langgraph.
 - Defina o estado global (VideoState) usando TypedDict, trafegando apenas URIs de arquivos (salvos no host) e objetos serializáveis enxutos.
 - **Persistência:** Configure o Checkpointer (SqliteSaver) apontando para um banco na pasta montada no Docker (ex: /app/output/estado.db) para garantir retomada caso o container sofra crash.
+- **Human-in-the-Loop Nativo (HITL):** A aprovação manual de cortes deve utilizar estritamente a primitiva `interrupt()` de `langgraph.types` dentro de `approval_node`, sem laços de bloqueio (`while`/`sleep`) internos no grafo. O servidor web de revisão deve ser executado pelo orchestrator externamente à thread de execução do LangGraph, retomando o fluxo via `Command(resume=...)`. O grafo NÃO deve ser compilado com `interrupt_before=["approval"]` para eliminar interrupções duplas.
+- **Retomada e Invalidação de Checkpoints:** Ao executar com `--restart`, o pipeline deve expurgar os registros da thread específica em SQLite (`purge_thread_checkpoints`) e gerar uma nova sessão de revisão. Ao retomar sem `--restart`, o orchestrator deve verificar previamente a existência de `decision.json` no disco antes de iniciar o servidor HTTP, injetando a decisão imediatamente se ela já foi confirmada.
 
 ##### 4. Padrão "Cognitive Routing" (Single-Model)
 
@@ -82,6 +84,10 @@ Use dois nós sequenciais operando o MESMO modelo do perfil selecionado (Qwen2.5
 - **Proibição de Telemetria Externa:** A adição de coletores de telemetria pesados (como Langfuse, Arize Phoenix ou similares) é **estritamente proibida**. O ambiente opera no limite da RAM (8GB) e introduzir essas ferramentas causará esgotamento de memória e vazamentos na VRAM. A observabilidade deve ser feita **apenas** através de logs tradicionais em arquivo (ex: `pipeline.log`).
 - **Especificação de Design (SDD):** Toda nova funcionalidade, refatoração estrutural ou mudança arquitetural deve ser obrigatoriamente precedida por um Documento de Especificação de Design (SDD) gerado via `speckit`. O agente de código deve seguir o design aprovado no SDD à risca, sem alucinar implementações não documentadas.
 
+##### 10. Atualização Contínua de Documentação e Configurações (Doc Sync)
+
+A cada finalização de tarefa, feature ou refatoração relevante, o agente deve obrigatoriamente verificar e sincronizar os arquivos de documentação e configuração afetados na raiz do projeto (como `README.md`, `AGENTS.md`, `dockerfile`, arquivos de requirements, `.env.example`, etc.), garantindo que os guias operacionais, diagramas e instruções de execução reflitam fielmente o estado real do código.
+
 ### 🏛️ Arquitetura de Agentes Determinísticos (Revisada para Hardware Restrito)
 
 Este documento detalha o padrão ouro da indústria para construir pipelines de IA que operam com a previsibilidade de um software tradicional, adaptado estritamente para operar localmente em hardware de consumo com recursos limitados (RTX 3060 12GB VRAM / WSL2 8GB RAM).
@@ -114,11 +120,13 @@ Sistemas procedurais e lineares (ou chat de agentes como AutoGen) são caóticos
 
 ```mermaid
 graph TD
-    Z["Nó 0: Fatiamento Preventivo<br>(FFmpeg Silence Detect)"] --> A
-    A["Nó 1: Ingestão<br>Whisper CPU/int8 local ou CUDA/float16 API"] --> B
-    B["Nó 2: Análise editorial<br>Qwen local ou Gemini API"] --> C
-    C["Nó 3: Extração (mesmo modelo)<br>Instructor + Pydantic"] --> D
-    D["Nó 4: Edição<br>MoviePy + Hardcoded Math Constraints"]
+    Z["Nó 1: Download<br>(yt-dlp)"] --> A["Nó 2: Fatiamento Preventivo<br>(FFmpeg Silence Detect)"]
+    A --> B["Nó 3: Transcrição Local<br>(Whisper CPU/int8 ou CUDA/float16)"]
+    B --> C["Nó 4: Pensador (Thinker)<br>(Qwen local ou Gemini API)"]
+    C --> D["Nó 5: Extrator (mesmo modelo)<br>(Instructor + Pydantic)"]
+    D --> E["Nó 6: Previews & Pausas<br>(FFmpeg na CPU)"]
+    E --> F["Nó 7: Aprovação HITL<br>(interrupt() + SQLite)"]
+    F --> G["Nó 8: Edição dos Aprovados<br>(MoviePy + Pillow 9:16)"]
 
 ```
 

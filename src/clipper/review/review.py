@@ -43,6 +43,35 @@ class ApprovalDecision(BaseModel):
     approved_ids: list[StrictInt]
 
 
+def save_approval_decision(directory: str | Path, decision_or_ids: ApprovalDecision | list[int]) -> Path:
+    """Atomically serializes an ApprovalDecision to decision.json in the specified review directory."""
+    root = Path(directory)
+    if isinstance(decision_or_ids, list):
+        decision = ApprovalDecision(approved_ids=decision_or_ids)
+    else:
+        decision = decision_or_ids
+    temporary = root / "decision.partial.json"
+    destination = root / "decision.json"
+    temporary.write_text(decision.model_dump_json(), encoding="utf-8")
+    temporary.replace(destination)
+    return destination
+
+
+def load_approval_decision(directory: str | Path, cut_count: int | None = None) -> list[int] | None:
+    """Loads and validates decision.json from the review directory if present and valid, else returns None."""
+    path = Path(directory) / "decision.json"
+    if not path.exists():
+        return None
+    try:
+        data = ApprovalDecision.model_validate_json(path.read_text(encoding="utf-8"))
+        if cut_count is not None:
+            return validate_approval(data.model_dump(), cut_count)
+        return sorted(data.approved_ids)
+    except Exception as exc:
+        logger.warning("Corrupted or invalid decision.json in %s: %s", directory, exc)
+        return None
+
+
 def validate_approval(value: dict, cut_count: int) -> list[int]:
     decision = ApprovalDecision.model_validate(value)
     ids = decision.approved_ids
@@ -204,10 +233,7 @@ def create_review_server(directory: str, port: int = 8765) -> ThreadingHTTPServe
                 if self.server.decision is not None:
                     self.send_error(409)
                     return
-                decision = ApprovalDecision(approved_ids=ids)
-                temporary = root / "decision.partial.json"
-                temporary.write_text(decision.model_dump_json(), encoding="utf-8")
-                temporary.replace(root / "decision.json")
+                save_approval_decision(root, ids)
                 self.server.decision = ids
             message = ("Seleção salva. A edição continuará no terminal." if ids
                        else "Todos os cortes foram rejeitados. Nenhum vídeo final será gerado.")
@@ -233,10 +259,9 @@ def create_review_server(directory: str, port: int = 8765) -> ThreadingHTTPServe
 def wait_for_approval(directory: str, port: int = 8765) -> list[int]:
     root = Path(directory)
     manifest = ReviewManifest.model_validate_json((root / "review.json").read_text(encoding="utf-8"))
-    saved = root / "decision.json"
-    if saved.exists():
-        decision = ApprovalDecision.model_validate_json(saved.read_text(encoding="utf-8"))
-        return validate_approval(decision.model_dump(), len(manifest.cuts))
+    saved = load_approval_decision(root, len(manifest.cuts))
+    if saved is not None:
+        return saved
     with create_review_server(directory, port) as server:
         url = f"http://127.0.0.1:{server.server_port}/"
         print(f"\nRevise e aprove os cortes no navegador: {url}\n"

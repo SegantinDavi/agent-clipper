@@ -20,4 +20,6 @@ COPY . .
 
 ENV PYTHONPATH=/app/src
 
+EXPOSE 8765
+
 CMD ["python", "-m", "clipper.core.orchestrator"]

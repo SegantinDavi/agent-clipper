@@ -36,7 +36,13 @@ from clipper.core.prompts import (
 from clipper.core.ingestion import download_video, transcribe_audio_chunk
 from clipper.core.node_0 import node_0_preventive_slicing
 from clipper.video.editor import cut_and_format_video
-from clipper.review.review import load_review_plans, prepare_review, validate_approval, wait_for_approval
+from clipper.review.review import (
+    load_approval_decision,
+    load_review_plans,
+    prepare_review,
+    validate_approval,
+    wait_for_approval,
+)
 from clipper.video.pause_editing import PauseSettings
 
 from clipper.runtime.config import (
@@ -327,7 +333,8 @@ def approval_node(state: VideoState) -> dict:
     cuts = state.get("cortes_finais", [])
     if not cuts:
         return {"approved_cut_ids": [], "approval_complete": True}
-    decision = interrupt({"review_directory": state["review_directory"], "cut_count": len(cuts)})
+    review_directory = state.get("review_directory", "")
+    decision = interrupt({"review_directory": review_directory, "cut_count": len(cuts)})
     ids = validate_approval(decision, len(cuts))
     logger.info("User approved cuts: %s", ids)
     return {"approved_cut_ids": ids, "approval_complete": True}
@@ -411,6 +418,15 @@ def create_graph():
 
 def run_with_review(app, initial_state: VideoState, graph_config: dict, restart: bool = False,
                     review_port: int = 8765):
+    if restart:
+        thread_id = (graph_config or {}).get("configurable", {}).get("thread_id")
+        checkpointer = getattr(app, "checkpointer", None)
+        if thread_id and checkpointer:
+            purge_thread_checkpoints(checkpointer, thread_id)
+            logger.info("Purged existing checkpoints for thread '%s' due to --restart.", thread_id)
+        if isinstance(initial_state, dict):
+            initial_state["review_session"] = uuid.uuid4().hex
+
     snapshot = app.get_state(graph_config)
     if restart or not snapshot.values:
         result = app.invoke(initial_state, config=graph_config)
@@ -421,11 +437,47 @@ def run_with_review(app, initial_state: VideoState, graph_config: dict, restart:
     else:
         logger.info("This run is already complete. Use --restart to process it again.")
         return snapshot.values
-    while result.get("__interrupt__"):
+    while isinstance(result, dict) and result.get("__interrupt__"):
         snapshot = app.get_state(graph_config)
-        ids = wait_for_approval(snapshot.values["review_directory"], port=review_port)
+        review_dir = snapshot.values.get("review_directory")
+        cut_count = None
+        if isinstance(snapshot.values.get("cortes_finais"), list):
+            cut_count = len(snapshot.values["cortes_finais"])
+        if not review_dir or cut_count is None:
+            for task in snapshot.tasks:
+                if task.interrupts and isinstance(task.interrupts[0].value, dict):
+                    if not review_dir:
+                        review_dir = task.interrupts[0].value.get("review_directory")
+                    if cut_count is None:
+                        cut_count = task.interrupts[0].value.get("cut_count")
+                    if review_dir and cut_count is not None:
+                        break
+        if not review_dir:
+            raise RuntimeError("Review directory not found in interrupted graph state.")
+        ids = load_approval_decision(review_dir, cut_count=cut_count)
+        if ids is not None:
+            logger.info("Found existing valid decision in %s: %s. Resuming without starting review server.", review_dir, ids)
+        else:
+            ids = wait_for_approval(review_dir, port=review_port)
         result = app.invoke(Command(resume={"approved_ids": ids}), config=graph_config)
     return result
+
+
+def purge_thread_checkpoints(conn_or_checkpointer, thread_id: str) -> None:
+    """Deletes all checkpoints and write records for a given thread_id from SQLite.
+
+    Accepts either an active sqlite3.Connection or an object with a .conn attribute
+    (such as LangGraph's SqliteSaver or CompiledStateGraph.checkpointer).
+    """
+    conn = getattr(conn_or_checkpointer, "conn", conn_or_checkpointer)
+    with conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('checkpoints', 'writes')")
+        existing_tables = {row[0] for row in cursor.fetchall()}
+        if "checkpoints" in existing_tables:
+            conn.execute("DELETE FROM checkpoints WHERE thread_id = ?", (thread_id,))
+        if "writes" in existing_tables:
+            conn.execute("DELETE FROM writes WHERE thread_id = ?", (thread_id,))
 
 
 def checkpoint_thread_id(video_url: str) -> str:

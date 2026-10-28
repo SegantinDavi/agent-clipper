@@ -1,6 +1,7 @@
 import tests
 from html.parser import HTMLParser
 from pathlib import Path
+import sqlite3
 import tempfile
 from threading import Thread
 import unittest
@@ -11,12 +12,14 @@ from urllib.request import Request, urlopen
 
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
 from moviepy.editor import ColorClip, VideoFileClip
 
 import clipper.core.orchestrator as orchestrator
 from clipper.review.review import (
-    ApprovalDecision, ReviewManifest, create_review_server, prepare_review,
-    render_review_page, validate_approval, wait_for_approval,
+    ApprovalDecision, ReviewManifest, create_review_server, load_approval_decision,
+    prepare_review, render_review_page, save_approval_decision, validate_approval,
+    wait_for_approval,
 )
 from clipper.core.schemas import CorteVideo
 from clipper.video.pause_editing import PauseSettings, identity_plan
@@ -110,15 +113,56 @@ class ReviewTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             prepare_review(str(source_path), [CorteVideo(title="Bad", start_time=-1, end_time=9)], str(self.root))
 
-    def build_graph(self, upstream_calls):
+    def create_test_checkpointer(self, db_filename="state.db"):
+        return SqliteSaver.from_conn_string(str(self.root / db_filename))
+
+    def get_sqlite_checkpoint_count(self, db_path: str, thread_id: str) -> tuple[int, int]:
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='checkpoints'")
+            if not cursor.fetchone():
+                return 0, 0
+            cursor.execute("SELECT COUNT(*) FROM checkpoints WHERE thread_id = ?", (thread_id,))
+            checkpoints_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM writes WHERE thread_id = ?", (thread_id,))
+            writes_count = cursor.fetchone()[0]
+            return checkpoints_count, writes_count
+
+    def build_test_state(self, **overrides) -> dict:
+        source_path = self.root / "source.mp4"
+        if not source_path.exists():
+            source_path.touch()
+        state = {
+            "video_url": "https://www.youtube.com/watch?v=mock",
+            "video_path": str(source_path),
+            "audio_chunks": [],
+            "transcript_grouped": "Mock transcription",
+            "word_timestamps": [],
+            "raciocinio_bruto": "Mock reasoning",
+            "cortes_finais": [cut.model_dump() for cut in self.cuts],
+            "review_directory": str(self.root),
+            "review_session": "test-session-token",
+            "approved_cut_ids": [],
+            "approval_complete": False,
+        }
+        state.update(overrides)
+        return state
+
+    def build_graph(self, upstream_calls=None, editor_calls=None, custom_approval=None):
         def upstream(state):
-            upstream_calls.append(True)
+            if upstream_calls is not None:
+                upstream_calls.append(True)
             return state
+
+        def editor(state):
+            if editor_calls is not None:
+                editor_calls.append(True)
+            return orchestrator.editor_node(state)
 
         graph = StateGraph(orchestrator.VideoState)
         graph.add_node("upstream", upstream)
-        graph.add_node("approval", orchestrator.approval_node)
-        graph.add_node("editor", orchestrator.editor_node)
+        graph.add_node("approval", custom_approval or orchestrator.approval_node)
+        graph.add_node("editor", editor if editor_calls is not None else orchestrator.editor_node)
         graph.add_edge(START, "upstream")
         graph.add_edge("upstream", "approval")
         graph.add_edge("approval", "editor")
@@ -162,6 +206,306 @@ class ReviewTests(unittest.TestCase):
     def test_editor_cannot_bypass_approval(self):
         with self.assertRaisesRegex(ValueError, "approval"):
             orchestrator.editor_node({"cortes_finais": [self.cuts[0].model_dump()]})
+
+    def test_atomic_decision_serialization_and_loading(self):
+        rev_dir = self.root / "atomic_rev"
+        rev_dir.mkdir()
+        self.assertIsNone(load_approval_decision(rev_dir))
+        dest = save_approval_decision(rev_dir, [1, 2])
+        self.assertTrue(dest.exists())
+        self.assertFalse((rev_dir / "decision.partial.json").exists())
+        self.assertEqual(load_approval_decision(rev_dir, cut_count=2), [1, 2])
+        # Corrupted decision returns None
+        dest.write_text("not json", encoding="utf-8")
+        self.assertIsNone(load_approval_decision(rev_dir, cut_count=2))
+
+    def test_purge_thread_checkpoints_clears_only_target_thread(self):
+        db_path = str(self.root / "test_purge.db")
+        with SqliteSaver.from_conn_string(db_path) as saver:
+            saver.setup()
+            target_thread = "target-thread"
+            other_thread = "other-thread"
+            with saver.conn:
+                saver.conn.execute(
+                    "INSERT INTO checkpoints (thread_id, checkpoint_ns, checkpoint_id, type) VALUES (?, '', 'chk-1', 'test')",
+                    (target_thread,)
+                )
+                saver.conn.execute(
+                    "INSERT INTO writes (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type) VALUES (?, '', 'chk-1', 'task-1', 0, 'c', 't')",
+                    (target_thread,)
+                )
+                saver.conn.execute(
+                    "INSERT INTO checkpoints (thread_id, checkpoint_ns, checkpoint_id, type) VALUES (?, '', 'chk-2', 'test')",
+                    (other_thread,)
+                )
+            self.assertEqual(self.get_sqlite_checkpoint_count(db_path, target_thread), (1, 1))
+            self.assertEqual(self.get_sqlite_checkpoint_count(db_path, other_thread), (1, 0))
+
+            orchestrator.purge_thread_checkpoints(saver, target_thread)
+
+            self.assertEqual(self.get_sqlite_checkpoint_count(db_path, target_thread), (0, 0))
+            self.assertEqual(self.get_sqlite_checkpoint_count(db_path, other_thread), (1, 0))
+
+    def test_completed_run_exits_early_without_reprocessing(self):
+        calls = []
+        editor_calls = []
+        thread_id = "test-completed-thread"
+        graph_config = {"configurable": {"thread_id": thread_id}}
+        database = str(self.root / "state_completed.db")
+        state = self.build_test_state()
+
+        with patch.object(orchestrator, "cut_and_format_video", return_value=[]):
+            with SqliteSaver.from_conn_string(database) as saver:
+                app = self.build_graph(upstream_calls=calls, editor_calls=editor_calls).compile(checkpointer=saver)
+                with patch.object(orchestrator, "wait_for_approval", return_value=[1]):
+                    first_run = orchestrator.run_with_review(app, state, graph_config)
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(len(editor_calls), 1)
+                self.assertTrue(first_run.get("approval_complete"))
+
+                # Second run on completed thread without restart must exit immediately
+                with patch.object(orchestrator, "wait_for_approval") as mock_wait:
+                    second_run = orchestrator.run_with_review(app, state, graph_config, restart=False)
+                    mock_wait.assert_not_called()
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(len(editor_calls), 1)
+                self.assertEqual(second_run.get("approved_cut_ids"), [1])
+
+    def test_restart_purges_checkpoints_and_restarts_from_beginning(self):
+        calls = []
+        target_thread = "target-restart-thread"
+        other_thread = "other-preserved-thread"
+        database = str(self.root / "state_restart.db")
+        state = self.build_test_state()
+        state["review_session"] = "old-session"
+
+        with patch.object(orchestrator, "cut_and_format_video", return_value=[]):
+            with SqliteSaver.from_conn_string(database) as saver:
+                saver.setup()
+                # Populate other_thread
+                with saver.conn:
+                    saver.conn.execute(
+                        "INSERT INTO checkpoints (thread_id, checkpoint_ns, checkpoint_id, type) VALUES (?, '', 'other-chk', 'test')",
+                        (other_thread,)
+                    )
+                app = self.build_graph(upstream_calls=calls).compile(checkpointer=saver)
+
+                # Run target_thread to completion
+                with patch.object(orchestrator, "wait_for_approval", return_value=[1]):
+                    orchestrator.run_with_review(app, state, {"configurable": {"thread_id": target_thread}})
+                self.assertEqual(len(calls), 1)
+                chk_count, _ = self.get_sqlite_checkpoint_count(database, target_thread)
+                self.assertGreater(chk_count, 0)
+
+                # Now run with restart=True
+                with patch.object(orchestrator, "purge_thread_checkpoints", wraps=orchestrator.purge_thread_checkpoints) as spy_purge:
+                    with patch.object(orchestrator, "wait_for_approval", return_value=[2]):
+                        result = orchestrator.run_with_review(app, state, {"configurable": {"thread_id": target_thread}}, restart=True)
+                    spy_purge.assert_called_once_with(app.checkpointer, target_thread)
+
+                # Upstream must have run again (count 2)
+                self.assertEqual(len(calls), 2)
+                self.assertEqual(result.get("approved_cut_ids"), [2])
+                self.assertNotEqual(state["review_session"], "old-session")
+                # other_thread must remain untouched
+                other_chk, _ = self.get_sqlite_checkpoint_count(database, other_thread)
+                self.assertEqual(other_chk, 1)
+
+    def test_crash_safe_resumption_after_interrupt_without_restart(self):
+        calls = []
+        editor_calls = []
+        thread_id = "crash-resume-thread"
+        graph_config = {"configurable": {"thread_id": thread_id}}
+        database = str(self.root / "state_crash.db")
+        state = self.build_test_state()
+
+        with patch.object(orchestrator, "cut_and_format_video", return_value=[]):
+            # Phase 1: Initial run crashes while waiting for approval
+            with SqliteSaver.from_conn_string(database) as saver:
+                app = self.build_graph(upstream_calls=calls, editor_calls=editor_calls).compile(checkpointer=saver)
+                with patch.object(orchestrator, "wait_for_approval", side_effect=KeyboardInterrupt):
+                    with self.assertRaises(KeyboardInterrupt):
+                        orchestrator.run_with_review(app, state, graph_config, restart=False)
+
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(len(editor_calls), 0)
+                snapshot = app.get_state(graph_config)
+                self.assertTrue(any(task.interrupts for task in snapshot.tasks))
+
+            # Phase 2: Relaunch container / new run_with_review call with same thread_id and restart=False
+            with SqliteSaver.from_conn_string(database) as saver:
+                app = self.build_graph(upstream_calls=calls, editor_calls=editor_calls).compile(checkpointer=saver)
+                with patch.object(orchestrator, "wait_for_approval", return_value=[2]):
+                    result = orchestrator.run_with_review(app, state, graph_config, restart=False)
+
+                # Upstream must NOT have been re-executed
+                self.assertEqual(len(calls), 1)
+                # Editor must have executed
+                self.assertEqual(len(editor_calls), 1)
+                self.assertEqual(result.get("approved_cut_ids"), [2])
+                self.assertTrue(result.get("approval_complete"))
+
+    def test_approval_node_interrupt_payload_and_state_commitment(self):
+        """T010: Verify approval_node calls interrupt() with structured payload and commits interrupt snapshot."""
+        db_path = str(self.root / "state_t010.db")
+        thread_id = "test-t010-thread"
+        graph_config = {"configurable": {"thread_id": thread_id}}
+        state = self.build_test_state()
+
+        with SqliteSaver.from_conn_string(db_path) as saver:
+            app = self.build_graph().compile(checkpointer=saver)
+
+            result = app.invoke(state, config=graph_config)
+            self.assertTrue(result.get("__interrupt__"))
+
+            snapshot = app.get_state(graph_config)
+            self.assertEqual(len(snapshot.tasks), 1)
+            task = snapshot.tasks[0]
+            self.assertEqual(task.name, "approval")
+            self.assertEqual(len(task.interrupts), 1)
+
+            payload = task.interrupts[0].value
+            self.assertEqual(payload, {"review_directory": str(self.root), "cut_count": len(self.cuts)})
+
+            # Checkpoint snapshot must NOT have committed approval_complete or approved_cut_ids
+            self.assertFalse(snapshot.values.get("approval_complete"))
+            self.assertEqual(snapshot.values.get("approved_cut_ids"), [])
+
+            # Check SQLite tables directly to verify durability
+            chk_count, write_count = self.get_sqlite_checkpoint_count(db_path, thread_id)
+            self.assertGreater(chk_count, 0)
+
+            # Test resumption with invalid cut ID raises ValueError without mutating state
+            with self.assertRaises(ValueError):
+                app.invoke(Command(resume={"approved_ids": [99]}), config=graph_config)
+
+        # Empty candidate cuts must bypass interrupt
+        state_empty = self.build_test_state(cortes_finais=[])
+        with SqliteSaver.from_conn_string(str(self.root / "state_t010_empty.db")) as saver:
+            app = self.build_graph().compile(checkpointer=saver)
+            res_empty = app.invoke(state_empty, config={"configurable": {"thread_id": "empty-cuts"}})
+            self.assertFalse(res_empty.get("__interrupt__"))
+            self.assertTrue(res_empty.get("approval_complete"))
+            self.assertEqual(res_empty.get("approved_cut_ids"), [])
+
+    def test_run_with_review_manages_server_and_resumes_with_command(self):
+        """T011: Verify run_with_review drives external server and resumes with Command(resume=...)."""
+        db_path = str(self.root / "state_t011.db")
+        thread_id = "test-t011-thread"
+        graph_config = {"configurable": {"thread_id": thread_id}}
+        state = self.build_test_state()
+        editor_calls = []
+
+        with patch.object(orchestrator, "cut_and_format_video", return_value=[str(self.root / "out.mp4")]) as mock_cut:
+            with SqliteSaver.from_conn_string(db_path) as saver:
+                app = self.build_graph(editor_calls=editor_calls).compile(checkpointer=saver)
+
+                with patch.object(orchestrator, "wait_for_approval", return_value=[2]) as mock_wait:
+                    result = orchestrator.run_with_review(app, state, graph_config, review_port=9123)
+
+                    mock_wait.assert_called_once_with(str(self.root), port=9123)
+                    mock_cut.assert_called_once()
+                    self.assertEqual(len(editor_calls), 1)
+                    self.assertTrue(result.get("approval_complete"))
+                    self.assertEqual(result.get("approved_cut_ids"), [2])
+
+                # Server abort (e.g. KeyboardInterrupt) leaves interrupt state in checkpointer
+                thread_id_abort = "test-t011-abort"
+                config_abort = {"configurable": {"thread_id": thread_id_abort}}
+                with patch.object(orchestrator, "wait_for_approval", side_effect=KeyboardInterrupt):
+                    with self.assertRaises(KeyboardInterrupt):
+                        orchestrator.run_with_review(app, state, config_abort)
+
+                snap_abort = app.get_state(config_abort)
+                self.assertTrue(any(t.interrupts for t in snap_abort.tasks))
+
+    def test_resuming_with_valid_decision_bypasses_http_server(self):
+        """T014: Verify resuming with pre-existing valid decision.json bypasses HTTP server."""
+        db_path = str(self.root / "state_t014.db")
+        thread_id = "test-t014-thread"
+        graph_config = {"configurable": {"thread_id": thread_id}}
+        state = self.build_test_state()
+        editor_calls = []
+
+        save_approval_decision(self.root, [1])
+
+        with patch.object(orchestrator, "cut_and_format_video", return_value=[str(self.root / "out.mp4")]) as mock_cut:
+            with SqliteSaver.from_conn_string(db_path) as saver:
+                app = self.build_graph(editor_calls=editor_calls).compile(checkpointer=saver)
+
+                with patch.object(orchestrator, "wait_for_approval") as mock_wait:
+                    result = orchestrator.run_with_review(app, state, graph_config, restart=False)
+
+                    mock_wait.assert_not_called()
+                    mock_cut.assert_called_once()
+                    self.assertEqual(len(editor_calls), 1)
+                    self.assertTrue(result.get("approval_complete"))
+                    self.assertEqual(result.get("approved_cut_ids"), [1])
+
+                thread_id_resume = "test-t014-resume"
+                config_resume = {"configurable": {"thread_id": thread_id_resume}}
+                rev_dir_resume = self.root / "rev_resume"
+                rev_dir_resume.mkdir()
+                (rev_dir_resume / "review.json").write_text((self.root / "review.json").read_text(encoding="utf-8"), encoding="utf-8")
+                state_resume = self.build_test_state(review_directory=str(rev_dir_resume))
+
+                app.invoke(state_resume, config=config_resume)
+                snap = app.get_state(config_resume)
+                self.assertTrue(any(t.interrupts for t in snap.tasks))
+
+                save_approval_decision(rev_dir_resume, [2])
+
+                with patch.object(orchestrator, "wait_for_approval") as mock_wait_resume:
+                    res_resume = orchestrator.run_with_review(app, state_resume, config_resume, restart=False)
+                    mock_wait_resume.assert_not_called()
+                    self.assertTrue(res_resume.get("approval_complete"))
+                    self.assertEqual(res_resume.get("approved_cut_ids"), [2])
+
+    def test_corrupted_or_missing_decision_triggers_fallback_to_server(self):
+        """T015: Verify corrupted or missing decision.json triggers fallback to review server."""
+        db_path = str(self.root / "state_t015.db")
+        thread_id_missing = "test-t015-missing"
+        config_missing = {"configurable": {"thread_id": thread_id_missing}}
+        state_missing = self.build_test_state()
+
+        with patch.object(orchestrator, "cut_and_format_video", return_value=[]):
+            with SqliteSaver.from_conn_string(db_path) as saver:
+                app = self.build_graph().compile(checkpointer=saver)
+
+                # Scenario 1: Missing decision.json -> falls back to wait_for_approval
+                self.assertFalse((self.root / "decision.json").exists())
+                with patch.object(orchestrator, "wait_for_approval", return_value=[1]) as mock_wait:
+                    res1 = orchestrator.run_with_review(app, state_missing, config_missing, restart=False)
+                    mock_wait.assert_called_once_with(str(self.root), port=8765)
+                    self.assertEqual(res1.get("approved_cut_ids"), [1])
+
+                # Scenario 2: Corrupted decision.json (invalid JSON) -> falls back to wait_for_approval
+                thread_id_corrupt1 = "test-t015-corrupt1"
+                config_corrupt1 = {"configurable": {"thread_id": thread_id_corrupt1}}
+                rev_dir_corrupt = self.root / "rev_corrupt"
+                rev_dir_corrupt.mkdir()
+                (rev_dir_corrupt / "review.json").write_text((self.root / "review.json").read_text(encoding="utf-8"), encoding="utf-8")
+                (rev_dir_corrupt / "decision.json").write_text("invalid json content {{{", encoding="utf-8")
+                state_corrupt = self.build_test_state(review_directory=str(rev_dir_corrupt))
+
+                with patch.object(orchestrator, "wait_for_approval", return_value=[2]) as mock_wait_corrupt:
+                    res2 = orchestrator.run_with_review(app, state_corrupt, config_corrupt1, restart=False)
+                    mock_wait_corrupt.assert_called_once_with(str(rev_dir_corrupt), port=8765)
+                    self.assertEqual(res2.get("approved_cut_ids"), [2])
+
+                # Scenario 3: Invalid decision.json content (out of range cut IDs) -> falls back to wait_for_approval
+                thread_id_corrupt2 = "test-t015-corrupt2"
+                config_corrupt2 = {"configurable": {"thread_id": thread_id_corrupt2}}
+                rev_dir_invalid = self.root / "rev_invalid"
+                rev_dir_invalid.mkdir()
+                (rev_dir_invalid / "review.json").write_text((self.root / "review.json").read_text(encoding="utf-8"), encoding="utf-8")
+                (rev_dir_invalid / "decision.json").write_text('{"approved_ids": [999]}', encoding="utf-8")
+                state_invalid = self.build_test_state(review_directory=str(rev_dir_invalid))
+
+                with patch.object(orchestrator, "wait_for_approval", return_value=[1]) as mock_wait_invalid:
+                    res3 = orchestrator.run_with_review(app, state_invalid, config_corrupt2, restart=False)
+                    mock_wait_invalid.assert_called_once_with(str(rev_dir_invalid), port=8765)
+                    self.assertEqual(res3.get("approved_cut_ids"), [1])
 
 
 if __name__ == "__main__":
