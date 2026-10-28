@@ -1,0 +1,24 @@
+{
+  "output": {
+    "style": "markdown",
+    "filePath": "agent-clipper_repopack.md"
+  },
+  "ignore": {
+    "customPatterns": [
+      "venv/**",
+      "__pycache__/**",
+      ".pytest_cache/**",
+      "**/*.pyc",
+      ".cache/**",
+      ".agent/**",
+      ".aider*/**",
+      "downloads/**",
+      "output/**",
+      "**/*.mp4",
+      ".env",
+      ".env.*",
+      "!.env.example",
+      "agent-clipper_repopack.md"
+    ]
+  }
+}
