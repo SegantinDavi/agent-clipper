@@ -6,6 +6,7 @@ from yt_dlp import YoutubeDL
 from faster_whisper import WhisperModel
 
 from clipper.runtime.config import WHISPER_DEVICE, WHISPER_COMPUTE_TYPE
+from clipper.runtime.cuda_runtime import get_gpu_memory_info, release_cuda_memory
 
 logger = logging.getLogger(__name__)
 
@@ -94,12 +95,39 @@ def transcribe_audio_chunk(audio_path: str) -> dict:
         )
         return {"status": "error", "message": str(e)}
     finally:
-        # The lazy segment iterator can retain the model after decoding fails.
+        before_mb = None
+        if WHISPER_DEVICE == "cuda":
+            try:
+                gpu_info = get_gpu_memory_info()
+                if gpu_info is not None:
+                    before_mb = gpu_info[0]
+            except Exception:
+                pass
+
         if segments is not None:
-            segments.close()
+            try:
+                if hasattr(segments, "close"):
+                    segments.close()
+            except Exception as close_err:
+                logger.debug("Iterator close failed: %s", close_err)
+
+        if model is not None:
+            try:
+                ct2_model = getattr(model, "model", None)
+                if ct2_model is not None and hasattr(ct2_model, "unload_model"):
+                    ct2_model.unload_model()
+            except Exception as unload_err:
+                logger.warning("Failed to unload CTranslate2 model: %s", unload_err)
+
         del segments
         del model
         gc.collect()
+
+        if WHISPER_DEVICE == "cuda":
+            try:
+                release_cuda_memory(before_mb=before_mb)
+            except Exception as cleanup_err:
+                logger.warning("GPU memory cleanup encountered an error: %s", cleanup_err)
 
 
 def download_video_and_transcript(url: str, output_dir: str = "downloads") -> dict:

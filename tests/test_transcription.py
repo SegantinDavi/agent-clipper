@@ -58,6 +58,49 @@ class TranscriptionTests(unittest.TestCase):
         self.assertEqual(result["status"], "success")
         constructor.assert_called_once_with("small", device="cpu", compute_type="int8")
 
+    def test_lazy_generator_safe_closure_and_ctranslate2_model_unload(self):
+        """T006: In finally block, safe closure of lazy generator and unload_model call on CTranslate2 model."""
+        ct2_model = MagicMock()
+        model = MagicMock()
+        model.model = ct2_model
+
+        closed = []
+
+        def failing_gen():
+            try:
+                yield MagicMock(start=0.0, end=1.0, text="hi", words=[])
+                raise RuntimeError("Abrupt fail")
+            finally:
+                closed.append(True)
+
+        model.transcribe.return_value = (failing_gen(), None)
+
+        with patch.object(ingestion, "WHISPER_DEVICE", "cuda"), \
+             patch.object(ingestion, "WhisperModel", return_value=model), \
+             patch.object(ingestion, "release_cuda_memory") as mock_release, \
+             patch.object(ingestion, "get_gpu_memory_info", return_value=(500.0, 11500.0, 12000.0)):
+            result = ingestion.transcribe_audio_chunk("example.wav")
+
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(closed, [True])
+        ct2_model.unload_model.assert_called_once()
+        mock_release.assert_called_once_with(before_mb=500.0)
+
+    def test_non_generator_segments_does_not_raise_attribute_error(self):
+        """T006: If segments is not a generator (no close method), does not raise AttributeError."""
+        model = MagicMock()
+        model.model = MagicMock()
+        # segments is a plain list, which does not have .close()
+        model.transcribe.return_value = ([], None)
+
+        with patch.object(ingestion, "WHISPER_DEVICE", "cuda"), \
+             patch.object(ingestion, "WhisperModel", return_value=model), \
+             patch.object(ingestion, "release_cuda_memory"):
+            result = ingestion.transcribe_audio_chunk("example.wav")
+
+        self.assertEqual(result["status"], "success")
+        model.model.unload_model.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
