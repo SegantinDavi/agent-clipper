@@ -27,8 +27,8 @@ description: "Task list for feature Deep CUDA VRAM Cleanup in Gemini Profile imp
 
 **Purpose**: Verify virtual environment, CUDA runtime dependencies, and existing transcription tests before making modifications
 
-- [ ] T001 Verify Python virtual environment, dependencies (`faster-whisper`, `ctranslate2`, `torch` if available), and test runner via tests/test_transcription.py
-- [ ] T002 [P] Inspect runtime configuration variables (`WHISPER_DEVICE`, `WHISPER_COMPUTE_TYPE`, `LLM_PROVIDER`) in src/clipper/runtime/config.py
+- [x] T001 Verify Python virtual environment, dependencies (`faster-whisper`, `ctranslate2`, `torch` if available), and test runner via tests/test_transcription.py
+- [x] T002 [P] Inspect runtime configuration variables (`WHISPER_DEVICE`, `WHISPER_COMPUTE_TYPE`, `LLM_PROVIDER`) in src/clipper/runtime/config.py
 
 ---
 
@@ -38,8 +38,8 @@ description: "Task list for feature Deep CUDA VRAM Cleanup in Gemini Profile imp
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Implement NVML ctypes interface and `get_gpu_memory_info(device_index: int = 0)` helper returning `tuple[float, float, float] | None` with safe error suppression in src/clipper/runtime/cuda_runtime.py
-- [ ] T004 [P] Scaffold `release_cuda_memory()` function signature, logger binding, and top-level exception guard structure in src/clipper/runtime/cuda_runtime.py
+- [x] T003 Implement NVML ctypes interface and `get_gpu_memory_info(device_index: int = 0)` helper returning `tuple[float, float, float] | None` with safe error suppression in src/clipper/runtime/cuda_runtime.py
+- [x] T004 [P] Scaffold `release_cuda_memory()` function signature, logger binding, and top-level exception guard structure in src/clipper/runtime/cuda_runtime.py
 
 **Checkpoint**: Foundation ready - NVML memory query interface and cleanup entry point scaffolded. User story implementation can now begin.
 
@@ -55,14 +55,14 @@ description: "Task list for feature Deep CUDA VRAM Cleanup in Gemini Profile imp
 
 > **NOTE: Write these tests FIRST, ensure they fail before full implementation**
 
-- [ ] T005 [P] [US1] Unit test `release_cuda_memory()` cache purging with PyTorch mocked/loaded in tests/test_cuda_cleanup.py
-- [ ] T006 [P] [US1] Unit test lazy segment generator safe closure and CTranslate2 model `unload_model()` call in `finally` block in tests/test_transcription.py
-- [ ] T007 [P] [US1] Integration test verifying multi-chunk sequential execution without cumulative memory retention or unclosed handles in tests/test_cuda_cleanup.py
+- [x] T005 [P] [US1] Unit test `release_cuda_memory()` cache purging with PyTorch mocked/loaded in tests/test_cuda_cleanup.py
+- [x] T006 [P] [US1] Unit test lazy segment generator safe closure and CTranslate2 model `unload_model()` call in `finally` block in tests/test_transcription.py
+- [x] T007 [P] [US1] Integration test verifying multi-chunk sequential execution without cumulative memory retention or unclosed handles in tests/test_cuda_cleanup.py
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement deep cache purge in `release_cuda_memory()` in src/clipper/runtime/cuda_runtime.py invoking `torch.cuda.empty_cache()` and `torch.cuda.ipc_collect()` if PyTorch is loaded/available
-- [ ] T009 [US1] Refactor `transcribe_audio_chunk()` `finally` block in src/clipper/core/ingestion.py to sample `before_mb` (when `WHISPER_DEVICE == "cuda"`), safely close `segments` (`hasattr(segments, "close")`), invoke `model.model.unload_model()` if available, delete `segments`/`model`, force `gc.collect()`, and call `release_cuda_memory(before_mb=before_mb)` when `WHISPER_DEVICE == "cuda"`
+- [x] T008 [US1] Implement deep cache purge in `release_cuda_memory()` in src/clipper/runtime/cuda_runtime.py invoking `torch.cuda.empty_cache()` and `torch.cuda.ipc_collect()` if PyTorch is loaded/available
+- [x] T009 [US1] Refactor `transcribe_audio_chunk()` `finally` block in src/clipper/core/ingestion.py to sample `before_mb` (when `WHISPER_DEVICE == "cuda"`), safely close `segments` (`hasattr(segments, "close")`), invoke `model.model.unload_model()` if available, delete `segments`/`model`, force `gc.collect()`, and call `release_cuda_memory(before_mb=before_mb)` when `WHISPER_DEVICE == "cuda"`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently (MVP delivered!).
 
