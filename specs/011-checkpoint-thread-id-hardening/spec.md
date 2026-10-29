@@ -55,25 +55,28 @@ Um operador iniciou o pipeline para um vídeo com os mesmos parâmetros de uma r
 ### Edge Cases
 
 - O que acontece se `SILENCE_MIN_PAUSE` não estiver definido (valor `None` ou ausente)? A função de hash deve usar um valor padrão documentado para garantir consistência entre ambientes.
-- O que acontece se o `MODEL_NAME` estiver vazio ou indefinido no ambiente? O hash deve usar uma string vazia ou o nome padrão do modelo, nunca falhar silenciosamente.
+- O que acontece se o `MODEL_NAME` estiver vazio ou indefinido no ambiente? A função deve utilizar o valor padrão documentado em `config.MODEL_NAME`; caso este também esteja indefinido, deve adotar string vazia (`""`), nunca falhar silenciosamente ou lançar exceção.
 - O que acontece se o banco `estado.db` contiver checkpoints de versões antigas (antes do hardening)? Esses checkpoints se tornam inacessíveis — o comportamento é equivalente a uma run completamente nova.
-- O que acontece se dois vídeos diferentes compartilharem o mesmo ID após normalização? O ID de vídeo deve ser incluído na forma bruta (sem transformação) para preservar unicidade.
+- O que acontece se uma URL do YouTube contiver parâmetros adicionais (`&t=`, `&list=`)? A função `extract_video_id` deve isolar apenas os 11 caracteres canônicos do ID do vídeo, garantindo que variações de query string para o mesmo vídeo gerem o mesmo `thread_id`.
+- O que acontece se a entrada de vídeo já for um ID alfanumérico puro ou não for uma URL reconhecida? O valor deve ser preservado na forma bruta (sem transformação) para manter unicidade.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: O sistema DEVE gerar o `thread_id` do checkpointer como um hash SHA-256 determinístico, truncado para 16 caracteres hexadecimais, garantindo unicidade e legibilidade nos logs.
-- **FR-002**: O hash DEVE ser composto pela concatenação ordenada de: `[video_id] + [LLM_PROVIDER] + [MODEL_NAME] + [SILENCE_CUT_ENABLED] + [SILENCE_MIN_PAUSE]`, com separador `|` entre campos.
-- **FR-003**: A função `checkpoint_thread_id` DEVE retornar resultados idênticos para os mesmos valores de entrada em qualquer execução (propriedade determinística).
-- **FR-004**: A função DEVE tolerar valores `None` ou ausentes para parâmetros opcionais, substituindo-os por valores padrão definidos e documentados (ex: `SILENCE_MIN_PAUSE` ausente → `"0.6"`).
+- **FR-001**: O sistema DEVE gerar o `thread_id` do checkpointer como um hash SHA-256 determinístico, truncado para 16 caracteres hexadecimais (`^[0-9a-f]{16}$`), garantindo unicidade, ausência de colisões e legibilidade nos logs.
+- **FR-002**: O hash DEVE ser composto pela concatenação ordenada canônica de: `[video_id] + [LLM_PROVIDER] + [MODEL_NAME] + [LLM_BASE_URL] + [SILENCE_CUT_ENABLED] + [SILENCE_MIN_PAUSE]`, com separador `|` entre os campos, cumprindo estritamente a Regra 7 de AGENTS.md.
+- **FR-003**: A função `checkpoint_thread_id` DEVE ser uma função pura sem dependências de I/O de rede ou disco no momento do cálculo do hash, retornando saídas determinísticas e idênticas para os mesmos parâmetros em qualquer ambiente.
+- **FR-004**: A função DEVE tolerar valores `None` ou ausentes para parâmetros opcionais, substituindo-os por valores padrão seguros e documentados derivados de `config.py` (ex: `llm_provider` ausente → `LLM_PROVIDER`, `llm_base_url` ausente → `LLM_BASE_URL`, `silence_min_pause` ausente → `"0.6"`).
 - **FR-005**: O código DEVE incluir um comentário de aviso inline documentando que alterações nesta função invalidam checkpoints existentes no `estado.db`.
-- **FR-006**: O `orchestrator.py` DEVE exibir no log de nível `INFO` o `thread_id` calculado a cada execução, permitindo rastreabilidade.
-- **FR-007**: Os testes unitários DEVEM cobrir ao menos os seguintes cenários: mesmo vídeo + provider diferente → thread_id diferente; mesmo vídeo + silêncio diferente → thread_id diferente; mesmos parâmetros → thread_id idêntico.
+- **FR-006**: O `orchestrator.py` DEVE exibir no log de nível `INFO` o `thread_id` calculado e o `video_id` correspondente a cada inicialização, permitindo rastreabilidade estruturada.
+- **FR-007**: Os testes unitários DEVEM cobrir a matriz de isolamento: mesmo vídeo + provider diferente → thread_id diferente; mesmo vídeo + modelo diferente → thread_id diferente; mesmo vídeo + endpoint diferente → thread_id diferente; mesmo vídeo + configuração de silêncio diferente → thread_id diferente; mesmos parâmetros → thread_id idêntico.
+- **FR-008**: O sistema DEVE disponibilizar a função utilitária `extract_video_id` capaz de extrair o ID único a partir de URLs do YouTube (formatos padrão `watch?v=`, encurtados `youtu.be`, embeds e com parâmetros de query adicionais), preservando identificadores puros caso a entrada não seja uma URL.
 
 ### Key Entities
 
-- **`checkpoint_thread_id`**: Função pura em `orchestrator.py` responsável por derivar o identificador único de sessão do LangGraph a partir dos parâmetros de execução. Atributos: `video_id`, `llm_provider`, `model_name`, `silence_cut_enabled`, `silence_min_pause`.
+- **`checkpoint_thread_id`**: Função pura em `orchestrator.py` responsável por derivar o identificador único de sessão do LangGraph a partir dos parâmetros de execução. Atributos: `video_id`, `llm_provider`, `model_name`, `llm_base_url`, `silence_cut_enabled`, `silence_min_pause`.
+- **`extract_video_id`**: Função utilitária em `ingestion.py` (re-exportada em `orchestrator.py`) que normaliza URLs do YouTube extraindo seu identificador canônico de 11 caracteres.
 - **`thread_id`**: String hexadecimal de 16 caracteres usada como chave primária da thread no banco SQLite do checkpointer. Determina qual sequência de estados será retomada ou iniciada.
 - **`estado.db`**: Banco SQLite persistido em `/app/output/` que armazena todos os checkpoints do LangGraph. Afetado diretamente pela mudança de algoritmo de geração do `thread_id`.
 
@@ -81,15 +84,15 @@ Um operador iniciou o pipeline para um vídeo com os mesmos parâmetros de uma r
 
 ### Measurable Outcomes
 
-- **SC-001**: 100% dos cenários de isolamento de contexto validados nos testes unitários passam sem falha — mesmo vídeo com provider diferente, modelo diferente e configuração de silêncio diferente geram `thread_id` distintos.
+- **SC-001**: 100% dos cenários de isolamento de contexto validados nos testes unitários passam sem falha — mesmo vídeo com provider diferente, modelo diferente, endpoint diferente e configuração de silêncio diferente geram `thread_id` distintos.
 - **SC-002**: O `thread_id` gerado para os mesmos parâmetros é sempre idêntico em 100% das execuções (propriedade determinística verificável por teste).
-- **SC-003**: Zero reaproveitamento de checkpoint entre runs com parâmetros distintos em qualquer teste de integração que cubra a retomada de estado.
+- **SC-003**: Zero reaproveitamento de checkpoint no banco SQLite (`estado.db`) entre runs com parâmetros distintos (provider, model, endpoint ou silence) em qualquer teste de integração que cubra a retomada de estado.
 - **SC-004**: O tempo de geração do `thread_id` é imperceptível para o operador — inferior a 1ms, sem impacto no tempo total do pipeline.
 - **SC-005**: Nenhum checkpoint existente no `estado.db` gerado antes desta feature é retomado silenciosamente; runs com parâmetros iguais aos antigos iniciam do zero (comportamento verificável por inspeção do log de `thread_id`).
 
 ## Assumptions
 
-- O `LLM_PROVIDER`, `MODEL_NAME`, `SILENCE_CUT_ENABLED` e `SILENCE_MIN_PAUSE` já estão disponíveis como variáveis de ambiente ou atributos do objeto de configuração no momento em que `checkpoint_thread_id` é chamado.
-- O `video_id` é o identificador bruto do YouTube (ex: `dQw4w9WgXcQ`), sem normalização ou codificação adicional.
+- O `LLM_PROVIDER`, `MODEL_NAME`, `LLM_BASE_URL`, `SILENCE_CUT_ENABLED` e `SILENCE_MIN_PAUSE` já estão disponíveis como variáveis de ambiente ou atributos do objeto de configuração no momento em que `checkpoint_thread_id` é chamado.
+- O `video_id` é o identificador bruto do YouTube (ex: `dQw4w9WgXcQ`), extraído de `YOUTUBE_URL` via `extract_video_id` ou fornecido diretamente como ID bruto.
 - SHA-256 truncado a 16 caracteres hexadecimais oferece espaço de colisão suficiente (2^64) para o volume de vídeos e configurações esperados neste projeto.
 - Checkpoints existentes no `estado.db` não serão migrados — a invalidação é aceita como trade-off documentado.
