@@ -115,9 +115,9 @@ description: "Task list for feature Checkpoint Thread ID Hardening implementatio
 
 **Purpose**: Verification, end-to-end regression validation, and documentation synchronization
 
-- [ ] T021 [P] Run quickstart.md validation scenarios in specs/011-checkpoint-thread-id-hardening/quickstart.md
-- [ ] T022 Execute full project test suite via tests/
-- [ ] T023 [P] Synchronize documentation and development guidelines in GEMINI.md
+- [x] T021 [P] Run quickstart.md validation scenarios in specs/011-checkpoint-thread-id-hardening/quickstart.md
+- [x] T022 Execute full project test suite via tests/
+- [x] T023 [P] Synchronize documentation and development guidelines in GEMINI.md
 
 ---
 
