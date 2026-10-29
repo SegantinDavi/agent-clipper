@@ -27,8 +27,8 @@ description: "Task list for feature Checkpoint Thread ID Hardening implementatio
 
 **Purpose**: Verify test environment, runner dependencies, and runtime configuration constants
 
-- [ ] T001 Verify test environment and runner dependencies via tests/test_llm_api.py
-- [ ] T002 [P] Inspect runtime configuration variables in src/clipper/runtime/config.py
+- [x] T001 Verify test environment and runner dependencies via tests/test_llm_api.py
+- [x] T002 [P] Inspect runtime configuration variables in src/clipper/runtime/config.py
 
 ---
 
@@ -38,9 +38,9 @@ description: "Task list for feature Checkpoint Thread ID Hardening implementatio
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Implement extract_video_id helper function for FR-008 in src/clipper/core/ingestion.py
-- [ ] T004 [P] Re-export or integrate extract_video_id in src/clipper/core/orchestrator.py
-- [ ] T005 Implement core checkpoint_thread_id function with SHA-256 16-hex digest, canonical delimiter format including LLM_BASE_URL (FR-001, FR-002), and inline invalidation warning (FR-005) in src/clipper/core/orchestrator.py
+- [x] T003 Implement extract_video_id helper function for FR-008 in src/clipper/core/ingestion.py
+- [x] T004 [P] Re-export or integrate extract_video_id in src/clipper/core/orchestrator.py
+- [x] T005 Implement core checkpoint_thread_id function with SHA-256 16-hex digest, canonical delimiter format including LLM_BASE_URL (FR-001, FR-002), and inline invalidation warning (FR-005) in src/clipper/core/orchestrator.py
 
 **Checkpoint**: Foundation ready - video ID extraction and baseline hash calculation in place. User story implementation can now begin.
 

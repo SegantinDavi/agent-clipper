@@ -10,6 +10,20 @@ from clipper.runtime.config import WHISPER_DEVICE, WHISPER_COMPUTE_TYPE
 logger = logging.getLogger(__name__)
 
 
+def extract_video_id(url_or_id: str | None) -> str:
+    """Extract YouTube 11-character video ID or preserve raw identifier."""
+    if not url_or_id:
+        return ""
+    clean = str(url_or_id).strip()
+    match = re.search(
+        r"(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?.*v=)|(?:[?&]v=))([0-9A-Za-z_-]{11})(?:[?&#/]|$)",
+        clean,
+    )
+    if match:
+        return match.group(1)
+    return clean
+
+
 def download_video(url: str, output_dir: str = "downloads") -> dict:
     try:
         video_id = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)

@@ -33,7 +33,7 @@ from clipper.core.prompts import (
     EXTRACTOR_SYSTEM_PROMPT_TEMPLATE,
     THINKER_SYSTEM_PROMPT,
 )
-from clipper.core.ingestion import download_video, transcribe_audio_chunk
+from clipper.core.ingestion import download_video, extract_video_id, transcribe_audio_chunk
 from clipper.core.node_0 import node_0_preventive_slicing
 from clipper.video.editor import cut_and_format_video
 from clipper.review.review import (
@@ -59,6 +59,8 @@ from clipper.runtime.config import (
     validate_llm_config,
     OUTPUT_DIR,
     YOUTUBE_URL,
+    SILENCE_CUT_ENABLED,
+    SILENCE_MIN_PAUSE,
 )
 
 logging.basicConfig(
@@ -480,10 +482,67 @@ def purge_thread_checkpoints(conn_or_checkpointer, thread_id: str) -> None:
             conn.execute("DELETE FROM writes WHERE thread_id = ?", (thread_id,))
 
 
-def checkpoint_thread_id(video_url: str) -> str:
-    identity = "\0".join((video_url, LLM_PROVIDER, MODEL_NAME, LLM_BASE_URL,
-                           PauseSettings().model_dump_json()))
-    return "clipper_review_v3_" + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
+# WARNING: Altering this function or its identity formula invalidates all existing
+# checkpoints stored in estado.db.
+def checkpoint_thread_id(
+    video_id: str,
+    llm_provider: str | None = None,
+    model_name: str | None = None,
+    llm_base_url: str | None = None,
+    silence_cut_enabled: bool | str | None = None,
+    silence_min_pause: float | str | None = None,
+) -> str:
+    """Derives a deterministic 16-character hexadecimal thread ID for LangGraph checkpointers.
+
+    WARNING: Altering this function or its identity formula invalidates all existing
+    checkpoints stored in estado.db.
+    """
+    clean_video_id = str(video_id).strip() if video_id is not None else ""
+
+    if llm_provider is None:
+        llm_provider = LLM_PROVIDER
+    clean_provider = str(llm_provider).strip().lower() if llm_provider else "gemini"
+
+    if model_name is None:
+        model_name = MODEL_NAME
+    clean_model = str(model_name).strip() if model_name else ""
+
+    if llm_base_url is None:
+        llm_base_url = LLM_BASE_URL
+    clean_endpoint = str(llm_base_url).strip().rstrip("/") if llm_base_url else ""
+
+    if silence_cut_enabled is None:
+        try:
+            silence_cut_enabled = PauseSettings().enabled
+        except Exception:
+            silence_cut_enabled = SILENCE_CUT_ENABLED
+
+    if isinstance(silence_cut_enabled, bool):
+        is_silence_enabled = silence_cut_enabled
+    elif isinstance(silence_cut_enabled, (int, float)):
+        is_silence_enabled = bool(silence_cut_enabled)
+    elif isinstance(silence_cut_enabled, str):
+        is_silence_enabled = silence_cut_enabled.strip().lower() in {"1", "true", "yes"}
+    else:
+        is_silence_enabled = False
+    clean_silence_enabled = "true" if is_silence_enabled else "false"
+
+    if silence_min_pause is None:
+        try:
+            silence_min_pause = PauseSettings().min_pause
+        except Exception:
+            silence_min_pause = SILENCE_MIN_PAUSE
+
+    try:
+        clean_silence_min_pause = str(float(silence_min_pause))
+    except (ValueError, TypeError):
+        clean_silence_min_pause = "0.6"
+
+    payload = (
+        f"{clean_video_id}|{clean_provider}|{clean_model}|{clean_endpoint}|"
+        f"{clean_silence_enabled}|{clean_silence_min_pause}"
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 def main(args=None):
