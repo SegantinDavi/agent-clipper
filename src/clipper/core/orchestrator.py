@@ -552,7 +552,7 @@ def main(args=None):
 
         args = create_parser().parse_args()
     validate_llm_config()
-    video_url = YOUTUBE_URL
+    video_url = getattr(args, "url", None) or os.getenv("YOUTUBE_URL", YOUTUBE_URL)
     if not video_url:
         logger.error("Environment variable 'YOUTUBE_URL' is not set.")
         raise ValueError("Environment variable 'YOUTUBE_URL' is required.")

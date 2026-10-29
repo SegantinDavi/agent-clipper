@@ -99,13 +99,13 @@ description: "Task list for feature Checkpoint Thread ID Hardening implementatio
 
 ### Tests for User Story 3
 
-- [ ] T017 [P] [US3] Unit test deterministic idempotency across multiple invocations in tests/test_checkpoint_thread_id.py
-- [ ] T018 [P] [US3] Unit test raw video ID preservation and URL extraction consistency (FR-008) in tests/test_checkpoint_thread_id.py
-- [ ] T019 [P] [US3] Integration test checkpointer resumption and thread purge with hardened thread ID in tests/test_checkpoint_thread_id.py
+- [x] T017 [P] [US3] Unit test deterministic idempotency across multiple invocations in tests/test_checkpoint_thread_id.py
+- [x] T018 [P] [US3] Unit test raw video ID preservation and URL extraction consistency (FR-008) in tests/test_checkpoint_thread_id.py
+- [x] T019 [P] [US3] Integration test checkpointer resumption and thread purge with hardened thread ID in tests/test_checkpoint_thread_id.py
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Integrate extracted video_id into orchestrator startup and checkpointer invocation in src/clipper/core/orchestrator.py
+- [x] T020 [US3] Integrate extracted video_id into orchestrator startup and checkpointer invocation in src/clipper/core/orchestrator.py
 
 **Checkpoint**: All three user stories are functional. Idempotency guarantees safe crash recovery while preventing cross-contamination.
 

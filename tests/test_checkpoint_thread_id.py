@@ -193,5 +193,106 @@ class CheckpointThreadIdUserStory2Tests(unittest.TestCase):
             self.assertNotEqual(baseline, orchestrator.checkpoint_thread_id("vid-patch"))
 
 
+class CheckpointThreadIdUserStory3Tests(unittest.TestCase):
+    """Unit and integration tests for User Story 3: Retomada Legítima do Estado (T017, T018, T019)."""
+
+    def test_t017_deterministic_idempotency_across_repeated_invocations(self):
+        """T017: Ensure 100% deterministic idempotency across multiple repeated calls."""
+        baseline = orchestrator.checkpoint_thread_id(
+            video_id="idempotency-vid",
+            llm_provider="gemini",
+            model_name="gemini-3.6-flash",
+            llm_base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+            silence_cut_enabled=True,
+            silence_min_pause=0.6,
+        )
+        for _ in range(50):
+            repeated = orchestrator.checkpoint_thread_id(
+                video_id="idempotency-vid",
+                llm_provider="gemini",
+                model_name="gemini-3.6-flash",
+                llm_base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+                silence_cut_enabled=True,
+                silence_min_pause=0.6,
+            )
+            self.assertEqual(baseline, repeated)
+
+    def test_t018_raw_video_id_preservation_and_url_extraction(self):
+        """T018: URL variations of same video extract canonical ID and yield identical thread ID (FR-008)."""
+        from clipper.core.ingestion import extract_video_id
+
+        canonical_id = "dQw4w9WgXcQ"
+        url_variations = [
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s&feature=share",
+            "https://youtu.be/dQw4w9WgXcQ",
+            "https://youtu.be/dQw4w9WgXcQ?si=abcdef123456",
+            "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+            "dQw4w9WgXcQ",
+        ]
+        
+        expected_thread_id = orchestrator.checkpoint_thread_id(canonical_id)
+        for url in url_variations:
+            extracted = extract_video_id(url)
+            self.assertEqual(extracted, canonical_id, f"Failed extraction for URL: {url}")
+            thread_id = orchestrator.checkpoint_thread_id(extracted)
+            self.assertEqual(thread_id, expected_thread_id, f"Inconsistent thread_id for URL: {url}")
+
+        # Test non-URL raw identifier preservation
+        raw_names = ["custom_test_clip", "video-alpha-123", "local_file.mp4"]
+        for raw in raw_names:
+            self.assertEqual(extract_video_id(raw), raw)
+
+    def test_t019_sqlite_checkpointer_resumption_and_thread_purge(self):
+        """T019: Integration test checkpointer resumption and thread purge with hardened thread ID."""
+        import tempfile
+        import sqlite3
+        from pathlib import Path
+        from langgraph.checkpoint.sqlite import SqliteSaver
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = str(Path(temp_dir) / "estado.db")
+            thread_id = orchestrator.checkpoint_thread_id("integration-test-vid")
+            other_thread_id = orchestrator.checkpoint_thread_id("other-test-vid")
+
+            with SqliteSaver.from_conn_string(db_path) as saver:
+                saver.setup()
+                with saver.conn:
+                    saver.conn.execute(
+                        "INSERT INTO checkpoints (thread_id, checkpoint_ns, checkpoint_id, type) VALUES (?, '', 'chk-1', 'test')",
+                        (thread_id,),
+                    )
+                    saver.conn.execute(
+                        "INSERT INTO writes (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type) VALUES (?, '', 'chk-1', 'task-1', 0, 'c', 't')",
+                        (thread_id,),
+                    )
+                    saver.conn.execute(
+                        "INSERT INTO checkpoints (thread_id, checkpoint_ns, checkpoint_id, type) VALUES (?, '', 'chk-2', 'test')",
+                        (other_thread_id,),
+                    )
+
+                # Verify records exist before purge
+                with sqlite3.connect(db_path) as conn:
+                    chk_count = conn.execute("SELECT COUNT(*) FROM checkpoints WHERE thread_id = ?", (thread_id,)).fetchone()[0]
+                    writes_count = conn.execute("SELECT COUNT(*) FROM writes WHERE thread_id = ?", (thread_id,)).fetchone()[0]
+                    other_count = conn.execute("SELECT COUNT(*) FROM checkpoints WHERE thread_id = ?", (other_thread_id,)).fetchone()[0]
+                self.assertEqual(chk_count, 1)
+                self.assertEqual(writes_count, 1)
+                self.assertEqual(other_count, 1)
+
+                # Purge target thread (simulating --restart)
+                orchestrator.purge_thread_checkpoints(saver, thread_id)
+
+                # Verify target thread records are 0 while other thread remains intact
+                with sqlite3.connect(db_path) as conn:
+                    chk_count_after = conn.execute("SELECT COUNT(*) FROM checkpoints WHERE thread_id = ?", (thread_id,)).fetchone()[0]
+                    writes_count_after = conn.execute("SELECT COUNT(*) FROM writes WHERE thread_id = ?", (thread_id,)).fetchone()[0]
+                    other_count_after = conn.execute("SELECT COUNT(*) FROM checkpoints WHERE thread_id = ?", (other_thread_id,)).fetchone()[0]
+                self.assertEqual(chk_count_after, 0)
+                self.assertEqual(writes_count_after, 0)
+                self.assertEqual(other_count_after, 1)
+
+
 if __name__ == "__main__":
     unittest.main()
