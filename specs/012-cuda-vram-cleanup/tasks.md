@@ -110,9 +110,9 @@ description: "Task list for feature Deep CUDA VRAM Cleanup in Gemini Profile imp
 
 **Purpose**: Documentation synchronization, quickstart validation, and full test suite regression
 
-- [ ] T016 [P] Update tests/test_transcription.py and tests/test_cuda_runtime.py to ensure full test suite passes with `discover tests/`
-- [ ] T017 Validate end-to-end execution scenarios from specs/012-cuda-vram-cleanup/quickstart.md
-- [ ] T018 Synchronize project documentation in GEMINI.md and AGENTS.md with deep CUDA VRAM cleanup specifications and recent changes
+- [x] T016 [P] Update tests/test_transcription.py and tests/test_cuda_runtime.py to ensure full test suite passes with `discover tests/`
+- [x] T017 Validate end-to-end execution scenarios from specs/012-cuda-vram-cleanup/quickstart.md
+- [x] T018 Synchronize project documentation in GEMINI.md and AGENTS.md with deep CUDA VRAM cleanup specifications and recent changes
 
 ---
 

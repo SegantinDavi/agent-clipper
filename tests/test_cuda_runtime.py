@@ -48,8 +48,12 @@ class CudaRuntimeTests(unittest.TestCase):
             )
             list(segments)
         finally:
+            from clipper.runtime.cuda_runtime import release_cuda_memory
+            if hasattr(model, "model") and hasattr(model.model, "unload_model"):
+                model.model.unload_model()
             del model
             gc.collect()
+            release_cuda_memory()
 
 
 if __name__ == "__main__":
