@@ -33,7 +33,7 @@ from clipper.core.prompts import (
     EXTRACTOR_SYSTEM_PROMPT_TEMPLATE,
     THINKER_SYSTEM_PROMPT,
 )
-from clipper.core.ingestion import download_video, transcribe_audio_chunk
+from clipper.core.ingestion import download_video, extract_video_id, transcribe_audio_chunk
 from clipper.core.node_0 import node_0_preventive_slicing
 from clipper.video.editor import cut_and_format_video
 from clipper.review.review import (
@@ -59,6 +59,8 @@ from clipper.runtime.config import (
     validate_llm_config,
     OUTPUT_DIR,
     YOUTUBE_URL,
+    SILENCE_CUT_ENABLED,
+    SILENCE_MIN_PAUSE,
 )
 
 logging.basicConfig(
@@ -480,10 +482,68 @@ def purge_thread_checkpoints(conn_or_checkpointer, thread_id: str) -> None:
             conn.execute("DELETE FROM writes WHERE thread_id = ?", (thread_id,))
 
 
-def checkpoint_thread_id(video_url: str) -> str:
-    identity = "\0".join((video_url, LLM_PROVIDER, MODEL_NAME, LLM_BASE_URL,
-                           PauseSettings().model_dump_json()))
-    return "clipper_review_v3_" + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
+# WARNING: Altering this function or its identity formula invalidates all existing
+# checkpoints stored in estado.db.
+def checkpoint_thread_id(
+    video_id: str,
+    llm_provider: str | None = None,
+    model_name: str | None = None,
+    llm_base_url: str | None = None,
+    silence_cut_enabled: bool | str | None = None,
+    silence_min_pause: float | str | None = None,
+) -> str:
+    """Derives a deterministic 16-character hexadecimal thread ID for LangGraph checkpointers.
+
+    WARNING: Altering this function or its identity formula invalidates all existing
+    checkpoints stored in estado.db.
+    """
+    clean_video_id = str(video_id).strip() if video_id is not None else ""
+
+    clean_provider = str(llm_provider).strip().lower() if llm_provider is not None else ""
+    if not clean_provider:
+        clean_provider = str(LLM_PROVIDER).strip().lower() if LLM_PROVIDER else "gemini"
+
+    clean_model = str(model_name).strip() if model_name is not None else ""
+    if not clean_model:
+        clean_model = str(MODEL_NAME).strip() if MODEL_NAME else ""
+
+    clean_endpoint = str(llm_base_url).strip().rstrip("/") if llm_base_url is not None else ""
+    if not clean_endpoint:
+        clean_endpoint = str(LLM_BASE_URL).strip().rstrip("/") if LLM_BASE_URL else ""
+
+    if silence_cut_enabled is None:
+        try:
+            silence_cut_enabled = PauseSettings().enabled
+        except Exception:
+            silence_cut_enabled = SILENCE_CUT_ENABLED
+
+    if isinstance(silence_cut_enabled, bool):
+        is_silence_enabled = silence_cut_enabled
+    elif isinstance(silence_cut_enabled, (int, float)):
+        is_silence_enabled = bool(silence_cut_enabled)
+    elif isinstance(silence_cut_enabled, str):
+        is_silence_enabled = silence_cut_enabled.strip().lower() in {"1", "true", "yes"}
+    else:
+        is_silence_enabled = False
+    clean_silence_enabled = "true" if is_silence_enabled else "false"
+
+    if silence_min_pause is None:
+        try:
+            silence_min_pause = PauseSettings().min_pause
+        except Exception:
+            silence_min_pause = SILENCE_MIN_PAUSE
+
+    try:
+        parsed_pause = float(silence_min_pause)
+        clean_silence_min_pause = str(parsed_pause) if parsed_pause > 0 else "0.6"
+    except (ValueError, TypeError):
+        clean_silence_min_pause = "0.6"
+
+    payload = (
+        f"{clean_video_id}|{clean_provider}|{clean_model}|{clean_endpoint}|"
+        f"{clean_silence_enabled}|{clean_silence_min_pause}"
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 def main(args=None):
@@ -492,7 +552,7 @@ def main(args=None):
 
         args = create_parser().parse_args()
     validate_llm_config()
-    video_url = YOUTUBE_URL
+    video_url = getattr(args, "url", None) or os.getenv("YOUTUBE_URL", YOUTUBE_URL)
     if not video_url:
         logger.error("Environment variable 'YOUTUBE_URL' is not set.")
         raise ValueError("Environment variable 'YOUTUBE_URL' is required.")
@@ -518,7 +578,9 @@ def main(args=None):
         "approval_complete": False,
     }
 
-    thread_id = checkpoint_thread_id(video_url)
+    video_id = extract_video_id(video_url) or video_url
+    thread_id = checkpoint_thread_id(video_id)
+    logger.info("Calculated checkpoint thread_id: %s (video_id: %s)", thread_id, video_id)
     config = {"configurable": {"thread_id": thread_id}}
 
     workflow = create_graph()
@@ -528,7 +590,7 @@ def main(args=None):
         app = workflow.compile(checkpointer=checkpointer)
 
         logger.info(
-            "Graph compiled. Starting execution (Thread: clipper_%s)...",
+            "Graph compiled. Starting execution (Thread: %s)...",
             thread_id,
         )
         try:

@@ -118,8 +118,13 @@ class PauseMathTests(unittest.TestCase):
 
     def test_settings_are_part_of_checkpoint_identity(self):
         before = orchestrator.checkpoint_thread_id("video")
+        self.assertEqual(len(before), 16)
+        self.assertRegex(before, r"^[0-9a-f]{16}$")
         with patch.object(orchestrator, "PauseSettings", return_value=PauseSettings(enabled=False)):
-            self.assertNotEqual(before, orchestrator.checkpoint_thread_id("video"))
+            after = orchestrator.checkpoint_thread_id("video")
+            self.assertEqual(len(after), 16)
+            self.assertRegex(after, r"^[0-9a-f]{16}$")
+            self.assertNotEqual(before, after)
 
 
 class PauseMediaTests(unittest.TestCase):
