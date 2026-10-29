@@ -76,13 +76,13 @@ description: "Task list for feature Deep CUDA VRAM Cleanup in Gemini Profile imp
 
 ### Tests for User Story 2
 
-- [ ] T010 [P] [US2] Unit test structured INFO logging with and without NVML metrics in tests/test_cuda_cleanup.py
-- [ ] T011 [P] [US2] Unit test exception handling in `release_cuda_memory()` verifying WARNING log emission and non-propagation in tests/test_cuda_cleanup.py
+- [x] T010 [P] [US2] Unit test structured INFO logging with and without NVML metrics in tests/test_cuda_cleanup.py
+- [x] T011 [P] [US2] Unit test exception handling in `release_cuda_memory()` verifying WARNING log emission and non-propagation in tests/test_cuda_cleanup.py
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Implement before-and-after VRAM sampling (accepting optional `before_mb` parameter) and structured INFO logging in `release_cuda_memory()` within src/clipper/runtime/cuda_runtime.py per contract specifications
-- [ ] T013 [US2] Add fault-tolerant exception handling and WARNING logging for `release_cuda_memory()` invocations in src/clipper/runtime/cuda_runtime.py and src/clipper/core/ingestion.py
+- [x] T012 [US2] Implement before-and-after VRAM sampling (accepting optional `before_mb` parameter) and structured INFO logging in `release_cuda_memory()` within src/clipper/runtime/cuda_runtime.py per contract specifications
+- [x] T013 [US2] Add fault-tolerant exception handling and WARNING logging for `release_cuda_memory()` invocations in src/clipper/runtime/cuda_runtime.py and src/clipper/core/ingestion.py
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work together: deep cleanup is performed and observable in `pipeline.log` with before/after MB stats or fallback confirmation, with full error resilience.
 

@@ -62,6 +62,11 @@ def release_cuda_memory(before_mb: float | None = None) -> None:
         return
 
     try:
+        if before_mb is None:
+            before_info = get_gpu_memory_info()
+            if before_info is not None:
+                before_mb = before_info[0]
+
         torch = sys.modules.get("torch")
         if torch is None:
             try:
@@ -73,6 +78,19 @@ def release_cuda_memory(before_mb: float | None = None) -> None:
             torch.cuda.empty_cache()
             if hasattr(torch.cuda, "ipc_collect"):
                 torch.cuda.ipc_collect()
+
+        after_info = get_gpu_memory_info()
+        if before_mb is not None and after_info is not None:
+            after_mb = after_info[0]
+            freed_mb = max(0.0, before_mb - after_mb)
+            logger.info(
+                "GPU memory flushed successfully: before=%.1f MB, after=%.1f MB (freed=%.1f MB)",
+                before_mb,
+                after_mb,
+                freed_mb,
+            )
+        else:
+            logger.info("GPU memory flushed successfully.")
     except Exception as error:
         logger.warning("GPU memory cleanup failed: %s", error)
 
