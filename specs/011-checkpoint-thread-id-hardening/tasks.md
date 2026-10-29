@@ -56,15 +56,15 @@ description: "Task list for feature Checkpoint Thread ID Hardening implementatio
 
 > **NOTE: Write these tests FIRST, ensure they fail before full implementation**
 
-- [ ] T006 [P] [US1] Unit test provider isolation and 16-hex length format in tests/test_checkpoint_thread_id.py
-- [ ] T007 [P] [US1] Unit test model name and endpoint (LLM_BASE_URL) isolation in tests/test_checkpoint_thread_id.py
-- [ ] T008 [P] [US1] Unit test provider, model, and endpoint default fallbacks when None in tests/test_checkpoint_thread_id.py
+- [x] T006 [P] [US1] Unit test provider isolation and 16-hex length format in tests/test_checkpoint_thread_id.py
+- [x] T007 [P] [US1] Unit test model name and endpoint (LLM_BASE_URL) isolation in tests/test_checkpoint_thread_id.py
+- [x] T008 [P] [US1] Unit test provider, model, and endpoint default fallbacks when None in tests/test_checkpoint_thread_id.py
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implement provider, model, and endpoint normalization with config fallbacks in checkpoint_thread_id in src/clipper/core/orchestrator.py
-- [ ] T010 [US1] Update orchestrator main() startup log to emit calculated thread_id and video_id at INFO level in src/clipper/core/orchestrator.py
-- [ ] T011 [US1] Verify provider, model, and endpoint isolation assertions in tests/test_llm_api.py against new 16-hex format without weakening test coverage
+- [x] T009 [US1] Implement provider, model, and endpoint normalization with config fallbacks in checkpoint_thread_id in src/clipper/core/orchestrator.py
+- [x] T010 [US1] Update orchestrator main() startup log to emit calculated thread_id and video_id at INFO level in src/clipper/core/orchestrator.py
+- [x] T011 [US1] Verify provider, model, and endpoint isolation assertions in tests/test_llm_api.py against new 16-hex format without weakening test coverage
 
 **Checkpoint**: User Story 1 is fully functional and testable independently. Provider, model, and endpoint switches cleanly isolate execution state.
 

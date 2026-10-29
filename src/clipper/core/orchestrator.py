@@ -499,17 +499,17 @@ def checkpoint_thread_id(
     """
     clean_video_id = str(video_id).strip() if video_id is not None else ""
 
-    if llm_provider is None:
-        llm_provider = LLM_PROVIDER
-    clean_provider = str(llm_provider).strip().lower() if llm_provider else "gemini"
+    clean_provider = str(llm_provider).strip().lower() if llm_provider is not None else ""
+    if not clean_provider:
+        clean_provider = str(LLM_PROVIDER).strip().lower() if LLM_PROVIDER else "gemini"
 
-    if model_name is None:
-        model_name = MODEL_NAME
-    clean_model = str(model_name).strip() if model_name else ""
+    clean_model = str(model_name).strip() if model_name is not None else ""
+    if not clean_model:
+        clean_model = str(MODEL_NAME).strip() if MODEL_NAME else ""
 
-    if llm_base_url is None:
-        llm_base_url = LLM_BASE_URL
-    clean_endpoint = str(llm_base_url).strip().rstrip("/") if llm_base_url else ""
+    clean_endpoint = str(llm_base_url).strip().rstrip("/") if llm_base_url is not None else ""
+    if not clean_endpoint:
+        clean_endpoint = str(LLM_BASE_URL).strip().rstrip("/") if LLM_BASE_URL else ""
 
     if silence_cut_enabled is None:
         try:
@@ -577,7 +577,9 @@ def main(args=None):
         "approval_complete": False,
     }
 
-    thread_id = checkpoint_thread_id(video_url)
+    video_id = extract_video_id(video_url) or video_url
+    thread_id = checkpoint_thread_id(video_id)
+    logger.info("Calculated checkpoint thread_id: %s (video_id: %s)", thread_id, video_id)
     config = {"configurable": {"thread_id": thread_id}}
 
     workflow = create_graph()
@@ -587,7 +589,7 @@ def main(args=None):
         app = workflow.compile(checkpointer=checkpointer)
 
         logger.info(
-            "Graph compiled. Starting execution (Thread: clipper_%s)...",
+            "Graph compiled. Starting execution (Thread: %s)...",
             thread_id,
         )
         try:

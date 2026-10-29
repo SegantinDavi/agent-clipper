@@ -114,6 +114,8 @@ class LlmApiTests(unittest.TestCase):
 
     def test_checkpoint_identity_isolates_provider_model_endpoint_and_url(self):
         baseline = orchestrator.checkpoint_thread_id("video-a")
+        self.assertEqual(len(baseline), 16)
+        self.assertRegex(baseline, r"^[0-9a-f]{16}$")
         self.assertEqual(baseline, orchestrator.checkpoint_thread_id("video-a"))
         self.assertNotEqual(baseline, orchestrator.checkpoint_thread_id("video-b"))
         for attribute in ("LLM_PROVIDER", "MODEL_NAME", "LLM_BASE_URL"):
