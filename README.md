@@ -85,7 +85,7 @@ agent-clipper/
 │           ├── config.py        # Configurações centralizadas ancoradas no PROJECT_ROOT
 │           ├── cuda_runtime.py  # Bootstrap de bibliotecas dinâmicas CUDA (cuBLAS, cuDNN)
 │           └── runtime_options.py # Menu interativo de seleção de perfil LLM e flags CLI
-├── tests/                       # Suíte de testes unitários automatizados (9 suítes)
+├── tests/                       # Suíte de testes unitários automatizados (10 suítes)
 ├── docs/                        # Documentação e rascunhos de desenvolvimento
 ├── dockerfile                   # Ambiente isolado com dependências pré-compiladas
 ├── run_pipeline.sh              # Script de entrada para execução local com export de PYTHONPATH
