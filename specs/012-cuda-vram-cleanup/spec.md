@@ -74,7 +74,7 @@ An operator running the pipeline in the Ollama (local/CPU) profile expects no ch
 - **FR-004**: The system MUST log a confirmation at INFO level each time GPU memory is explicitly flushed between chunks.
 - **FR-005**: A failure in the GPU cleanup routine MUST be caught, logged as a WARNING, and MUST NOT propagate as an exception that aborts chunk processing.
 - **FR-006**: The cleanup implementation MUST use only libraries already present in the authorised stack (`ctranslate2`, `torch` — if available in the CUDA bootstrap) with no new heavyweight dependencies introduced.
-- **FR-007**: The existing Python garbage-collection sequence (`del model`, `gc.collect()`) already present in `clipper.core.ingestion` MUST be preserved and the GPU flush MUST be added immediately after it.
+- **FR-007**: The existing Python garbage-collection sequence (`del model`, `gc.collect()`) in `clipper.core.ingestion` MUST be preserved, preceded by explicit CTranslate2 model deallocation (`model.model.unload_model()` if available) and followed by the deep GPU cache flush (`release_cuda_memory()`).
 
 ### Key Entities
 
@@ -99,7 +99,7 @@ An operator running the pipeline in the Ollama (local/CPU) profile expects no ch
 ## Assumptions
 
 - The existing chunking (FFmpeg silence detection) and the `transcribe_audio_chunk` function in `clipper.core.ingestion` are the sole transcription entry points and are the correct location for the fix.
-- `torch` is available in the CUDA runtime bootstrap (`requirements-cuda.txt`) and `torch.cuda.empty_cache()` is the primary flush primitive; a fallback to `ctranslate2` allocator reset may also be applicable.
+- `faster-whisper` and `ctranslate2` are the primary inference packages in `requirements-cuda.txt`. Device model unloading (`ct2_model.unload_model()`) combined with Python garbage collection (`del model`, `gc.collect()`) is the primary GPU VRAM release mechanism. `torch` is not a required dependency in `requirements-cuda.txt` and is handled strictly as an optional runtime probe if already present in `sys.modules`.
 - The Gemini profile detection relies on the already-established `LLM_PROVIDER` environment variable, which is resolved before any CUDA imports per Rule 1.
 - No new telemetry, profiling library, or external monitoring tool is introduced — observability is achieved solely through the existing `logging` infrastructure writing to `pipeline.log`.
 - The fix is confined to `clipper.core.ingestion` (and possibly `clipper.runtime.cuda_runtime`) with no changes to the LangGraph graph structure, node definitions, or checkpointer configuration.
