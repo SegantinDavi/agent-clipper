@@ -96,11 +96,11 @@ description: "Task list for feature Deep CUDA VRAM Cleanup in Gemini Profile imp
 
 ### Tests for User Story 3
 
-- [ ] T014 [P] [US3] Unit test profile isolation in tests/test_cuda_cleanup.py asserting that `release_cuda_memory()` is a no-op when `WHISPER_DEVICE != "cuda"` and that `transcribe_audio_chunk()` bypasses CUDA cleanup on CPU
+- [x] T014 [P] [US3] Unit test profile isolation in tests/test_cuda_cleanup.py asserting that `release_cuda_memory()` is a no-op when `WHISPER_DEVICE != "cuda"` and that `transcribe_audio_chunk()` bypasses CUDA cleanup on CPU
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] Ensure strict guard `if WHISPER_DEVICE != "cuda": return` in `release_cuda_memory()` in src/clipper/runtime/cuda_runtime.py and profile guard `if WHISPER_DEVICE == "cuda":` in src/clipper/core/ingestion.py
+- [x] T015 [US3] Ensure strict guard `if WHISPER_DEVICE != "cuda": return` in `release_cuda_memory()` in src/clipper/runtime/cuda_runtime.py and profile guard `if WHISPER_DEVICE == "cuda":` in src/clipper/core/ingestion.py
 
 **Checkpoint**: All user stories should now be independently functional, verifying both Gemini GPU execution and CPU Ollama isolation.
 

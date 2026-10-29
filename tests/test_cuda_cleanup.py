@@ -92,6 +92,33 @@ class CudaCleanupTests(unittest.TestCase):
                     mock_warn.assert_called_once()
                     self.assertIn("GPU memory cleanup failed", mock_warn.call_args[0][0])
 
+    def test_ollama_cpu_profile_isolation(self):
+        """T014: In CPU/Ollama profile, release_cuda_memory is a no-op and ingestion bypasses CUDA cleanup."""
+        # Test 1: Direct release_cuda_memory is a complete no-op on CPU
+        with patch.object(cuda_runtime, "WHISPER_DEVICE", "cpu"):
+            with patch.object(cuda_runtime, "get_gpu_memory_info") as mock_gpu_info, \
+                 patch.object(cuda_runtime.logger, "info") as mock_info, \
+                 patch.object(cuda_runtime.logger, "warning") as mock_warn:
+                release_cuda_memory(before_mb=500.0)
+                mock_gpu_info.assert_not_called()
+                mock_info.assert_not_called()
+                mock_warn.assert_not_called()
+
+        # Test 2: Ingestion transcribe_audio_chunk on CPU never calls release_cuda_memory or get_gpu_memory_info
+        mock_model = MagicMock()
+        mock_model.transcribe.return_value = (iter([]), None)
+
+        with patch.object(ingestion, "WHISPER_DEVICE", "cpu"), \
+             patch.object(ingestion, "WHISPER_COMPUTE_TYPE", "int8"), \
+             patch.object(ingestion, "WhisperModel", return_value=mock_model), \
+             patch.object(ingestion, "release_cuda_memory") as mock_release, \
+             patch.object(ingestion, "get_gpu_memory_info") as mock_info_call:
+            result = ingestion.transcribe_audio_chunk("example.wav")
+            self.assertEqual(result["status"], "success")
+            mock_release.assert_not_called()
+            mock_info_call.assert_not_called()
+
+
 
 
 if __name__ == "__main__":
