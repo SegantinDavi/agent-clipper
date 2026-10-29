@@ -31,13 +31,13 @@ Emite um log `INFO` com índice do chunk, offset aplicado e total de palavras re
 
 ## Retorno
 
-`list[dict]` — Nova lista (sem mutação da entrada) onde cada elemento é:
+`list[dict]` — Nova lista (sem mutação da entrada) onde cada elemento é uma cópia com os campos atualizados:
 
 ```python
 {
-    "word":  str,    # copiado sem alteração
-    "start": float,  # round(word["start"] + offset, 2)
-    "end":   float,  # round(word["end"]   + offset, 2)
+    **word,          # todos os campos originais do Whisper são preservados (FR-002)
+    "start": float,  # round(float(word["start"]) + offset, 2)
+    "end":   float,  # round(float(word["end"])   + offset, 2)
 }
 ```
 
@@ -47,6 +47,7 @@ Emite um log `INFO` com índice do chunk, offset aplicado e total de palavras re
 |----------|---------------|
 | `words` é lista vazia | Retorna `[]`; log INFO com `0 words remapped` |
 | `offset == 0.0` | Retorna lista nova com `start`/`end` inalterados (round não muda valores inteiros ou de 2 casas) |
+| `offset < 0.0` | Dispara `ValueError` informando que o offset não pode ser negativo |
 | Item de `words` com campo ausente | **Não deve ocorrer** — `transcribe_audio_chunk()` garante a estrutura. Se ocorrer, `KeyError` é propagado para o chamador (fail-fast) |
 
 ## Chamador

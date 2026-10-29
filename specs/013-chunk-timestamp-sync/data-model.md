@@ -64,9 +64,10 @@ Não é um modelo de dados, mas define o contrato de transformação:
 **Invariantes**:
 - Se `offset == 0.0`, retorna lista nova com mesmos valores (sem mutação in-place)
 - Se `words` é vazia, retorna lista vazia
-- Cada item de saída tem exatamente os campos `{"word", "start", "end"}`
-- `result[i]["start"] == round(words[i]["start"] + offset, 2)` para todo `i`
-- `result[i]["end"] == round(words[i]["end"] + offset, 2)` para todo `i`
+- Se `offset < 0.0`, lança `ValueError`
+- Cada item de saída preserva todos os campos originais de `words[i]`, atualizando exclusivamente `start` e `end`
+- `result[i]["start"] == round(float(words[i]["start"]) + offset, 2)` para todo `i`
+- `result[i]["end"] == round(float(words[i]["end"]) + offset, 2)` para todo `i`
 
 ## Fluxo de dados completo
 
