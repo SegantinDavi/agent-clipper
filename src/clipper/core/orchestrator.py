@@ -534,7 +534,8 @@ def checkpoint_thread_id(
             silence_min_pause = SILENCE_MIN_PAUSE
 
     try:
-        clean_silence_min_pause = str(float(silence_min_pause))
+        parsed_pause = float(silence_min_pause)
+        clean_silence_min_pause = str(parsed_pause) if parsed_pause > 0 else "0.6"
     except (ValueError, TypeError):
         clean_silence_min_pause = "0.6"
 

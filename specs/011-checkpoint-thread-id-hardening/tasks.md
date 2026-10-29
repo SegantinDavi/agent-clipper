@@ -78,14 +78,14 @@ description: "Task list for feature Checkpoint Thread ID Hardening implementatio
 
 ### Tests for User Story 2
 
-- [ ] T012 [P] [US2] Unit test silence cut toggle (True vs False) isolation in tests/test_checkpoint_thread_id.py
-- [ ] T013 [P] [US2] Unit test silence minimum pause duration isolation in tests/test_checkpoint_thread_id.py
-- [ ] T014 [P] [US2] Unit test silence parameters safe fallbacks and boolean/float normalization in tests/test_checkpoint_thread_id.py
+- [x] T012 [P] [US2] Unit test silence cut toggle (True vs False) isolation in tests/test_checkpoint_thread_id.py
+- [x] T013 [P] [US2] Unit test silence minimum pause duration isolation in tests/test_checkpoint_thread_id.py
+- [x] T014 [P] [US2] Unit test silence parameters safe fallbacks and boolean/float normalization in tests/test_checkpoint_thread_id.py
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Implement boolean and float normalization for silence parameters with config defaults in src/clipper/core/orchestrator.py
-- [ ] T016 [US2] Verify silence configuration isolation test in tests/test_pause_editing.py against new 16-hex format
+- [x] T015 [US2] Implement boolean and float normalization for silence parameters with config defaults in src/clipper/core/orchestrator.py
+- [x] T016 [US2] Verify silence configuration isolation test in tests/test_pause_editing.py against new 16-hex format
 
 **Checkpoint**: User Stories 1 and 2 work independently. Silence configuration changes trigger fresh thread IDs.
 

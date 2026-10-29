@@ -107,5 +107,91 @@ class CheckpointThreadIdUserStory1Tests(unittest.TestCase):
             self.assertNotEqual(baseline, thread_with_patched_endpoint)
 
 
+class CheckpointThreadIdUserStory2Tests(unittest.TestCase):
+    """Unit tests for User Story 2: Retomada Segura com Configuração de Silêncio Diferente (T012, T013, T014)."""
+
+    def test_t012_silence_cut_toggle_isolation(self):
+        """T012: Verify thread ID isolates when silence_cut_enabled toggles (True vs False)."""
+        thread_enabled = orchestrator.checkpoint_thread_id("vid-silence", silence_cut_enabled=True)
+        thread_disabled = orchestrator.checkpoint_thread_id("vid-silence", silence_cut_enabled=False)
+
+        self.assertNotEqual(thread_enabled, thread_disabled)
+        self.assertEqual(len(thread_enabled), 16)
+        self.assertEqual(len(thread_disabled), 16)
+        self.assertRegex(thread_enabled, r"^[0-9a-f]{16}$")
+        self.assertRegex(thread_disabled, r"^[0-9a-f]{16}$")
+
+    def test_t013_silence_min_pause_duration_isolation(self):
+        """T013: Verify thread ID isolates when silence_min_pause duration changes."""
+        thread_06 = orchestrator.checkpoint_thread_id("vid-silence", silence_cut_enabled=True, silence_min_pause=0.6)
+        thread_08 = orchestrator.checkpoint_thread_id("vid-silence", silence_cut_enabled=True, silence_min_pause=0.8)
+        thread_10 = orchestrator.checkpoint_thread_id("vid-silence", silence_cut_enabled=True, silence_min_pause=1.0)
+
+        self.assertNotEqual(thread_06, thread_08)
+        self.assertNotEqual(thread_06, thread_10)
+        self.assertNotEqual(thread_08, thread_10)
+
+    def test_t014_silence_boolean_normalization(self):
+        """T014: Boolean equivalents must normalize to canonical true or false."""
+        expected_true = orchestrator.checkpoint_thread_id("vid-norm", silence_cut_enabled=True)
+        for truthy in (True, 1, "1", "true", "True", "TRUE", "yes", "YES"):
+            self.assertEqual(
+                orchestrator.checkpoint_thread_id("vid-norm", silence_cut_enabled=truthy),
+                expected_true,
+                f"Failed for truthy value {truthy!r}",
+            )
+
+        expected_false = orchestrator.checkpoint_thread_id("vid-norm", silence_cut_enabled=False)
+        for falsy in (False, 0, "0", "false", "False", "FALSE", "no", "NO", ""):
+            self.assertEqual(
+                orchestrator.checkpoint_thread_id("vid-norm", silence_cut_enabled=falsy),
+                expected_false,
+                f"Failed for falsy value {falsy!r}",
+            )
+
+        self.assertNotEqual(expected_true, expected_false)
+
+    def test_t014_silence_float_normalization(self):
+        """T014: Float representations must normalize consistently."""
+        thread_float = orchestrator.checkpoint_thread_id("vid-norm", silence_min_pause=0.6)
+        thread_str = orchestrator.checkpoint_thread_id("vid-norm", silence_min_pause="0.6")
+        thread_trailing_zero = orchestrator.checkpoint_thread_id("vid-norm", silence_min_pause=0.60)
+        self.assertEqual(thread_float, thread_str)
+        self.assertEqual(thread_float, thread_trailing_zero)
+
+        thread_int = orchestrator.checkpoint_thread_id("vid-norm", silence_min_pause=1)
+        thread_int_float = orchestrator.checkpoint_thread_id("vid-norm", silence_min_pause=1.0)
+        thread_int_str = orchestrator.checkpoint_thread_id("vid-norm", silence_min_pause="1.0")
+        self.assertEqual(thread_int, thread_int_float)
+        self.assertEqual(thread_int, thread_int_str)
+
+    def test_t014_silence_safe_fallbacks_on_invalid_or_none(self):
+        """T014: Invalid or None values must safely fallback without raising exceptions."""
+        thread_default = orchestrator.checkpoint_thread_id("vid-norm", silence_min_pause=None)
+        self.assertEqual(len(thread_default), 16)
+
+        # Invalid float strings fallback safely to 0.6
+        thread_invalid = orchestrator.checkpoint_thread_id("vid-norm", silence_min_pause="not-a-number")
+        thread_expected_default = orchestrator.checkpoint_thread_id("vid-norm", silence_min_pause=0.6)
+        self.assertEqual(thread_invalid, thread_expected_default)
+
+        # Non-positive values fallback safely to 0.6
+        thread_zero = orchestrator.checkpoint_thread_id("vid-norm", silence_min_pause=0)
+        thread_negative = orchestrator.checkpoint_thread_id("vid-norm", silence_min_pause=-1.0)
+        self.assertEqual(thread_zero, thread_expected_default)
+        self.assertEqual(thread_negative, thread_expected_default)
+
+    def test_t014_silence_runtime_patching_isolation(self):
+        """T014: Patching PauseSettings dynamically isolates checkpoint thread ID."""
+        from clipper.video.pause_editing import PauseSettings
+
+        baseline = orchestrator.checkpoint_thread_id("vid-patch")
+        with patch.object(orchestrator, "PauseSettings", return_value=PauseSettings(enabled=False)):
+            self.assertNotEqual(baseline, orchestrator.checkpoint_thread_id("vid-patch"))
+
+        with patch.object(orchestrator, "PauseSettings", return_value=PauseSettings(min_pause=1.2)):
+            self.assertNotEqual(baseline, orchestrator.checkpoint_thread_id("vid-patch"))
+
+
 if __name__ == "__main__":
     unittest.main()
