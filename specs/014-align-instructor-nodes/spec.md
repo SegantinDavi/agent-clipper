@@ -65,6 +65,7 @@ Como operador do sistema em hardware limitado (8GB RAM), desejo que todas as con
 
 1. **Given** uma falha de comunicação ou rejeição de resposta durante a execução do nó Pensador, **When** a exceção é capturada, **Then** a conexão do cliente é fechada determinísticamente antes da propagação do erro.
 2. **Given** uma falha de validação de schema estruturado no nó Extrator, **When** o erro é acionado, **Then** a conexão do cliente é fechada determinísticamente no bloco de finalização.
+3. **Given** a execução bem-sucedida do nó Pensador ou do nó Extrator, **When** a resposta editorial ou os cortes estruturados são gerados, **Then** a conexão do cliente LLM é encerrada determinísticamente no bloco de finalização (`finally`) antes do retorno dos dados ao fluxo.
 
 ---
 
