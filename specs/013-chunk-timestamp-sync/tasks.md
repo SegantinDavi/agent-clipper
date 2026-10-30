@@ -27,8 +27,8 @@ description: "Task list for feature Chunk Timestamp Absolute Sync implementation
 
 **Purpose**: Verify virtual environment, existing transcription and pause editing tests before making modifications
 
-- [ ] T001 Verify Python virtual environment, dependencies (`faster-whisper`, `moviepy`, `langgraph`), and test runner via tests/test_transcription.py and tests/test_pause_editing.py
-- [ ] T002 [P] Inspect `node_0_preventive_slicing()` output dictionary schema (`{"chunk_path": ..., "offset": ...}`) in src/clipper/core/node_0.py
+- [x] T001 Verify Python virtual environment, dependencies (`faster-whisper`, `moviepy`, `langgraph`), and test runner via tests/test_transcription.py and tests/test_pause_editing.py
+- [x] T002 [P] Inspect `node_0_preventive_slicing()` output dictionary schema (`{"chunk_path": ..., "offset": ...}`) in src/clipper/core/node_0.py
 
 ---
 
@@ -38,8 +38,8 @@ description: "Task list for feature Chunk Timestamp Absolute Sync implementation
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Define `apply_chunk_offset()` function signature, docstring, and type hints in src/clipper/core/ingestion.py per contracts/apply_chunk_offset.md
-- [ ] T004 [P] Scaffold test module structure with test fixtures and mocks in tests/test_chunk_timestamp_sync.py
+- [x] T003 Define `apply_chunk_offset()` function signature, docstring, and type hints in src/clipper/core/ingestion.py per contracts/apply_chunk_offset.md
+- [x] T004 [P] Scaffold test module structure with test fixtures and mocks in tests/test_chunk_timestamp_sync.py
 
 **Checkpoint**: Foundation ready - function scaffolded and test suite structure initialized. User story implementation can now begin.
 
@@ -55,15 +55,15 @@ description: "Task list for feature Chunk Timestamp Absolute Sync implementation
 
 > **NOTE: Write these tests FIRST, ensure they fail before full implementation**
 
-- [ ] T005 [P] [US1] Unit test `apply_chunk_offset` contract (pure function immutability, zero offset, positive offset rounding, empty list) in tests/test_chunk_timestamp_sync.py
-- [ ] T006 [P] [US1] Unit test `apply_chunk_offset` structured INFO logging formatting ("Chunk %d offset applied: +%.2fs → %d words remapped") in tests/test_chunk_timestamp_sync.py
-- [ ] T007 [P] [US1] Unit test `transcription_node` single-chunk retrocompatibility and multi-chunk word timestamp offset aggregation in tests/test_chunk_timestamp_sync.py
-- [ ] T008 [P] [US1] Unit test `transcription_node` fail-fast validation raising `ValueError` when chunk is non-dict, missing `offset`, or negative (FR-010) in tests/test_chunk_timestamp_sync.py
+- [x] T005 [P] [US1] Unit test `apply_chunk_offset` contract (pure function immutability, zero offset, positive offset rounding, empty list) in tests/test_chunk_timestamp_sync.py
+- [x] T006 [P] [US1] Unit test `apply_chunk_offset` structured INFO logging formatting ("Chunk %d offset applied: +%.2fs → %d words remapped") in tests/test_chunk_timestamp_sync.py
+- [x] T007 [P] [US1] Unit test `transcription_node` single-chunk retrocompatibility and multi-chunk word timestamp offset aggregation in tests/test_chunk_timestamp_sync.py
+- [x] T008 [P] [US1] Unit test `transcription_node` fail-fast validation raising `ValueError` when chunk is non-dict, missing `offset`, or negative (FR-010) in tests/test_chunk_timestamp_sync.py
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implement `apply_chunk_offset(words: list[dict], offset: float, chunk_index: int) -> list[dict]` with rounding and INFO logging in src/clipper/core/ingestion.py per contracts/apply_chunk_offset.md
-- [ ] T010 [US1] Refactor `transcription_node` in src/clipper/core/orchestrator.py to validate chunk dict and offset presence (raising `ValueError` on invalid chunk per FR-010) and delegate word timestamp offset shifting to `apply_chunk_offset()`
+- [x] T009 [US1] Implement `apply_chunk_offset(words: list[dict], offset: float, chunk_index: int) -> list[dict]` with rounding and INFO logging in src/clipper/core/ingestion.py per contracts/apply_chunk_offset.md
+- [x] T010 [US1] Refactor `transcription_node` in src/clipper/core/orchestrator.py to validate chunk dict and offset presence (raising `ValueError` on invalid chunk per FR-010) and delegate word timestamp offset shifting to `apply_chunk_offset()`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently (MVP delivered!).
 
