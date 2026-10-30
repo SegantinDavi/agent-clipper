@@ -406,7 +406,7 @@ preventive_slicing_node = fatiamento_node
 transcricao_node = transcription_node
 
 
-def create_graph():
+def create_graph() -> StateGraph:
     """Constrói o Directed Acyclic Graph (DAG) sequencial do pipeline."""
     workflow = StateGraph(VideoState)
 

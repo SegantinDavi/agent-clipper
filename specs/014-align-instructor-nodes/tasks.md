@@ -27,8 +27,8 @@ description: "Task list for feature Align Instructor Nodes with LangGraph Synchr
 
 **Purpose**: Verify virtual environment, core dependencies (`langgraph`, `instructor`, `openai`, `pydantic`), and existing test suite baseline before making modifications
 
-- [ ] T001 Verify Python virtual environment, dependencies (`langgraph`, `instructor`, `openai`, `pydantic`), and test runner baseline via tests/test_llm_api.py and tests/test_review.py
-- [ ] T002 [P] Inspect existing node definitions and client factory implementations against contracts/llm-node-sync-contract.md in src/clipper/core/orchestrator.py
+- [X] T001 Verify Python virtual environment, dependencies (`langgraph`, `instructor`, `openai`, `pydantic`), and test runner baseline via tests/test_llm_api.py and tests/test_review.py
+- [X] T002 [P] Inspect existing node definitions and client factory implementations against contracts/llm-node-sync-contract.md in src/clipper/core/orchestrator.py
 
 ---
 
@@ -38,8 +38,8 @@ description: "Task list for feature Align Instructor Nodes with LangGraph Synchr
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Scaffold architectural contract test module structure with mock transport helpers in tests/test_instructor_sync_contract.py
-- [ ] T004 [P] Implement mock LLM client and ChatCompletion fixtures for isolated synchronous testing in tests/test_instructor_sync_contract.py
+- [X] T003 Scaffold architectural contract test module structure with mock transport helpers in tests/test_instructor_sync_contract.py
+- [X] T004 [P] Implement mock LLM client and ChatCompletion fixtures for isolated synchronous testing in tests/test_instructor_sync_contract.py
 
 **Checkpoint**: Foundation ready - test suite structure initialized. User story implementation can now begin.
 
@@ -55,14 +55,14 @@ description: "Task list for feature Align Instructor Nodes with LangGraph Synchr
 
 > **NOTE: Write these tests FIRST, ensure they fail before full implementation**
 
-- [ ] T005 [P] [US1] Unit test synchronous sequential execution of thinker_node returning raciocinio_bruto dictionary in tests/test_instructor_sync_contract.py
-- [ ] T006 [P] [US1] Unit test synchronous execution of extractor_node using instructor schema decoding returning cortes_finais dictionary in tests/test_instructor_sync_contract.py
-- [ ] T007 [P] [US1] Integration test verifying create_graph compilation and app.invoke execution with stubbed/mocked peripheral I/O nodes emits zero RuntimeWarning coroutine warnings (SC-002) in tests/test_instructor_sync_contract.py
+- [X] T005 [P] [US1] Unit test synchronous sequential execution of thinker_node returning raciocinio_bruto dictionary in tests/test_instructor_sync_contract.py
+- [X] T006 [P] [US1] Unit test synchronous execution of extractor_node using instructor schema decoding returning cortes_finais dictionary in tests/test_instructor_sync_contract.py
+- [X] T007 [P] [US1] Integration test verifying create_graph compilation and app.invoke execution with stubbed/mocked peripheral I/O nodes emits zero RuntimeWarning coroutine warnings (SC-002) in tests/test_instructor_sync_contract.py
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Verify and enforce strict synchronous def definitions and return payload structures for thinker_node and extractor_node in src/clipper/core/orchestrator.py
-- [ ] T009 [US1] Ensure create_graph compiles StateGraph for pure synchronous invocation via app.invoke in src/clipper/core/orchestrator.py
+- [X] T008 [US1] Verify and enforce strict synchronous def definitions and return payload structures for thinker_node and extractor_node in src/clipper/core/orchestrator.py
+- [X] T009 [US1] Ensure create_graph compiles StateGraph for pure synchronous invocation via app.invoke in src/clipper/core/orchestrator.py
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently (MVP delivered!).
 
