@@ -130,6 +130,50 @@ def transcribe_audio_chunk(audio_path: str) -> dict:
                 logger.warning("GPU memory cleanup encountered an error: %s", cleanup_err)
 
 
+def apply_chunk_offset(
+    words: list[dict],
+    offset: float,
+    chunk_index: int,
+) -> list[dict]:
+    """Shift start and end timestamps of words by offset seconds.
+
+    Converts chunk-relative timestamps from Whisper into absolute timeline
+    coordinates of the original video. Logs offset details and returns a
+    new list without mutating the input.
+
+    Args:
+        words: List of dicts, each with 'word', 'start', and 'end'.
+        offset: Absolute start time (in seconds) of the chunk (>= 0.0).
+        chunk_index: 0-based index of the chunk, used for structured logging.
+
+    Returns:
+        A new list of dicts with 'start' and 'end' remapped to absolute time.
+
+    Raises:
+        ValueError: If offset is negative (< 0.0).
+    """
+    if offset < 0.0:
+        raise ValueError(f"Chunk offset cannot be negative: {offset}")
+
+    remapped_words = []
+    for word_info in words:
+        remapped_words.append(
+            {
+                **word_info,
+                "start": round(float(word_info["start"]) + offset, 2),
+                "end": round(float(word_info["end"]) + offset, 2),
+            }
+        )
+
+    logger.info(
+        "Chunk %d offset applied: +%.2fs → %d words remapped",
+        chunk_index,
+        offset,
+        len(remapped_words),
+    )
+    return remapped_words
+
+
 def download_video_and_transcript(url: str, output_dir: str = "downloads") -> dict:
     video_res = download_video(url, output_dir)
     if video_res.get("status") == "error":

@@ -196,6 +196,12 @@ def build_pause_plan(video_path: str, start: float, end: float,
 
 
 def remap_word_groups(words: list[dict], plan: PausePlan) -> list[list[dict]]:
+    """Remap absolute word timestamps to pause-shortened cut timeline.
+
+    Expects `words` to have absolute timeline coordinates matching the original
+    video. Remaps each word's start and end relative to `plan.source_start`,
+    filtering out trimmed pauses and preserving continuity across chunk boundaries.
+    """
     groups = []
     offset = 0.0
     for interval in plan.kept:

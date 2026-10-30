@@ -33,7 +33,12 @@ from clipper.core.prompts import (
     EXTRACTOR_SYSTEM_PROMPT_TEMPLATE,
     THINKER_SYSTEM_PROMPT,
 )
-from clipper.core.ingestion import download_video, extract_video_id, transcribe_audio_chunk
+from clipper.core.ingestion import (
+    apply_chunk_offset,
+    download_video,
+    extract_video_id,
+    transcribe_audio_chunk,
+)
 from clipper.core.node_0 import node_0_preventive_slicing
 from clipper.video.editor import cut_and_format_video
 from clipper.review.review import (
@@ -151,12 +156,23 @@ def transcription_node(state: VideoState) -> dict:
     aggregated_word_timestamps: list[dict] = []
 
     for index, chunk in enumerate(audio_chunks):
-        if isinstance(chunk, dict):
-            chunk_path = chunk.get("chunk_path", "")
-            offset = float(chunk.get("offset", 0.0))
-        else:
-            chunk_path = str(chunk)
-            offset = 0.0
+        if not isinstance(chunk, dict):
+            raise ValueError(
+                f"Chunk at index {index} must be a dict, got {type(chunk).__name__}"
+            )
+        if "chunk_path" not in chunk or not chunk["chunk_path"]:
+            raise ValueError(f"Chunk at index {index} is missing 'chunk_path'")
+        if "offset" not in chunk:
+            raise ValueError(f"Chunk at index {index} is missing 'offset'")
+        try:
+            offset = float(chunk["offset"])
+        except (ValueError, TypeError) as err:
+            raise ValueError(
+                f"Chunk at index {index} has invalid 'offset': {chunk.get('offset')}"
+            ) from err
+        if offset < 0.0:
+            raise ValueError(f"Chunk at index {index} has negative offset: {offset}")
+        chunk_path = chunk["chunk_path"]
 
         logger.info(
             "Transcribing chunk %d/%d: %s (offset: %.2fs)",
@@ -190,14 +206,12 @@ def transcription_node(state: VideoState) -> dict:
         if chunk_transcript.strip():
             aggregated_transcript_parts.append(chunk_transcript.strip())
 
-        for word_info in result.get("word_timestamps", []):
-            aggregated_word_timestamps.append(
-                {
-                    "word": word_info.get("word", ""),
-                    "start": round(float(word_info.get("start", 0.0)) + offset, 2),
-                    "end": round(float(word_info.get("end", 0.0)) + offset, 2),
-                }
-            )
+        remapped_words = apply_chunk_offset(
+            result.get("word_timestamps", []),
+            offset=offset,
+            chunk_index=index,
+        )
+        aggregated_word_timestamps.extend(remapped_words)
 
         gc.collect()
 
