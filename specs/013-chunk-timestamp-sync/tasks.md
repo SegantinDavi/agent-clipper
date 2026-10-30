@@ -77,12 +77,12 @@ description: "Task list for feature Chunk Timestamp Absolute Sync implementation
 
 ### Tests for User Story 2
 
-- [ ] T011 [P] [US2] Integration test `speech_intervals` and `build_pause_plan` with multi-chunk absolute timestamps asserting silence intervals map to absolute video coordinates in tests/test_chunk_timestamp_sync.py
-- [ ] T012 [P] [US2] Integration test verifying `.pauses.json` serialization and restart persistence using multi-chunk absolute cut timestamps in tests/test_chunk_timestamp_sync.py
+- [x] T011 [P] [US2] Integration test `speech_intervals` and `build_pause_plan` with multi-chunk absolute timestamps asserting silence intervals map to absolute video coordinates in tests/test_chunk_timestamp_sync.py
+- [x] T012 [P] [US2] Integration test verifying `.pauses.json` serialization and restart persistence using multi-chunk absolute cut timestamps in tests/test_chunk_timestamp_sync.py
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Audit and verify (read-only) pause editing integration with multi-chunk absolute timestamps in src/clipper/video/pause_editing.py and src/clipper/review/review.py without modifying production logic
+- [x] T013 [US2] Audit and verify (read-only) pause editing integration with multi-chunk absolute timestamps in src/clipper/video/pause_editing.py and src/clipper/review/review.py without modifying production logic
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work together: multi-chunk transcripts have absolute timestamps and downstream pause cutting operates accurately on any cut position.
 
@@ -96,12 +96,12 @@ description: "Task list for feature Chunk Timestamp Absolute Sync implementation
 
 ### Tests for User Story 3
 
-- [ ] T014 [P] [US3] Unit test `remap_word_groups` and `group_caption_words` with cross-chunk boundary word sequences asserting contiguous intervals without negative gaps in tests/test_chunk_timestamp_sync.py
-- [ ] T015 [P] [US3] Unit test caption sync drift measurement asserting max drift <= 0.1s across chunk transitions in tests/test_chunk_timestamp_sync.py
+- [x] T014 [P] [US3] Unit test `remap_word_groups` and `group_caption_words` with cross-chunk boundary word sequences asserting contiguous intervals without negative gaps in tests/test_chunk_timestamp_sync.py
+- [x] T015 [P] [US3] Unit test caption sync drift measurement asserting max drift <= 0.1s across chunk transitions in tests/test_chunk_timestamp_sync.py
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Audit and document (read-only / docstring only) caption grouping continuity across chunk boundaries in src/clipper/video/pause_editing.py and src/clipper/video/editor.py
+- [x] T016 [US3] Audit and document (read-only / docstring only) caption grouping continuity across chunk boundaries in src/clipper/video/pause_editing.py and src/clipper/video/editor.py
 
 **Checkpoint**: All three user stories are functional and verified with end-to-end alignment from chunking through transcription, pause editing, and caption grouping.
 
@@ -111,9 +111,9 @@ description: "Task list for feature Chunk Timestamp Absolute Sync implementation
 
 **Purpose**: Improvements that affect multiple user stories, test suite completion, and repository documentation synchronization
 
-- [ ] T017 Execute full test suite across the repository via tests/test_*.py
-- [ ] T018 [P] Synchronize documentation and feature guidelines in GEMINI.md and AGENTS.md
-- [ ] T019 Review code formatting, type annotations, and Clean Code compliance in src/clipper/core/ingestion.py and src/clipper/core/orchestrator.py
+- [x] T017 Execute full test suite across the repository via tests/test_*.py
+- [x] T018 [P] Synchronize documentation and feature guidelines in GEMINI.md and AGENTS.md
+- [x] T019 Review code formatting, type annotations, and Clean Code compliance in src/clipper/core/ingestion.py and src/clipper/core/orchestrator.py
 
 ---
 

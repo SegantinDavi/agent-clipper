@@ -33,6 +33,7 @@ Para evitar o estouro da janela de contexto do LLM e o esgotamento de RAM:
 
 - **Corte via FFmpeg:** Vídeos extensos (acima de ~15 min) não devem ser processados de uma vez. Use o filtro silencedetect do FFmpeg via subprocess para fatiar o vídeo bruto em chunks lógicos de áudio antes de enviar para o LLM.
 - **Otimização de Transcrição:** A transcript_string enviada ao modelo LLM NUNCA deve conter timestamps palavra por palavra. Agrupe os tempos por frases ou segmentos para economizar tokens. O array granulado de palavras (word_timestamps_list) deve transitar pelo estado oculto apenas para ser usado no nó de Edição.
+- **Sincronização de Timestamps em Chunks:** No fatiamento preventivo, cada chunk gerado possui um `offset` absoluto no vídeo original. Na transcrição de múltiplos chunks, esse `offset` deve ser somado estritamente via função pura `apply_chunk_offset` aos campos `start` e `end` de cada palavra antes da agregação ao `VideoState`. É proibido assumir fallback silencioso para `offset = 0.0` caso `offset` ou formato do chunk estejam ausentes ou inválidos (fail-fast com `ValueError`).
 
 ##### 3. Orquestração Obrigatória (LangGraph)
 

@@ -79,6 +79,13 @@ def position_caption_clip(caption: ImageClip, frame_size: tuple[int, int]) -> Im
 def group_caption_words(
     word_timestamps: list, start_time: float, end_time: float,
 ) -> list[dict]:
+    """Group consecutive words into caption segments within [start_time, end_time].
+
+    Expects `word_timestamps` to share the same timeline frame as `start_time`
+    and `end_time` (absolute video timestamps for standard cuts, or cut-relative
+    timestamps when called after remap_word_groups). Preserves chronological
+    continuity without negative gaps across chunk transitions.
+    """
     groups = []
     current_words = []
 
