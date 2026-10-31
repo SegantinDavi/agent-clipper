@@ -123,12 +123,13 @@ Sistemas procedurais e lineares (ou chat de agentes como AutoGen) são caóticos
 ```mermaid
 graph TD
     Z["Nó 1: Download<br>(yt-dlp)"] --> A["Nó 2: Fatiamento Preventivo<br>(FFmpeg Silence Detect)"]
-    A --> B["Nó 3: Transcrição Local<br>(Whisper CPU/int8 ou CUDA/float16)"]
-    B --> C["Nó 4: Pensador (Thinker)<br>(Qwen local ou Gemini API)"]
-    C --> D["Nó 5: Extrator (mesmo modelo)<br>(Instructor + Pydantic)"]
-    D --> E["Nó 6: Previews & Pausas<br>(FFmpeg na CPU)"]
-    E --> F["Nó 7: Aprovação HITL<br>(interrupt() + SQLite)"]
-    F --> G["Nó 8: Edição dos Aprovados<br>(MoviePy + Pillow 9:16)"]
+    A --> S["Nó 3: Identidade Visual<br>(estilo.json / defaults)"]
+    S --> B["Nó 4: Transcrição Local<br>(Whisper CPU/int8 ou CUDA/float16)"]
+    B --> C["Nó 5: Pensador (Thinker)<br>(Qwen local ou Gemini API)"]
+    C --> D["Nó 6: Extrator (mesmo modelo)<br>(Instructor + Pydantic)"]
+    D --> E["Nó 7: Previews & Pausas<br>(FFmpeg na CPU)"]
+    E --> F["Nó 8: Aprovação HITL<br>(interrupt() + SQLite)"]
+    F --> G["Nó 9: Edição dos Aprovados<br>(MoviePy + Pillow 9:16)"]
 
 ```
 

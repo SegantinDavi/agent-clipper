@@ -224,5 +224,191 @@ class TestLoadVisualIdentity(unittest.TestCase):
             self.assertIsInstance(v, (str, int, float, bool))
 
 
+class TestStyleNode(unittest.TestCase):
+    """Unit tests for style_node LangGraph node execution (T007)."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_dir_path = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_style_node_is_strictly_synchronous(self):
+        import inspect
+        from src.clipper.core.orchestrator import style_node
+
+        self.assertFalse(inspect.iscoroutinefunction(style_node))
+
+    def test_style_node_with_custom_file_populates_visual_identity(self):
+        from src.clipper.core.orchestrator import style_node
+
+        style_file = self.temp_dir_path / "estilo.json"
+        style_file.write_text(
+            json.dumps({"palette": {"caption_color": "#AABBCC"}}),
+            encoding="utf-8",
+        )
+
+        state = {"video_url": "https://youtu.be/dummy", "style_path": str(style_file)}
+        result = style_node(state)
+        self.assertIn("visual_identity", result)
+        self.assertEqual(result["visual_identity"]["caption_color"], "#AABBCC")
+        self.assertEqual(
+            result["visual_identity"]["caption_stroke_color"],
+            config.CAPTION_STROKE_COLOR,
+        )
+
+    def test_style_node_with_absent_file_returns_all_defaults(self):
+        from src.clipper.core.orchestrator import style_node
+
+        nonexistent = self.temp_dir_path / "nonexistent.json"
+        state = {"video_url": "https://youtu.be/dummy", "style_path": str(nonexistent)}
+        result = style_node(state)
+        self.assertIn("visual_identity", result)
+        self.assertEqual(result["visual_identity"], DEFAULT_VISUAL_IDENTITY)
+
+    def test_editor_node_passes_visual_identity_to_cut_and_format_video(self):
+        from unittest.mock import patch, MagicMock
+        from src.clipper.core.orchestrator import editor_node
+
+        state = {
+            "approval_complete": True,
+            "video_path": "/fake/video.mp4",
+            "cortes_finais": [{"title": "Cut 1", "start_time": 0.0, "end_time": 5.0}],
+            "approved_cut_ids": [1],
+            "word_timestamps": [],
+            "review_directory": "/fake/review",
+            "visual_identity": {"caption_color": "#112233"},
+        }
+
+        with patch("os.path.exists", return_value=True), \
+             patch("src.clipper.core.orchestrator.load_review_plans", return_value=[MagicMock()]), \
+             patch("src.clipper.core.orchestrator.cut_and_format_video", return_value=["/fake/cut1.mp4"]) as mock_cut:
+            editor_node(state)
+            mock_cut.assert_called_once()
+            _, kwargs = mock_cut.call_args
+            self.assertEqual(kwargs.get("visual_identity"), {"caption_color": "#112233"})
+
+
+
+class TestCreateGraphStyleNodeContract(unittest.TestCase):
+    """Contract tests for create_graph DAG edges and synchronous node compliance (T008)."""
+
+    def test_create_graph_includes_style_node_between_fatiamento_and_transcricao(self):
+        from src.clipper.core.orchestrator import create_graph
+
+        workflow = create_graph()
+        self.assertIn("style", workflow.nodes)
+
+        # Check edges fatiamento -> style -> transcricao
+        # In langgraph, edges can be inspected via workflow.builder.edges or workflow.edges
+        edge_pairs = set()
+        for edge in workflow.edges:
+            # edge may be a tuple (start, end)
+            if isinstance(edge, tuple):
+                edge_pairs.add((edge[0], edge[1]))
+
+        self.assertIn(("fatiamento", "style"), edge_pairs)
+        self.assertIn(("style", "transcricao"), edge_pairs)
+        self.assertNotIn(("fatiamento", "transcricao"), edge_pairs)
+
+
+class TestEditorCaptionCustomStyle(unittest.TestCase):
+    """Unit tests for create_caption_clip, position_caption_clip, and group_caption_words with visual_identity (T009)."""
+
+    def test_create_caption_clip_applies_custom_color_and_size(self):
+        import numpy as np
+        from src.clipper.video.editor import create_caption_clip
+
+        custom_style = {
+            "caption_color": "#FF0000",
+            "caption_stroke_color": "#00FF00",
+            "caption_font_size": 90,
+        }
+        with create_caption_clip("TEST", frame_width=1080, visual_identity=custom_style) as clip:
+            frame = clip.get_frame(0)
+            mask = clip.mask.get_frame(0)
+            # Check presence of red (#FF0000 -> [255, 0, 0])
+            self.assertTrue(np.any(np.all(frame == [255, 0, 0], axis=-1)))
+            # Check presence of green stroke (#00FF00 -> [0, 255, 0])
+            self.assertTrue(np.any(np.all(frame == [0, 255, 0], axis=-1) & (mask > 0)))
+
+    def test_create_caption_clip_fallback_when_none_or_missing(self):
+        import numpy as np
+        from src.clipper.video.editor import create_caption_clip
+
+        with create_caption_clip("TEST", frame_width=1080, visual_identity=None) as clip:
+            frame = clip.get_frame(0)
+            # Default is #25E600 -> [37, 230, 0]
+            self.assertTrue(np.any(np.all(frame == [37, 230, 0], axis=-1)))
+
+    def test_position_caption_clip_applies_custom_ratios(self):
+        from moviepy.editor import ColorClip
+        from src.clipper.video.editor import position_caption_clip
+
+        custom_style = {
+            "caption_center_x_ratio": 0.3,
+            "caption_center_y_ratio": 0.6,
+        }
+        with ColorClip((100, 50), color=(255, 255, 255)) as clip:
+            positioned = position_caption_clip(clip, (1000, 1000), visual_identity=custom_style)
+            x, y = positioned.pos(0)
+            # x = round(1000 * 0.3 - 100 / 2) = 300 - 50 = 250
+            # y = round(1000 * 0.6 - 50 / 2) = 600 - 25 = 575
+            self.assertEqual(x, 250)
+            self.assertEqual(y, 575)
+
+    def test_group_caption_words_applies_custom_motion_rules(self):
+        from src.clipper.video.editor import group_caption_words
+
+        words = [
+            {"word": "word1", "start": 0.0, "end": 0.3},
+            {"word": "word2", "start": 0.3, "end": 0.6},
+            {"word": "word3", "start": 0.6, "end": 0.9},
+            {"word": "word4", "start": 0.9, "end": 1.2},
+        ]
+        # Default caption_max_words = 3 -> groups of 3 and 1
+        default_groups = group_caption_words(words, 0.0, 2.0, visual_identity=None)
+        self.assertEqual(len(default_groups), 2)
+        self.assertEqual(default_groups[0]["text"], "word1 word2 word3")
+        self.assertEqual(default_groups[1]["text"], "word4")
+
+        # Custom caption_max_words = 2 -> groups of 2 and 2
+        custom_style = {"caption_max_words": 2}
+        custom_groups = group_caption_words(words, 0.0, 2.0, visual_identity=custom_style)
+        self.assertEqual(len(custom_groups), 2)
+        self.assertEqual(custom_groups[0]["text"], "word1 word2")
+        self.assertEqual(custom_groups[1]["text"], "word3 word4")
+
+    def test_cut_and_format_video_applies_custom_visual_identity(self):
+        import os
+        from unittest.mock import patch
+        import numpy as np
+        from moviepy.editor import ColorClip, VideoFileClip
+        from src.clipper.core.schemas import CorteVideo
+        from src.clipper.video import editor
+
+        with tempfile.TemporaryDirectory() as directory:
+            source_path = os.path.join(directory, "source.mp4")
+            with ColorClip((320, 240), color=(30, 40, 50), duration=1) as source:
+                source.write_videofile(source_path, fps=10, codec="libx264", audio=False, logger=None)
+            with patch.object(editor, "SPEAKER_FOCUS_ENABLED", False):
+                paths = editor.cut_and_format_video(
+                    source_path,
+                    [CorteVideo(title="Custom color test", start_time=0, end_time=1)],
+                    [{"word": "teste", "start": 0.1, "end": 0.8}],
+                    output_dir=directory,
+                    visual_identity={"caption_color": "#FF0000"},
+                )
+            self.assertEqual(len(paths), 1)
+            with VideoFileClip(paths[0]) as result:
+                frame = result.get_frame(0.3)
+                red = (frame[:, :, 0] > 200) & (frame[:, :, 1] < 50) & (frame[:, :, 2] < 50)
+                rows, _ = np.where(red)
+                self.assertGreater(len(rows), 0)
+
+
+
+
 if __name__ == "__main__":
     unittest.main()

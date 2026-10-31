@@ -56,19 +56,19 @@ description: "Task list for feature Visual Identity & Global State implementatio
 
 > **NOTE: Write these tests FIRST, ensure they fail before full implementation**
 
-- [ ] T006 [P] [US1] Unit test VisualIdentityConfig validation, flattening, and defaults in tests/test_style_node.py
-- [ ] T007 [P] [US1] Unit test style_node execution and return dictionary update in tests/test_style_node.py
-- [ ] T008 [P] [US1] Contract test verifying create_graph DAG edges and synchronous node compliance in tests/test_style_node.py
-- [ ] T009 [P] [US1] Unit test create_caption_clip, position_caption_clip, and group_caption_words with custom visual_identity in tests/test_style_node.py
+- [X] T006 [P] [US1] Unit test VisualIdentityConfig validation, flattening, and defaults in tests/test_style_node.py
+- [X] T007 [P] [US1] Unit test style_node execution and return dictionary update in tests/test_style_node.py
+- [X] T008 [P] [US1] Contract test verifying create_graph DAG edges and synchronous node compliance in tests/test_style_node.py
+- [X] T009 [P] [US1] Unit test create_caption_clip, position_caption_clip, and group_caption_words with custom visual_identity in tests/test_style_node.py
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Add visual_identity field to VideoState TypedDict and initial_state in src/clipper/core/orchestrator.py
-- [ ] T011 [US1] Implement synchronous style_node in src/clipper/core/orchestrator.py
-- [ ] T012 [US1] Wire style_node into create_graph between fatiamento and transcricao in src/clipper/core/orchestrator.py
-- [ ] T013 [US1] Update create_caption_clip, position_caption_clip, and group_caption_words to accept visual_identity in src/clipper/video/editor.py
-- [ ] T014 [US1] Update cut_and_format_video to accept visual_identity and pass to caption helpers in src/clipper/video/editor.py
-- [ ] T015 [US1] Update editor_node to pass visual_identity from state to cut_and_format_video in src/clipper/core/orchestrator.py
+- [X] T010 [US1] Add visual_identity field to VideoState TypedDict and initial_state in src/clipper/core/orchestrator.py
+- [X] T011 [US1] Implement synchronous style_node in src/clipper/core/orchestrator.py
+- [X] T012 [US1] Wire style_node into create_graph between fatiamento and transcricao in src/clipper/core/orchestrator.py
+- [X] T013 [US1] Update create_caption_clip, position_caption_clip, and group_caption_words to accept visual_identity in src/clipper/video/editor.py
+- [X] T014 [US1] Update cut_and_format_video to accept visual_identity and pass to caption helpers in src/clipper/video/editor.py
+- [X] T015 [US1] Update editor_node to pass visual_identity from state to cut_and_format_video in src/clipper/core/orchestrator.py
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently (MVP delivered!).
 
