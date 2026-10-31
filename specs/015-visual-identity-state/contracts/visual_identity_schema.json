@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "estilo.json",
+  "title": "VisualIdentityConfig",
+  "description": "Optional brand style file placed at project root. All fields are optional; missing fields use pipeline defaults.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "palette": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "caption_color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "default": "#25E600",
+          "description": "Primary caption text color (hex #RRGGBB). Falls back to #25E600 on invalid format."
+        },
+        "caption_stroke_color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "default": "#000000",
+          "description": "Caption text stroke/outline color. Falls back to #000000 on invalid format."
+        }
+      }
+    },
+    "typography": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "caption_font_size": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 80,
+          "description": "Base caption font size in pixels at reference width."
+        },
+        "caption_stroke_width": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8,
+          "description": "Caption stroke/outline width in pixels at reference font size."
+        },
+        "caption_reference_width": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1080,
+          "description": "Reference canvas width in pixels for font-size scaling."
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "caption_center_x_ratio": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.5,
+          "description": "Horizontal center of captions as a fraction of frame width."
+        },
+        "caption_center_y_ratio": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.79,
+          "description": "Vertical center of captions as a fraction of frame height."
+        },
+        "caption_safe_width_ratio": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1.0,
+          "default": 0.9,
+          "description": "Maximum caption width as a fraction of frame width (safe zone)."
+        }
+      }
+    },
+    "motion": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "caption_max_words": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "description": "Maximum number of words per caption group."
+        },
+        "caption_max_gap": {
+          "type": "number",
+          "minimum": 0.0,
+          "default": 0.5,
+          "description": "Maximum silence gap (seconds) between words before splitting a caption group."
+        },
+        "caption_max_duration": {
+          "type": "number",
+          "minimum": 0.1,
+          "default": 2.0,
+          "description": "Maximum duration (seconds) of a single caption group."
+        }
+      }
+    }
+  }
+}

@@ -44,6 +44,7 @@ from clipper.core.ingestion import (
     transcribe_audio_chunk,
 )
 from clipper.core.node_0 import node_0_preventive_slicing
+from clipper.core.style_loader import load_visual_identity
 from clipper.video.editor import cut_and_format_video
 from clipper.review.review import (
     load_approval_decision,
@@ -96,6 +97,8 @@ class VideoState(TypedDict):
     review_session: str
     approved_cut_ids: list[int]
     approval_complete: bool
+    visual_identity: dict
+    style_path: str
 
 
 def create_llm_client() -> openai.OpenAI:
@@ -148,6 +151,13 @@ def fatiamento_node(state: VideoState) -> dict:
     )
     logger.info("Audio chunks generated successfully: %d", len(chunks))
     return {"audio_chunks": chunks}
+
+
+def style_node(state: VideoState) -> dict:
+    """Nó síncrono que carrega estilo.json e armazena em visual_identity no VideoState."""
+    style_path = (state.get("style_path") or None) if isinstance(state, dict) else None
+    identity = load_visual_identity(style_path)
+    return {"visual_identity": identity}
 
 
 def transcription_node(state: VideoState) -> dict:
@@ -400,12 +410,14 @@ def editor_node(state: VideoState) -> dict:
 
     logger.info("Rendering %d vertical videos (9:16)...", len(cortes_validados))
     plans = load_review_plans(state["review_directory"], all_cuts)
+    visual_identity = state.get("visual_identity", {})
     arquivos_gerados = cut_and_format_video(
         video_path=video_path,
         cortes_validados=cortes_validados,
         word_timestamps=word_timestamps,
         output_dir=OUTPUT_DIR,
         pause_plans=[plans[index - 1] for index in approved_ids],
+        visual_identity=visual_identity,
     )
 
     logger.info("Rendering completed! %d files created:", len(arquivos_gerados))
@@ -418,6 +430,7 @@ def editor_node(state: VideoState) -> dict:
 # Aliases para máxima flexibilidade e compatibilidade
 preventive_slicing_node = fatiamento_node
 transcricao_node = transcription_node
+estilo_node = style_node
 
 
 def create_graph() -> StateGraph:
@@ -426,6 +439,7 @@ def create_graph() -> StateGraph:
 
     workflow.add_node("download", download_node)
     workflow.add_node("fatiamento", fatiamento_node)
+    workflow.add_node("style", style_node)
     workflow.add_node("transcricao", transcription_node)
     workflow.add_node("pensador", thinker_node)
     workflow.add_node("extrator", extractor_node)
@@ -435,7 +449,8 @@ def create_graph() -> StateGraph:
 
     workflow.add_edge(START, "download")
     workflow.add_edge("download", "fatiamento")
-    workflow.add_edge("fatiamento", "transcricao")
+    workflow.add_edge("fatiamento", "style")
+    workflow.add_edge("style", "transcricao")
     workflow.add_edge("transcricao", "pensador")
     workflow.add_edge("pensador", "extrator")
     workflow.add_edge("extrator", "preview")
@@ -611,6 +626,8 @@ def main(args=None):
         "review_session": uuid.uuid4().hex,
         "approved_cut_ids": [],
         "approval_complete": False,
+        "visual_identity": {},
+        "style_path": "",
     }
 
     video_id = extract_video_id(video_url) or video_url

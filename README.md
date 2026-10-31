@@ -23,17 +23,18 @@ O sistema adota os princípios de **AI Systems Engineering**: abandona chat proc
 
 ## 🏛️ Arquitetura do Pipeline (LangGraph DAG)
 
-O pipeline opera como um Grafo Acíclico Dirigido (DAG) de 8 nós sequenciais com persistência de estado via SQLite (`SqliteSaver`), garantindo retomada imediata em caso de falhas:
+O pipeline opera como um Grafo Acíclico Dirigido (DAG) de 9 nós sequenciais com persistência de estado via SQLite (`SqliteSaver`), garantindo retomada imediata em caso de falhas:
 
 ```mermaid
 flowchart TD
     A["Nó 1: Ingestão (Download)<br>yt-dlp"] --> B["Nó 2: Fatiamento Preventivo<br>FFmpeg Silence Detect"]
-    B --> C["Nó 3: Transcrição Local<br>CPU/int8 (Ollama) ou CUDA/float16 (Gemini)"]
-    C --> D["Nó 4: Pensador (Thinker)<br>Qwen local ou Gemini API"]
-    D --> E["Nó 5: Extrator (mesmo modelo)<br>Few-Shot + Instructor + JSON Schema"]
-    E --> P["Nó 6: Plano de pausas + Previews<br>FFmpeg na CPU"]
-    P --> R["Nó 7: Aprovação humana<br>Página local + SQLite"]
-    R --> F["Nó 8: Edição dos aprovados<br>MoviePy + Pillow (9:16)"]
+    B --> S["Nó 3: Identidade Visual<br>estilo.json / defaults"]
+    S --> C["Nó 4: Transcrição Local<br>CPU/int8 (Ollama) ou CUDA/float16 (Gemini)"]
+    C --> D["Nó 5: Pensador (Thinker)<br>Qwen local ou Gemini API"]
+    D --> E["Nó 6: Extrator (mesmo modelo)<br>Few-Shot + Instructor + JSON Schema"]
+    E --> P["Nó 7: Plano de pausas + Previews<br>FFmpeg na CPU"]
+    P --> R["Nó 8: Aprovação humana<br>Página local + SQLite"]
+    R --> F["Nó 9: Edição dos aprovados<br>MoviePy + Pillow (9:16)"]
 ```
 
 ### Destaques Arquiteturais
@@ -70,7 +71,8 @@ agent-clipper/
 ├── src/
 │   └── clipper/
 │       ├── core/                # Orquestração (LangGraph DAG), schemas, prompts, ingestão
-│       │   ├── orchestrator.py  # DAG LangGraph (download -> fatiamento -> transcrição -> pensador -> extrator -> editor)
+│       │   ├── orchestrator.py  # DAG LangGraph (download -> fatiamento -> estilo -> transcrição -> pensador -> extrator -> editor)
+│       │   ├── style_loader.py  # Carregador e validador de identidade visual (estilo.json) com fallback
 │       │   ├── prompts.py       # Templates de prompt imutáveis e exemplos Few-Shot multi-turno
 │       │   ├── schemas.py       # Modelos Pydantic (CorteVideo, CortesResponse)
 │       │   ├── node_0.py        # Fatiamento preventivo de áudio baseado em silêncio
@@ -197,7 +199,41 @@ As legendas são renderizadas com Pillow e a fonte Liberation Sans Bold, localiz
 
 O estilo das legendas segue a referência visual aprovada: verde vivo (`#25E600`), negrito, contorno preto e fundo transparente. São exibidos grupos de até três palavras, respeitando pausas, pontuação e os tempos da transcrição. O centro do texto fica no meio horizontal e em 79% da altura do vídeo. Essa posição visual foi confirmada pelo usuário em substituição à interpretação literal de `(0, -1075)`, que ficaria fora da tela no MoviePy.
 
-Em largura de 1080 pixels, a fonte tem tamanho 80 e contorno de 8 pixels; ambos escalam com a largura real do vídeo. Frases longas reduzem o tamanho para caber em 90% da largura. Os valores podem ser ajustados com as variáveis `CAPTION_*` de `config.py`; os principais estão em `.env.example`.
+Em largura de 1080 pixels, a fonte tem tamanho 80 e contorno de 8 pixels; ambos escalam com a largura real do vídeo. Frases longas reduzem o tamanho para caber em 90% da largura. Os valores padrão são definidos pelas variáveis `CAPTION_*` em `config.py`.
+
+### Identidade Visual e Customização (estilo.json)
+
+O pipeline permite personalizar as propriedades visuais das legendas inserindo um arquivo `estilo.json` na raiz do projeto (ou injetando `style_path` no estado). O nó síncrono `style_node` carrega e valida o arquivo no início da execução, salvando as propriedades no estado global (`VideoState.visual_identity`).
+
+Exemplo de `estilo.json`:
+
+```json
+{
+  "palette": {
+    "caption_color": "#25E600",
+    "caption_stroke_color": "#000000"
+  },
+  "typography": {
+    "caption_font_size": 80,
+    "caption_stroke_width": 8,
+    "caption_reference_width": 1080
+  },
+  "layout": {
+    "caption_center_x_ratio": 0.5,
+    "caption_center_y_ratio": 0.79,
+    "caption_safe_width_ratio": 0.9
+  },
+  "motion": {
+    "caption_max_words": 3,
+    "caption_max_gap": 0.5,
+    "caption_max_duration": 2.0
+  }
+}
+```
+
+- **Resiliência e Fallback:** Se `estilo.json` estiver ausente, com sintaxe JSON inválida ou campos omitidos, o pipeline aplica automaticamente os padrões do sistema para cada campo faltante, emitindo avisos informativos em `pipeline.log` sem interromper a execução.
+- **Sobrevivência em Checkpoints:** Os valores carregados são serializáveis e preservados em `estado.db` via `SqliteSaver`. Ao retomar uma sessão de checkpoint, o estilo é restaurado sem necessidade de reler o disco. Ao executar com `--restart`, o arquivo `estilo.json` é recarregado do disco.
+- **Desempenho:** A operação é pura I/O em CPU com overhead inferior a 100ms.
 
 ### Close automático em quem está falando
 

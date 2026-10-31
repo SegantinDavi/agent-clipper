@@ -42,15 +42,27 @@ def remove_caption_punctuation(text: str) -> str:
     ).split())
 
 
-def create_caption_clip(text: str, frame_width: int = CAPTION_REFERENCE_WIDTH) -> ImageClip:
+def create_caption_clip(
+    text: str,
+    frame_width: int = CAPTION_REFERENCE_WIDTH,
+    visual_identity: dict | None = None,
+) -> ImageClip:
     # Pillow avoids TextClip's indirect @file reads blocked by ImageMagick policy.
+    style = visual_identity or {}
+    ref_width = style.get("caption_reference_width", CAPTION_REFERENCE_WIDTH)
+    base_font_size = style.get("caption_font_size", CAPTION_FONT_SIZE)
+    base_stroke_width = style.get("caption_stroke_width", CAPTION_STROKE_WIDTH)
+    safe_width_ratio = style.get("caption_safe_width_ratio", CAPTION_SAFE_WIDTH_RATIO)
+    color = style.get("caption_color", CAPTION_COLOR)
+    stroke_color = style.get("caption_stroke_color", CAPTION_STROKE_COLOR)
+
     text = remove_caption_punctuation(text)
-    font_size = max(1, round(CAPTION_FONT_SIZE * frame_width / CAPTION_REFERENCE_WIDTH))
-    padding = max(1, round(4 * frame_width / CAPTION_REFERENCE_WIDTH))
-    max_width = max(1, int(frame_width * CAPTION_SAFE_WIDTH_RATIO))
+    font_size = max(1, round(base_font_size * frame_width / ref_width))
+    padding = max(1, round(4 * frame_width / ref_width))
+    max_width = max(1, int(frame_width * safe_width_ratio))
     while True:
         font = load_caption_font(font_size)
-        stroke_width = max(1, round(CAPTION_STROKE_WIDTH * font_size / CAPTION_FONT_SIZE))
+        stroke_width = max(1, round(base_stroke_width * font_size / base_font_size))
         left, top, right, bottom = font.getbbox(text, stroke_width=stroke_width)
         text_width = right - left + 2 * padding
         if text_width <= max_width or font_size == 1:
@@ -61,23 +73,34 @@ def create_caption_clip(text: str, frame_width: int = CAPTION_REFERENCE_WIDTH) -
         (0, 0, 0, 0),
     )
     ImageDraw.Draw(image).text(
-        (padding - left, padding - top), text, font=font, fill=CAPTION_COLOR,
-        stroke_fill=CAPTION_STROKE_COLOR, stroke_width=stroke_width,
+        (padding - left, padding - top), text, font=font, fill=color,
+        stroke_fill=stroke_color, stroke_width=stroke_width,
     )
     return ImageClip(np.array(image))
 
 
-def position_caption_clip(caption: ImageClip, frame_size: tuple[int, int]) -> ImageClip:
+def position_caption_clip(
+    caption: ImageClip,
+    frame_size: tuple[int, int],
+    visual_identity: dict | None = None,
+) -> ImageClip:
+    style = visual_identity or {}
+    center_x_ratio = style.get("caption_center_x_ratio", CAPTION_CENTER_X_RATIO)
+    center_y_ratio = style.get("caption_center_y_ratio", CAPTION_CENTER_Y_RATIO)
+
     frame_width, frame_height = frame_size
-    x = round(frame_width * CAPTION_CENTER_X_RATIO - caption.w / 2)
-    y = round(frame_height * CAPTION_CENTER_Y_RATIO - caption.h / 2)
+    x = round(frame_width * center_x_ratio - caption.w / 2)
+    y = round(frame_height * center_y_ratio - caption.h / 2)
     x = max(0, min(x, frame_width - caption.w))
     y = max(0, min(y, frame_height - caption.h))
     return caption.set_position((x, y))
 
 
 def group_caption_words(
-    word_timestamps: list, start_time: float, end_time: float,
+    word_timestamps: list,
+    start_time: float,
+    end_time: float,
+    visual_identity: dict | None = None,
 ) -> list[dict]:
     """Group consecutive words into caption segments within [start_time, end_time].
 
@@ -86,6 +109,11 @@ def group_caption_words(
     timestamps when called after remap_word_groups). Preserves chronological
     continuity without negative gaps across chunk transitions.
     """
+    style = visual_identity or {}
+    max_words = style.get("caption_max_words", CAPTION_MAX_WORDS)
+    max_gap = style.get("caption_max_gap", CAPTION_MAX_GAP)
+    max_duration = style.get("caption_max_duration", CAPTION_MAX_DURATION)
+
     groups = []
     current_words = []
 
@@ -107,9 +135,9 @@ def group_caption_words(
         if not text or word_end <= word_start:
             continue
         if current_words and (
-            len(current_words) >= CAPTION_MAX_WORDS
-            or word_start - current_words[-1]["end"] > CAPTION_MAX_GAP
-            or word_end - current_words[0]["start"] > CAPTION_MAX_DURATION
+            len(current_words) >= max_words
+            or word_start - current_words[-1]["end"] > max_gap
+            or word_end - current_words[0]["start"] > max_duration
         ):
             flush_group()
         current_words.append({"word": text, "start": word_start, "end": word_end})
@@ -125,6 +153,7 @@ def cut_and_format_video(
     word_timestamps: list,
     output_dir: str = "output",
     pause_plans: list[PausePlan] | None = None,
+    visual_identity: dict | None = None,
 ) -> list:
     if pause_plans is not None and len(pause_plans) != len(cortes_validados):
         raise ValueError("Every approved cut must have a saved pause plan.")
@@ -166,11 +195,11 @@ def cut_and_format_video(
                     )
                     clip = joined_clip
                 caption_groups = [group for words in remap_word_groups(word_timestamps, pause_plan)
-                                  for group in group_caption_words(words, 0, pause_plan.duration)]
+                                  for group in group_caption_words(words, 0, pause_plan.duration, visual_identity=visual_identity)]
                 for group in caption_groups:
-                    caption = create_caption_clip(group["text"], frame_width=clip.w)
+                    caption = create_caption_clip(group["text"], frame_width=clip.w, visual_identity=visual_identity)
                     text_clips.append(
-                        position_caption_clip(caption, tuple(clip.size))
+                        position_caption_clip(caption, tuple(clip.size), visual_identity=visual_identity)
                         .set_start(group["start"]).set_end(group["end"])
                     )
                 final_clip = CompositeVideoClip([clip] + text_clips)
