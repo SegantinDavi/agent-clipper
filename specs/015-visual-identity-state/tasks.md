@@ -27,8 +27,8 @@ description: "Task list for feature Visual Identity & Global State implementatio
 
 **Purpose**: Verify virtual environment, dependencies (`pydantic`, `langgraph`, `moviepy`), and existing test suite baseline before implementing new nodes.
 
-- [ ] T001 Verify virtual environment, core dependencies (pydantic, langgraph, moviepy), and test runner baseline via tests/test_editor_render.py
-- [ ] T002 [P] Inspect contracts/visual_identity_schema.json against CAPTION_* definitions in src/clipper/runtime/config.py
+- [X] T001 Verify virtual environment, core dependencies (pydantic, langgraph, moviepy), and test runner baseline via tests/test_editor_render.py
+- [X] T002 [P] Inspect contracts/visual_identity_schema.json against CAPTION_* definitions in src/clipper/runtime/config.py
 
 ---
 
@@ -38,9 +38,9 @@ description: "Task list for feature Visual Identity & Global State implementatio
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 Implement VisualIdentityConfig Pydantic model with per-field defaults, positive numeric constraints, and hex validation in src/clipper/core/style_loader.py
-- [ ] T004 Implement load_visual_identity function with schema flattening, JSON syntax error handling (JSONDecodeError), and fallback logic in src/clipper/core/style_loader.py
-- [ ] T005 Scaffold unit and integration test suite with temporary file fixtures in tests/test_style_node.py
+- [X] T003 Implement VisualIdentityConfig Pydantic model with per-field defaults, positive numeric constraints, and hex validation in src/clipper/core/style_loader.py
+- [X] T004 Implement load_visual_identity function with schema flattening, JSON syntax error handling (JSONDecodeError), and fallback logic in src/clipper/core/style_loader.py
+- [X] T005 Scaffold unit and integration test suite with temporary file fixtures in tests/test_style_node.py
 
 **Checkpoint**: Foundation ready - VisualIdentityConfig and loader logic ready. User story implementation can now begin.
 
