@@ -27,6 +27,14 @@ SAMPLE_CORTES_JSON = json.dumps(
                 "description": "High retention hook explaining predictable architecture.",
                 "start_time": 0.0,
                 "end_time": 30.0,
+                "scenes": [
+                    {
+                        "start_word": "Welcome",
+                        "end_word": "pipelines",
+                        "visual_metaphor": "diagrama de blocos conectado",
+                        "animation_trigger": "zoom_in",
+                    }
+                ],
             }
         ]
     }
@@ -510,6 +518,40 @@ class InstructorSyncContractTests(unittest.TestCase):
                 orchestrator.extractor_node(state)
 
         self.assertEqual(mock_client.close_call_count, 1)
+
+    def test_extractor_node_contract_passes_scene_schema_and_strict_response_format(self):
+        """T009 [US1]: Contract test verifying instructor call includes Scene schema and strict response_format."""
+        handler, intercepted_requests = create_mock_transport_handler()
+        mock_client = build_mock_sync_client(handler=handler)
+
+        with patch.object(orchestrator, "create_llm_client", return_value=mock_client):
+            state = {
+                "transcript_grouped": SAMPLE_TRANSCRIPT,
+                "raciocinio_bruto": SAMPLE_THINKER_REASONING,
+            }
+            result = orchestrator.extractor_node(state)
+
+        # Ensure request was made with strict response_format containing Scene definitions
+        self.assertEqual(len(intercepted_requests), 1)
+        req_body = json.loads(intercepted_requests[0].content)
+        self.assertIn("response_format", req_body)
+        rf = req_body["response_format"]
+        self.assertEqual(rf.get("type"), "json_schema")
+        self.assertTrue(rf.get("json_schema", {}).get("strict"))
+
+        schema = rf.get("json_schema", {}).get("schema", {})
+        defs = schema.get("$defs", {})
+        self.assertIn("Scene", defs)
+        scene_props = defs["Scene"].get("properties", {})
+        for field in ("start_word", "end_word", "visual_metaphor", "animation_trigger"):
+            self.assertIn(field, scene_props)
+
+        # Verify returned cuts contain scenes
+        cortes = result["cortes_finais"]
+        self.assertEqual(len(cortes), 1)
+        self.assertIn("scenes", cortes[0])
+        self.assertEqual(len(cortes[0]["scenes"]), 1)
+        self.assertEqual(cortes[0]["scenes"][0]["start_word"], "Welcome")
 
 
 if __name__ == "__main__":

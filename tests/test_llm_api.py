@@ -39,7 +39,7 @@ class LlmApiTests(unittest.TestCase):
             self.assertEqual(request.url.host, "generativelanguage.googleapis.com")
             requests.append(body)
             content = (
-                '{"cortes":[{"title":"Example","description":"A story about validation.","start_time":0,"end_time":30}]}'
+                '{"cortes":[{"title":"Example","description":"A story about validation.","start_time":0,"end_time":30,"scenes":[{"start_word":"Example","end_word":"story","visual_metaphor":"metaphor","animation_trigger":"zoom"}]}]}'
                 if "response_format" in body
                 else "CORTE [0 - 30]: A complete story with a clear hook."
             )

@@ -56,15 +56,15 @@ description: "Task list for feature Dynamic Scene Scripting via Constrained Deco
 
 > **NOTE: Write these tests FIRST, ensure they fail before full implementation**
 
-- [ ] T006 [P] [US1] Unit test extractor_node scene extraction and cortes_finais dictionary mapping with mocked instructor client in tests/test_scene_scripting.py
-- [ ] T007 [P] [US1] Unit test extractor_node fail-fast behavior when LLM returns cuts with empty scenes in tests/test_scene_scripting.py
-- [ ] T008 [P] [US1] Unit test extractor_node editorial duration warning for scenes exceeding 4 seconds and graceful fallback when word_timestamps is empty in tests/test_scene_scripting.py
-- [ ] T009 [P] [US1] Update SAMPLE_CORTES_JSON with valid scenes fixture and add contract test for instructor synchronous client call with Scene schema and response_format strictness in tests/test_instructor_sync_contract.py
+- [X] T006 [P] [US1] Unit test extractor_node scene extraction and cortes_finais dictionary mapping with mocked instructor client in tests/test_scene_scripting.py
+- [X] T007 [P] [US1] Unit test extractor_node fail-fast behavior when LLM returns cuts with empty scenes in tests/test_scene_scripting.py
+- [X] T008 [P] [US1] Unit test extractor_node editorial duration warning for scenes exceeding 4 seconds and graceful fallback when word_timestamps is empty in tests/test_scene_scripting.py
+- [X] T009 [P] [US1] Update SAMPLE_CORTES_JSON with valid scenes fixture and add contract test for instructor synchronous client call with Scene schema and response_format strictness in tests/test_instructor_sync_contract.py
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Harden extractor_node with fail-fast validation on empty scenes and word_timestamps-based editorial duration logging (> 4s) with graceful fallback in src/clipper/core/orchestrator.py
-- [ ] T011 [US1] Add structured cut and scene count logging to extractor_node execution summary in src/clipper/core/orchestrator.py
+- [X] T010 [US1] Harden extractor_node with fail-fast validation on empty scenes and word_timestamps-based editorial duration logging (> 4s) with graceful fallback in src/clipper/core/orchestrator.py
+- [X] T011 [US1] Add structured cut and scene count logging to extractor_node execution summary in src/clipper/core/orchestrator.py
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently (MVP delivered!).
 
@@ -78,13 +78,13 @@ description: "Task list for feature Dynamic Scene Scripting via Constrained Deco
 
 ### Tests for User Story 2
 
-- [ ] T012 [P] [US2] Unit test verifying EXTRACTOR_SYSTEM_PROMPT_TEMPLATE instructions and validating that all EXTRACTOR_FEW_SHOT_EXAMPLES assistant payloads parse strictly into CortesResponse in tests/test_scene_scripting.py
-- [ ] T013 [P] [US2] Unit test verifying LLM provider neutrality for scene extraction across Ollama and Gemini response mock fixtures in tests/test_scene_scripting.py
+- [X] T012 [P] [US2] Unit test verifying EXTRACTOR_SYSTEM_PROMPT_TEMPLATE instructions and validating that all EXTRACTOR_FEW_SHOT_EXAMPLES assistant payloads parse strictly into CortesResponse in tests/test_scene_scripting.py
+- [X] T013 [P] [US2] Unit test verifying LLM provider neutrality for scene extraction across Ollama and Gemini response mock fixtures in tests/test_scene_scripting.py
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Refactor EXTRACTOR_SYSTEM_PROMPT_TEMPLATE with 2-4s scene segmentation rules, visual metaphors, and animation triggers in src/clipper/core/prompts.py
-- [ ] T015 [US2] Update EXTRACTOR_FEW_SHOT_EXAMPLES with complete multi-scene assistant examples featuring diverse metaphors and animation triggers in src/clipper/core/prompts.py
+- [X] T014 [US2] Refactor EXTRACTOR_SYSTEM_PROMPT_TEMPLATE with 2-4s scene segmentation rules, visual metaphors, and animation triggers in src/clipper/core/prompts.py
+- [X] T015 [US2] Update EXTRACTOR_FEW_SHOT_EXAMPLES with complete multi-scene assistant examples featuring diverse metaphors and animation triggers in src/clipper/core/prompts.py
 
 **Checkpoint**: At this point, User Stories 1 AND 2 work together: Extractor prompts clearly direct LLMs to script scenes with high-variety metaphors and triggers.
 

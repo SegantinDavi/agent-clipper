@@ -292,6 +292,79 @@ def thinker_node(state: VideoState) -> dict:
     return {"raciocinio_bruto": raciocinio}
 
 
+def _evaluate_scene_durations(
+    cortes: list[CorteVideo], word_timestamps: list[dict] | None
+) -> None:
+    """
+    Avalia a duração implícita de cada cena frente aos timestamps de palavras.
+    Emite aviso editorial (WARNING) se alguma cena exceder 4.0s (diretriz de ritmo).
+    Se word_timestamps for vazio ou ausente, a validação é ignorada graciosamente.
+    """
+    if not word_timestamps or not isinstance(word_timestamps, list):
+        return
+
+    clean_words: list[dict] = []
+    for item in word_timestamps:
+        if isinstance(item, dict) and "word" in item and "start" in item and "end" in item:
+            clean = str(item["word"]).strip().strip(".,!?;:\"'()[]{}«»…").lower()
+            try:
+                clean_words.append(
+                    {
+                        "clean": clean,
+                        "start": float(item["start"]),
+                        "end": float(item["end"]),
+                    }
+                )
+            except (ValueError, TypeError):
+                continue
+
+    if not clean_words:
+        return
+
+    for corte in cortes:
+        cut_words = [
+            w for w in clean_words
+            if w["end"] >= corte.start_time - 0.5 and w["start"] <= corte.end_time + 0.5
+        ]
+        if not cut_words:
+            cut_words = clean_words
+
+        search_idx = 0
+        for scene_idx, scene in enumerate(corte.scenes, start=1):
+            s_word = scene.start_word.strip().strip(".,!?;:\"'()[]{}«»…").lower()
+            e_word = scene.end_word.strip().strip(".,!?;:\"'()[]{}«»…").lower()
+
+            start_time: float | None = None
+            found_start_idx: int | None = None
+            for i in range(search_idx, len(cut_words)):
+                if cut_words[i]["clean"] == s_word:
+                    start_time = cut_words[i]["start"]
+                    found_start_idx = i
+                    break
+
+            if start_time is None or found_start_idx is None:
+                continue
+
+            end_time: float | None = None
+            for j in range(found_start_idx, len(cut_words)):
+                if cut_words[j]["clean"] == e_word:
+                    end_time = cut_words[j]["end"]
+                    search_idx = j + 1
+                    break
+
+            if start_time is not None and end_time is not None:
+                duration = end_time - start_time
+                if duration > 4.0:
+                    logger.warning(
+                        "Scene %d ('%s' -> '%s') in cut '%s' duration (%.2fs) exceeds the 4.0s editorial guideline.",
+                        scene_idx,
+                        scene.start_word,
+                        scene.end_word,
+                        corte.title,
+                        duration,
+                    )
+
+
 def extractor_node(state: VideoState) -> dict:
     """
     Nó 5 (Extrator): Lê o raciocínio livre do Pensador e a transcrição,
@@ -345,15 +418,34 @@ def extractor_node(state: VideoState) -> dict:
         raw_client.close()
 
     cortes: list[CorteVideo] = extraction_response.cortes
-    logger.info("Extraction completed successfully: %d cuts validated.", len(cortes))
+
+    # Fail-fast validation: each extracted cut must have non-empty scenes (FR-009)
+    for corte in cortes:
+        if not corte.scenes:
+            logger.error("Cut '%s' has empty scenes list. Fail-fast triggered.", corte.title)
+            raise ValueError(
+                f"Corte '{corte.title}' não contém cenas segmentadas (scenes vazia). "
+                "Cada corte deve possuir ao menos uma cena de 2 a 4 segundos."
+            )
+
+    total_scenes = sum(len(corte.scenes) for corte in cortes)
+    logger.info(
+        "Extraction completed successfully: %d cuts validated (%d total scenes).",
+        len(cortes),
+        total_scenes,
+    )
     for idx, corte in enumerate(cortes, start=1):
         logger.info(
-            "  [%d] '%s' (%.2fs - %.2fs)",
+            "  [%d] '%s' (%.2fs - %.2fs, %d scenes)",
             idx,
             corte.title,
             corte.start_time,
             corte.end_time,
+            len(corte.scenes),
         )
+
+    # Evaluate pacing guidelines against word timestamps if available
+    _evaluate_scene_durations(cortes, state.get("word_timestamps"))
 
     return {"cortes_finais": [cut.model_dump() for cut in cortes]}
 
