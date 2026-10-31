@@ -27,8 +27,8 @@ description: "Task list for feature Self-Healing Coder DAG implementation"
 
 **Purpose**: Verify virtual environment, core dependencies (`pydantic`, `instructor`, `openai`, `langgraph`), and test runner baseline before implementing new schemas and nodes.
 
-- [ ] T001 Verify virtual environment, core dependencies (pydantic, instructor, openai, langgraph), and test runner baseline via tests/test_instructor_sync_contract.py
-- [ ] T002 [P] Inspect specs/017-self-healing-coder-dag/contracts/render_script_schema.json and specs/017-self-healing-coder-dag/contracts/coder_execution_contract.md against target schema and node specifications
+- [X] T001 Verify virtual environment, core dependencies (pydantic, instructor, openai, langgraph), and test runner baseline via tests/test_instructor_sync_contract.py
+- [X] T002 [P] Inspect specs/017-self-healing-coder-dag/contracts/render_script_schema.json and specs/017-self-healing-coder-dag/contracts/coder_execution_contract.md against target schema and node specifications
 
 ---
 
@@ -38,11 +38,11 @@ description: "Task list for feature Self-Healing Coder DAG implementation"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 [P] Implement contract test verifying openai.pydantic_function_tool schema generation for RenderScriptPayload matches specs/017-self-healing-coder-dag/contracts/render_script_schema.json in tests/test_coder_dag.py
-- [ ] T004 [P] Implement unit tests for RenderScriptPayload validation constraints (min_length=1) in tests/test_coder_dag.py
-- [ ] T005 Implement RenderScriptPayload Pydantic model with strict validation in src/clipper/core/schemas.py
-- [ ] T006 [P] Add configuration settings for RENDER_TIMEOUT_SECONDS and RENDER_ERROR_MAX_CHARS in src/clipper/runtime/config.py
-- [ ] T007 Extend VideoState TypedDict with render_script_path, render_attempts, render_error, render_exit_code, render_aborted, current_cut_index, and rendered_video_paths in src/clipper/core/orchestrator.py
+- [X] T003 [P] Implement contract test verifying openai.pydantic_function_tool schema generation for RenderScriptPayload matches specs/017-self-healing-coder-dag/contracts/render_script_schema.json in tests/test_coder_dag.py
+- [X] T004 [P] Implement unit tests for RenderScriptPayload validation constraints (min_length=1) in tests/test_coder_dag.py
+- [X] T005 Implement RenderScriptPayload Pydantic model with strict validation in src/clipper/core/schemas.py
+- [X] T006 [P] Add configuration settings for RENDER_TIMEOUT_SECONDS and RENDER_ERROR_MAX_CHARS in src/clipper/runtime/config.py
+- [X] T007 Extend VideoState TypedDict with render_script_path, render_attempts, render_error, render_exit_code, render_aborted, current_cut_index, and rendered_video_paths in src/clipper/core/orchestrator.py
 
 **Checkpoint**: Foundation ready - `RenderScriptPayload`, configuration constants, and `VideoState` extensions defined and validated. User story implementation can now begin.
 

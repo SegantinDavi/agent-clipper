@@ -40,3 +40,11 @@ class CortesResponse(BaseModel):
         min_length=0,
     )
 
+
+class RenderScriptPayload(BaseModel):
+    script_code: str = Field(
+        min_length=1,
+        description="Código Python completo e auto-contido para renderização do corte vertical usando MoviePy 1.0.3 e Pillow.",
+    )
+
+

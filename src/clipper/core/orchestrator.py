@@ -99,6 +99,13 @@ class VideoState(TypedDict):
     approval_complete: bool
     visual_identity: dict
     style_path: str
+    render_script_path: str
+    render_attempts: int
+    render_error: str
+    render_exit_code: int
+    render_aborted: bool
+    current_cut_index: int
+    rendered_video_paths: list[str]
 
 
 def create_llm_client() -> openai.OpenAI:
