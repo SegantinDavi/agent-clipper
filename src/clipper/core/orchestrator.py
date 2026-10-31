@@ -2,6 +2,7 @@ import os
 import re
 import gc
 import hashlib
+import inspect
 import logging
 import uuid
 from typing import TypedDict
@@ -23,6 +24,9 @@ if __name__ == "__main__":
 
 import openai
 import instructor
+
+_OPENAI_SYNC_CLIENT_CLASS = openai.OpenAI
+_OPENAI_ASYNC_CLIENT_CLASS = openai.AsyncOpenAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Command, interrupt
@@ -95,11 +99,19 @@ class VideoState(TypedDict):
 
 
 def create_llm_client() -> openai.OpenAI:
+    """Instantiates a strict synchronous openai.OpenAI client configured for the current profile."""
     validate_llm_config()
-    return openai.OpenAI(
-        api_key=LLM_API_KEY, base_url=LLM_BASE_URL,
-        timeout=180.0, max_retries=2,
+    client = openai.OpenAI(
+        api_key=LLM_API_KEY,
+        base_url=LLM_BASE_URL,
+        timeout=180.0,
+        max_retries=2,
     )
+    if not isinstance(client, _OPENAI_SYNC_CLIENT_CLASS) or isinstance(client, _OPENAI_ASYNC_CLIENT_CLASS):
+        raise TypeError(
+            f"create_llm_client must return an instance of openai.OpenAI and not AsyncOpenAI, got {type(client).__name__}"
+        )
+    return client
 
 
 def download_node(state: VideoState) -> dict:
@@ -243,15 +255,14 @@ def thinker_node(state: VideoState) -> dict:
     )
 
     raw_client = create_llm_client()
-
-    user_prompt = (
-        f"Transcrição do vídeo com timestamps:\n\n"
-        f"{transcript}\n\n"
-        f"Identifique todos os momentos adequados com alto potencial editorial, sem quantidade predefinida. "
-        f"Indique os intervalos de tempo exatos [INÍCIO - FIM] na transcrição e descreva a estratégia de retenção de cada corte."
-    )
-
     try:
+        user_prompt = (
+            f"Transcrição do vídeo com timestamps:\n\n"
+            f"{transcript}\n\n"
+            f"Identifique todos os momentos adequados com alto potencial editorial, sem quantidade predefinida. "
+            f"Indique os intervalos de tempo exatos [INÍCIO - FIM] na transcrição e descreva a estratégia de retenção de cada corte."
+        )
+
         response = raw_client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
@@ -260,12 +271,13 @@ def thinker_node(state: VideoState) -> dict:
             ],
             max_tokens=LLM_MAX_COMPLETION_TOKENS,
         )
+
+        raciocinio = response.choices[0].message.content or ""
+        if not raciocinio.strip():
+            raise RuntimeError("The thinker returned no editorial recommendations.")
     finally:
         raw_client.close()
 
-    raciocinio = response.choices[0].message.content or ""
-    if not raciocinio.strip():
-        raise RuntimeError("The thinker returned no editorial recommendations.")
     logger.info("Strategic reasoning generated (%d characters).", len(raciocinio))
     return {"raciocinio_bruto": raciocinio}
 
@@ -285,22 +297,22 @@ def extractor_node(state: VideoState) -> dict:
     logger.info("Formatting final decisions into Pydantic schema via Instructor...")
 
     raw_client = create_llm_client()
-    instructor_client = instructor.from_openai(raw_client, mode=instructor.Mode.JSON_SCHEMA)
-
-    user_prompt = (
-        f"Transcrição do vídeo:\n{transcript}\n\n"
-        f"Raciocínio Estratégico:\n{raciocinio}\n\n"
-        f"Com base na transcrição e no raciocínio acima, extraia todos os cortes adequados, sem quantidade predefinida, respeitando as regras de duração fornecidas. "
-        f"Preencha start_time e end_time com os segundos exatos dos trechos na transcrição e description com um breve resumo do tema."
-    )
-
-    messages = (
-        [{"role": "system", "content": EXTRACTOR_SYSTEM_PROMPT_TEMPLATE}]
-        + list(EXTRACTOR_FEW_SHOT_EXAMPLES)
-        + [{"role": "user", "content": user_prompt}]
-    )
-
     try:
+        instructor_client = instructor.from_openai(raw_client, mode=instructor.Mode.JSON_SCHEMA)
+
+        user_prompt = (
+            f"Transcrição do vídeo:\n{transcript}\n\n"
+            f"Raciocínio Estratégico:\n{raciocinio}\n\n"
+            f"Com base na transcrição e no raciocínio acima, extraia todos os cortes adequados, sem quantidade predefinida, respeitando as regras de duração fornecidas. "
+            f"Preencha start_time e end_time com os segundos exatos dos trechos na transcrição e description com um breve resumo do tema."
+        )
+
+        messages = (
+            [{"role": "system", "content": EXTRACTOR_SYSTEM_PROMPT_TEMPLATE}]
+            + list(EXTRACTOR_FEW_SHOT_EXAMPLES)
+            + [{"role": "user", "content": user_prompt}]
+        )
+
         extraction_response: CortesResponse = instructor_client.chat.completions.create(
             model=MODEL_NAME,
             response_model=CortesResponse,
@@ -337,6 +349,7 @@ def extractor_node(state: VideoState) -> dict:
 
 
 def preview_node(state: VideoState) -> dict:
+    """Nó 6 (Preview): Prepara previews dos cortes estruturados para revisão humana."""
     cuts = [CorteVideo.model_validate(cut) for cut in state.get("cortes_finais", [])]
     if not cuts:
         return {"review_directory": ""}
@@ -346,6 +359,7 @@ def preview_node(state: VideoState) -> dict:
 
 
 def approval_node(state: VideoState) -> dict:
+    """Nó 7 (Aprovação): Realiza interrupção nativa HITL para aprovação de cortes pelo usuário."""
     cuts = state.get("cortes_finais", [])
     if not cuts:
         return {"approved_cut_ids": [], "approval_complete": True}
@@ -406,7 +420,7 @@ preventive_slicing_node = fatiamento_node
 transcricao_node = transcription_node
 
 
-def create_graph():
+def create_graph() -> StateGraph:
     """Constrói o Directed Acyclic Graph (DAG) sequencial do pipeline."""
     workflow = StateGraph(VideoState)
 
@@ -428,6 +442,13 @@ def create_graph():
     workflow.add_edge("preview", "approval")
     workflow.add_edge("approval", "editor")
     workflow.add_edge("editor", END)
+
+    # Architectural contract verification: 100% of nodes must be synchronous callables
+    for node_name, node_spec in workflow.nodes.items():
+        runnable = getattr(node_spec, "runnable", node_spec)
+        fn = getattr(runnable, "func", None)
+        if fn is None or inspect.iscoroutinefunction(fn):
+            raise TypeError(f"Node '{node_name}' must be a synchronous function, got coroutine function.")
 
     return workflow
 
