@@ -27,8 +27,8 @@ description: "Task list for feature Dynamic Scene Scripting via Constrained Deco
 
 **Purpose**: Verify virtual environment, core dependencies (`pydantic`, `instructor`, `openai`, `langgraph`), and test runner baseline before modifying core schemas.
 
-- [ ] T001 Verify virtual environment, core dependencies (pydantic, instructor, openai, langgraph), and test runner baseline via tests/test_instructor_sync_contract.py
-- [ ] T002 [P] Inspect specs/016-dynamic-scene-scripting/contracts/corte_video_schema.json against target CorteVideo model definition in src/clipper/core/schemas.py
+- [X] T001 Verify virtual environment, core dependencies (pydantic, instructor, openai, langgraph), and test runner baseline via tests/test_instructor_sync_contract.py
+- [X] T002 [P] Inspect specs/016-dynamic-scene-scripting/contracts/corte_video_schema.json against target CorteVideo model definition in src/clipper/core/schemas.py
 
 ---
 
@@ -38,9 +38,9 @@ description: "Task list for feature Dynamic Scene Scripting via Constrained Deco
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 [P] Implement contract test verifying openai.pydantic_function_tool schema generation for CortesResponse matches specs/016-dynamic-scene-scripting/contracts/corte_video_schema.json in tests/test_scene_scripting.py
-- [ ] T004 [P] Implement unit tests for Scene validation constraints (non-empty strings) and CorteVideo backward compatibility with scenes default_factory in tests/test_scene_scripting.py
-- [ ] T005 Implement Scene Pydantic model and extend CorteVideo with scenes: list[Scene] in src/clipper/core/schemas.py
+- [X] T003 [P] Implement contract test verifying openai.pydantic_function_tool schema generation for CortesResponse matches specs/016-dynamic-scene-scripting/contracts/corte_video_schema.json in tests/test_scene_scripting.py
+- [X] T004 [P] Implement unit tests for Scene validation constraints (non-empty strings) and CorteVideo backward compatibility with scenes default_factory in tests/test_scene_scripting.py
+- [X] T005 Implement Scene Pydantic model and extend CorteVideo with scenes: list[Scene] in src/clipper/core/schemas.py
 
 **Checkpoint**: Foundation ready - `Scene` and `CorteVideo.scenes` defined and validated against JSON schema contract. User story implementation can now begin.
 
