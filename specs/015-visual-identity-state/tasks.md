@@ -82,12 +82,12 @@ description: "Task list for feature Visual Identity & Global State implementatio
 
 ### Tests for User Story 2
 
-- [ ] T016 [P] [US2] Integration test verifying SqliteSaver checkpoint persistence and state recovery for visual_identity in tests/test_style_node.py
-- [ ] T017 [P] [US2] Integration test verifying --restart purges checkpoints and re-executes style_node in tests/test_style_node.py
+- [X] T016 [P] [US2] Integration test verifying SqliteSaver checkpoint persistence and state recovery for visual_identity in tests/test_style_node.py
+- [X] T017 [P] [US2] Integration test verifying --restart purges checkpoints and re-executes style_node in tests/test_style_node.py
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Validate JSON-primitive serializability of visual_identity state dictionary in src/clipper/core/style_loader.py
+- [X] T018 [US2] Validate JSON-primitive serializability of visual_identity state dictionary in src/clipper/core/style_loader.py
 
 **Checkpoint**: At this point, User Stories 1 AND 2 work together: custom styles are rendered and survive container crashes/restarts.
 

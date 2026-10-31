@@ -8,6 +8,7 @@ from src.clipper.core.style_loader import (
     DEFAULT_VISUAL_IDENTITY,
     VisualIdentityConfig,
     load_visual_identity,
+    validate_visual_identity_primitives,
 )
 from src.clipper.runtime import config
 
@@ -223,6 +224,27 @@ class TestLoadVisualIdentity(unittest.TestCase):
         for k, v in loaded.items():
             self.assertIsInstance(v, (str, int, float, bool))
 
+    def test_validate_visual_identity_primitives_reverts_non_primitives_with_warning(self):
+        payload = {
+            "caption_color": "#AABBCC",
+            "caption_font_size": 95,
+            "invalid_fn": lambda x: x,
+            "invalid_obj": object(),
+            "caption_max_words": [1, 2, 3],
+        }
+        with self.assertLogs("src.clipper.core.style_loader", level="WARNING") as cm:
+            cleaned = validate_visual_identity_primitives(payload)
+
+        self.assertEqual(cleaned["caption_color"], "#AABBCC")
+        self.assertEqual(cleaned["caption_font_size"], 95)
+        self.assertEqual(cleaned["caption_max_words"], config.CAPTION_MAX_WORDS)
+        self.assertNotIn("invalid_fn", cleaned)
+        self.assertNotIn("invalid_obj", cleaned)
+        # Verify JSON serializability
+        serialized = json.dumps(cleaned)
+        self.assertIn("AABBCC", serialized)
+        self.assertTrue(any("Non-primitive value" in msg for msg in cm.output))
+
 
 class TestStyleNode(unittest.TestCase):
     """Unit tests for style_node LangGraph node execution (T007)."""
@@ -408,6 +430,103 @@ class TestEditorCaptionCustomStyle(unittest.TestCase):
                 self.assertGreater(len(rows), 0)
 
 
+
+
+class TestStyleCheckpointRecovery(unittest.TestCase):
+    """Integration tests for User Story 2: Checkpoint Persistence and State Recovery (T016, T017)."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_path = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_t016_checkpoint_persistence_and_recovery_survives_interruption(self):
+        """T016: visual_identity persists in SQLite checkpoint and recovers identically without reading disk."""
+        from langgraph.checkpoint.sqlite import SqliteSaver
+        from langgraph.graph import StateGraph
+        from src.clipper.core.orchestrator import VideoState, style_node
+
+        db_path = str(self.temp_path / "test_recovery.db")
+        style_file = self.temp_path / "estilo.json"
+        style_file.write_text(json.dumps({"palette": {"caption_color": "#00E5FF"}}), encoding="utf-8")
+
+        thread_id = "recovery-thread-123"
+        graph_config = {"configurable": {"thread_id": thread_id}}
+
+        builder = StateGraph(VideoState)
+        builder.add_node("style", style_node)
+        builder.set_entry_point("style")
+        builder.set_finish_point("style")
+
+        # Session 1: Run style_node and record checkpoint
+        with SqliteSaver.from_conn_string(db_path) as checkpointer:
+            checkpointer.setup()
+            app = builder.compile(checkpointer=checkpointer)
+            initial_state = {"video_url": "https://example.com/test", "style_path": str(style_file)}
+            result = app.invoke(initial_state, config=graph_config)
+            self.assertEqual(result["visual_identity"]["caption_color"], "#00E5FF")
+
+        # Simulate interruption & delete estilo.json to prove disk is not re-read
+        style_file.unlink()
+        self.assertFalse(style_file.exists())
+
+        # Session 2: Reload state from SQLite checkpoint
+        with SqliteSaver.from_conn_string(db_path) as checkpointer:
+            checkpointer.setup()
+            app = builder.compile(checkpointer=checkpointer)
+            snapshot = app.get_state(graph_config)
+            self.assertIsNotNone(snapshot)
+            self.assertIn("visual_identity", snapshot.values)
+            recovered_identity = snapshot.values["visual_identity"]
+            # SC-003: byte-for-byte / identical values restored
+            self.assertEqual(recovered_identity["caption_color"], "#00E5FF")
+            self.assertEqual(recovered_identity, result["visual_identity"])
+
+    def test_t017_restart_purges_checkpoints_and_rereads_estilo(self):
+        """T017: --restart purges checkpoints and re-executes style_node to load updated estilo.json."""
+        from langgraph.checkpoint.sqlite import SqliteSaver
+        from langgraph.graph import StateGraph
+        from src.clipper.core.orchestrator import VideoState, style_node, purge_thread_checkpoints
+
+        db_path = str(self.temp_path / "test_restart.db")
+        style_file = self.temp_path / "estilo.json"
+        style_file.write_text(json.dumps({"palette": {"caption_color": "#111111"}}), encoding="utf-8")
+
+        thread_id = "restart-thread-456"
+        graph_config = {"configurable": {"thread_id": thread_id}}
+
+        builder = StateGraph(VideoState)
+        builder.add_node("style", style_node)
+        builder.set_entry_point("style")
+        builder.set_finish_point("style")
+
+        # Session 1: First run with initial style
+        with SqliteSaver.from_conn_string(db_path) as checkpointer:
+            checkpointer.setup()
+            app = builder.compile(checkpointer=checkpointer)
+            initial_state = {"video_url": "https://example.com/test", "style_path": str(style_file)}
+            res1 = app.invoke(initial_state, config=graph_config)
+            self.assertEqual(res1["visual_identity"]["caption_color"], "#111111")
+
+        # Operator edits estilo.json on disk
+        style_file.write_text(json.dumps({"palette": {"caption_color": "#990099"}}), encoding="utf-8")
+
+        # Session 2: Resume with --restart (purges thread checkpoints)
+        with SqliteSaver.from_conn_string(db_path) as checkpointer:
+            checkpointer.setup()
+            purge_thread_checkpoints(checkpointer, thread_id)
+            app = builder.compile(checkpointer=checkpointer)
+
+            # Checkpoint snapshot should now be empty for this thread
+            snapshot = app.get_state(graph_config)
+            self.assertFalse(snapshot.values)
+
+            # Re-executing invokes style_node again and loads new style
+            initial_state = {"video_url": "https://example.com/test", "style_path": str(style_file)}
+            res2 = app.invoke(initial_state, config=graph_config)
+            self.assertEqual(res2["visual_identity"]["caption_color"], "#990099")
 
 
 if __name__ == "__main__":

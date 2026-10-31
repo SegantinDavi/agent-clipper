@@ -98,6 +98,7 @@ class VideoState(TypedDict):
     approved_cut_ids: list[int]
     approval_complete: bool
     visual_identity: dict
+    style_path: str
 
 
 def create_llm_client() -> openai.OpenAI:
@@ -154,7 +155,7 @@ def fatiamento_node(state: VideoState) -> dict:
 
 def style_node(state: VideoState) -> dict:
     """Nó síncrono que carrega estilo.json e armazena em visual_identity no VideoState."""
-    style_path = state.get("style_path") if isinstance(state, dict) else None
+    style_path = (state.get("style_path") or None) if isinstance(state, dict) else None
     identity = load_visual_identity(style_path)
     return {"visual_identity": identity}
 
@@ -626,6 +627,7 @@ def main(args=None):
         "approved_cut_ids": [],
         "approval_complete": False,
         "visual_identity": {},
+        "style_path": "",
     }
 
     video_id = extract_video_id(video_url) or video_url

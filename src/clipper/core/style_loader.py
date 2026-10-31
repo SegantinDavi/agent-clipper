@@ -150,6 +150,42 @@ class VisualIdentityConfig(BaseModel):
             return default
 
 
+def validate_visual_identity_primitives(
+    identity: dict[str, Any],
+) -> dict[str, str | int | float | bool]:
+    """Ensures all values in visual_identity are JSON-primitive serializable.
+
+    Only str, int, float, and bool are allowed. Non-primitive values are logged
+    at WARNING level and replaced with defaults (or discarded if not a known key).
+    """
+    defaults = DEFAULT_VISUAL_IDENTITY
+    cleaned: dict[str, str | int | float | bool] = {}
+
+    for k, v in identity.items():
+        if isinstance(v, (str, int, float, bool)):
+            cleaned[k] = v
+        else:
+            logger.warning(
+                "style_node: Non-primitive value '%s' of type %s for field '%s'. Reverting to default.",
+                v,
+                type(v).__name__,
+                k,
+            )
+            if k in defaults:
+                cleaned[k] = defaults[k]
+
+    try:
+        json.dumps(cleaned)
+    except (TypeError, OverflowError) as exc:
+        logger.warning(
+            "style_node: Failed to serialize visual identity to JSON: %s. Using default visual identity.",
+            exc,
+        )
+        return dict(defaults)
+
+    return cleaned
+
+
 def load_visual_identity(path: Path | str | None = None) -> dict[str, str | int | float | bool]:
     defaults = VisualIdentityConfig().model_dump()
     target_path = Path(path) if path is not None else PROJECT_ROOT / "estilo.json"
@@ -206,15 +242,7 @@ def load_visual_identity(path: Path | str | None = None) -> dict[str, str | int 
         )
         return defaults
 
-    # Ensure all values are JSON-primitive serializable
-    for k, v in result.items():
-        if not isinstance(v, (str, int, float, bool)):
-            logger.warning(
-                "style_node: Non-primitive value '%s' for field '%s'. Reverting to default.",
-                v,
-                k,
-            )
-            result[k] = defaults[k]
+    result = validate_visual_identity_primitives(result)
 
     logger.info("style_node: Loaded visual identity from '%s': %s", target_path, result)
     return result
