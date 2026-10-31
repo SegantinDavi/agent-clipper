@@ -1,0 +1,102 @@
+{
+  "$defs": {
+    "CorteVideo": {
+      "properties": {
+        "title": {
+          "description": "O título curado do corte para viralização.",
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "description": "Resumo factual do tema do corte em uma ou duas frases.",
+          "title": "Description",
+          "type": "string"
+        },
+        "start_time": {
+          "description": "O tempo de início do corte em segundos.",
+          "title": "Start Time",
+          "type": "number"
+        },
+        "end_time": {
+          "description": "O tempo de término do corte em segundos.",
+          "title": "End Time",
+          "type": "number"
+        },
+        "scenes": {
+          "description": "Lista ordenada de cenas lógicas de 2 a 4 segundos com metáforas e gatilhos de animação.",
+          "items": {
+            "$ref": "#/$defs/Scene"
+          },
+          "minItems": 1,
+          "title": "Scenes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "start_time",
+        "end_time",
+        "scenes"
+      ],
+      "title": "CorteVideo",
+      "type": "object",
+      "additionalProperties": false
+    },
+    "Scene": {
+      "properties": {
+        "start_word": {
+          "description": "Palavra exata de início do segmento da cena na transcrição.",
+          "minLength": 1,
+          "title": "Start Word",
+          "type": "string"
+        },
+        "end_word": {
+          "description": "Palavra exata de término do segmento da cena na transcrição.",
+          "minLength": 1,
+          "title": "End Word",
+          "type": "string"
+        },
+        "visual_metaphor": {
+          "description": "Metáfora visual, imagem conceitual ou representação gráfica de apoio.",
+          "minLength": 1,
+          "title": "Visual Metaphor",
+          "type": "string"
+        },
+        "animation_trigger": {
+          "description": "Gatilho de animação, corte ou movimento de câmera recomendado (ex: zoom_in, impact, cut_transition).",
+          "minLength": 1,
+          "title": "Animation Trigger",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start_word",
+        "end_word",
+        "visual_metaphor",
+        "animation_trigger"
+      ],
+      "title": "Scene",
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "cortes": {
+      "description": "Lista contendo os melhores cortes selecionados para Shorts.",
+      "items": {
+        "$ref": "#/$defs/CorteVideo"
+      },
+      "minItems": 0,
+      "title": "Cortes",
+      "type": "array"
+    }
+  },
+  "required": [
+    "cortes"
+  ],
+  "title": "CortesResponse",
+  "type": "object",
+  "additionalProperties": false
+}
