@@ -391,6 +391,126 @@ class InstructorSyncContractTests(unittest.TestCase):
         finally:
             client.close()
 
+    # -------------------------------------------------------------------------
+    # User Story 3: Liberação Confiável de Recursos e Conexões de Rede (T015 - T016)
+    # -------------------------------------------------------------------------
+
+    def test_thinker_node_deterministic_cleanup_on_success(self):
+        """T015 [US3]: Verify deterministic raw_client.close() in thinker_node on success (AC-04, FR-005, SC-004)."""
+        handler, _ = create_mock_transport_handler()
+        mock_client = build_mock_sync_client(handler=handler)
+
+        with patch.object(orchestrator, "create_llm_client", return_value=mock_client):
+            res = orchestrator.thinker_node({"transcript_grouped": SAMPLE_TRANSCRIPT})
+
+        self.assertIn("raciocinio_bruto", res)
+        self.assertEqual(mock_client.close_call_count, 1)
+
+    def test_thinker_node_deterministic_cleanup_on_timeout(self):
+        """T015 [US3]: Verify deterministic raw_client.close() in thinker_node on timeout (AC-04, FR-005, SC-004)."""
+        mock_client = build_mock_sync_client()
+        mock_client.chat.completions.create = MagicMock(side_effect=openai.APITimeoutError(request=None))
+
+        with patch.object(orchestrator, "create_llm_client", return_value=mock_client):
+            with self.assertRaises(openai.APITimeoutError):
+                orchestrator.thinker_node({"transcript_grouped": SAMPLE_TRANSCRIPT})
+
+        self.assertEqual(mock_client.close_call_count, 1)
+
+    def test_thinker_node_deterministic_cleanup_on_api_connection_error(self):
+        """T015 [US3]: Verify deterministic raw_client.close() in thinker_node on API error (AC-04, FR-005, SC-004)."""
+        mock_client = build_mock_sync_client()
+        mock_client.chat.completions.create = MagicMock(
+            side_effect=openai.APIConnectionError(request=None)
+        )
+
+        with patch.object(orchestrator, "create_llm_client", return_value=mock_client):
+            with self.assertRaises(openai.APIConnectionError):
+                orchestrator.thinker_node({"transcript_grouped": SAMPLE_TRANSCRIPT})
+
+        self.assertEqual(mock_client.close_call_count, 1)
+
+    def test_thinker_node_deterministic_cleanup_on_empty_response(self):
+        """T015 [US3]: Verify deterministic raw_client.close() in thinker_node on empty LLM response (AC-04, FR-005, SC-004)."""
+        handler, _ = create_mock_transport_handler(response_contents=["   "])
+        mock_client = build_mock_sync_client(handler=handler)
+
+        with patch.object(orchestrator, "create_llm_client", return_value=mock_client):
+            with self.assertRaisesRegex(RuntimeError, "The thinker returned no editorial recommendations"):
+                orchestrator.thinker_node({"transcript_grouped": SAMPLE_TRANSCRIPT})
+
+        self.assertEqual(mock_client.close_call_count, 1)
+
+    def test_extractor_node_deterministic_cleanup_on_success(self):
+        """T016 [US3]: Verify deterministic raw_client.close() in extractor_node on success (AC-05, FR-005, SC-004)."""
+        handler, _ = create_mock_transport_handler()
+        mock_client = build_mock_sync_client(handler=handler)
+
+        with patch.object(orchestrator, "create_llm_client", return_value=mock_client):
+            res = orchestrator.extractor_node(
+                {
+                    "transcript_grouped": SAMPLE_TRANSCRIPT,
+                    "raciocinio_bruto": SAMPLE_THINKER_REASONING,
+                }
+            )
+
+        self.assertIn("cortes_finais", res)
+        self.assertEqual(mock_client.close_call_count, 1)
+
+    def test_extractor_node_deterministic_cleanup_on_api_timeout(self):
+        """T016 [US3]: Verify deterministic raw_client.close() in extractor_node on API timeout (AC-05, FR-005, SC-004)."""
+        mock_client = build_mock_sync_client()
+        state = {
+            "transcript_grouped": SAMPLE_TRANSCRIPT,
+            "raciocinio_bruto": SAMPLE_THINKER_REASONING,
+        }
+
+        mock_instructor_client = MagicMock()
+        mock_instructor_client.chat.completions.create.side_effect = openai.APITimeoutError(request=None)
+
+        with patch.object(orchestrator, "create_llm_client", return_value=mock_client), \
+             patch.object(instructor, "from_openai", return_value=mock_instructor_client):
+            with self.assertRaises(openai.APITimeoutError):
+                orchestrator.extractor_node(state)
+
+        self.assertEqual(mock_client.close_call_count, 1)
+
+    def test_extractor_node_deterministic_cleanup_on_schema_validation_error(self):
+        """T016 [US3]: Verify deterministic raw_client.close() in extractor_node on schema error (AC-05, FR-005, SC-004)."""
+        def bad_json_callback(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                status_code=200,
+                json=build_chat_completion_payload("not a valid json payload"),
+            )
+
+        handler, _ = create_mock_transport_handler(respond_callback=bad_json_callback)
+        mock_client = build_mock_sync_client(handler=handler)
+        state = {
+            "transcript_grouped": SAMPLE_TRANSCRIPT,
+            "raciocinio_bruto": SAMPLE_THINKER_REASONING,
+        }
+
+        with patch.object(orchestrator, "create_llm_client", return_value=mock_client):
+            with self.assertRaises(Exception):
+                orchestrator.extractor_node(state)
+
+        self.assertEqual(mock_client.close_call_count, 1)
+
+    def test_extractor_node_deterministic_cleanup_on_wrapping_failure(self):
+        """T016 [US3]: Verify deterministic raw_client.close() in extractor_node on wrapping error (AC-05, FR-005, SC-004)."""
+        mock_client = build_mock_sync_client()
+        state = {
+            "transcript_grouped": SAMPLE_TRANSCRIPT,
+            "raciocinio_bruto": SAMPLE_THINKER_REASONING,
+        }
+
+        with patch.object(orchestrator, "create_llm_client", return_value=mock_client), \
+             patch.object(instructor, "from_openai", side_effect=RuntimeError("Wrap error")):
+            with self.assertRaises(RuntimeError):
+                orchestrator.extractor_node(state)
+
+        self.assertEqual(mock_client.close_call_count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

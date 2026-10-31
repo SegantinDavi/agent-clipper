@@ -99,6 +99,7 @@ class VideoState(TypedDict):
 
 
 def create_llm_client() -> openai.OpenAI:
+    """Instantiates a strict synchronous openai.OpenAI client configured for the current profile."""
     validate_llm_config()
     client = openai.OpenAI(
         api_key=LLM_API_KEY,
@@ -254,15 +255,14 @@ def thinker_node(state: VideoState) -> dict:
     )
 
     raw_client = create_llm_client()
-
-    user_prompt = (
-        f"Transcrição do vídeo com timestamps:\n\n"
-        f"{transcript}\n\n"
-        f"Identifique todos os momentos adequados com alto potencial editorial, sem quantidade predefinida. "
-        f"Indique os intervalos de tempo exatos [INÍCIO - FIM] na transcrição e descreva a estratégia de retenção de cada corte."
-    )
-
     try:
+        user_prompt = (
+            f"Transcrição do vídeo com timestamps:\n\n"
+            f"{transcript}\n\n"
+            f"Identifique todos os momentos adequados com alto potencial editorial, sem quantidade predefinida. "
+            f"Indique os intervalos de tempo exatos [INÍCIO - FIM] na transcrição e descreva a estratégia de retenção de cada corte."
+        )
+
         response = raw_client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
@@ -271,12 +271,13 @@ def thinker_node(state: VideoState) -> dict:
             ],
             max_tokens=LLM_MAX_COMPLETION_TOKENS,
         )
+
+        raciocinio = response.choices[0].message.content or ""
+        if not raciocinio.strip():
+            raise RuntimeError("The thinker returned no editorial recommendations.")
     finally:
         raw_client.close()
 
-    raciocinio = response.choices[0].message.content or ""
-    if not raciocinio.strip():
-        raise RuntimeError("The thinker returned no editorial recommendations.")
     logger.info("Strategic reasoning generated (%d characters).", len(raciocinio))
     return {"raciocinio_bruto": raciocinio}
 
@@ -296,22 +297,22 @@ def extractor_node(state: VideoState) -> dict:
     logger.info("Formatting final decisions into Pydantic schema via Instructor...")
 
     raw_client = create_llm_client()
-    instructor_client = instructor.from_openai(raw_client, mode=instructor.Mode.JSON_SCHEMA)
-
-    user_prompt = (
-        f"Transcrição do vídeo:\n{transcript}\n\n"
-        f"Raciocínio Estratégico:\n{raciocinio}\n\n"
-        f"Com base na transcrição e no raciocínio acima, extraia todos os cortes adequados, sem quantidade predefinida, respeitando as regras de duração fornecidas. "
-        f"Preencha start_time e end_time com os segundos exatos dos trechos na transcrição e description com um breve resumo do tema."
-    )
-
-    messages = (
-        [{"role": "system", "content": EXTRACTOR_SYSTEM_PROMPT_TEMPLATE}]
-        + list(EXTRACTOR_FEW_SHOT_EXAMPLES)
-        + [{"role": "user", "content": user_prompt}]
-    )
-
     try:
+        instructor_client = instructor.from_openai(raw_client, mode=instructor.Mode.JSON_SCHEMA)
+
+        user_prompt = (
+            f"Transcrição do vídeo:\n{transcript}\n\n"
+            f"Raciocínio Estratégico:\n{raciocinio}\n\n"
+            f"Com base na transcrição e no raciocínio acima, extraia todos os cortes adequados, sem quantidade predefinida, respeitando as regras de duração fornecidas. "
+            f"Preencha start_time e end_time com os segundos exatos dos trechos na transcrição e description com um breve resumo do tema."
+        )
+
+        messages = (
+            [{"role": "system", "content": EXTRACTOR_SYSTEM_PROMPT_TEMPLATE}]
+            + list(EXTRACTOR_FEW_SHOT_EXAMPLES)
+            + [{"role": "user", "content": user_prompt}]
+        )
+
         extraction_response: CortesResponse = instructor_client.chat.completions.create(
             model=MODEL_NAME,
             response_model=CortesResponse,

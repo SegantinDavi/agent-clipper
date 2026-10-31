@@ -97,12 +97,12 @@ description: "Task list for feature Align Instructor Nodes with LangGraph Synchr
 
 ### Tests for User Story 3
 
-- [ ] T015 [P] [US3] Unit test verifying deterministic raw_client.close invocation in thinker_node on success and exceptions (AC-04, FR-005, SC-004) in tests/test_instructor_sync_contract.py
-- [ ] T016 [P] [US3] Unit test verifying deterministic raw_client.close invocation in extractor_node on success, API timeout, and schema validation error (AC-05, FR-005, SC-004) in tests/test_instructor_sync_contract.py
+- [X] T015 [P] [US3] Unit test verifying deterministic raw_client.close invocation in thinker_node on success and exceptions (AC-04, FR-005, SC-004) in tests/test_instructor_sync_contract.py
+- [X] T016 [P] [US3] Unit test verifying deterministic raw_client.close invocation in extractor_node on success, API timeout, and schema validation error (AC-05, FR-005, SC-004) in tests/test_instructor_sync_contract.py
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Harden try-finally blocks and deterministic raw_client.close teardown in thinker_node and extractor_node in src/clipper/core/orchestrator.py
+- [X] T017 [US3] Harden try-finally blocks and deterministic raw_client.close teardown in thinker_node and extractor_node in src/clipper/core/orchestrator.py
 
 **Checkpoint**: All three user stories are functional and verified with deterministic socket cleanup across all success and error paths.
 
@@ -112,10 +112,10 @@ description: "Task list for feature Align Instructor Nodes with LangGraph Synchr
 
 **Purpose**: Improvements that affect multiple user stories, test suite completion, and repository documentation synchronization
 
-- [ ] T018 Execute full test suite across the repository via tests/test_*.py
-- [ ] T019 [P] Run quickstart validation script commands from specs/014-align-instructor-nodes/quickstart.md
-- [ ] T020 [P] Synchronize documentation and feature guidelines in GEMINI.md and AGENTS.md
-- [ ] T021 Review code formatting, type annotations, and Clean Code compliance in src/clipper/core/orchestrator.py and tests/test_instructor_sync_contract.py
+- [X] T018 Execute full test suite across the repository via tests/test_*.py
+- [X] T019 [P] Run quickstart validation script commands from specs/014-align-instructor-nodes/quickstart.md
+- [X] T020 [P] Synchronize documentation and feature guidelines in GEMINI.md and AGENTS.md
+- [X] T021 Review code formatting, type annotations, and Clean Code compliance in src/clipper/core/orchestrator.py and tests/test_instructor_sync_contract.py
 
 ---
 
