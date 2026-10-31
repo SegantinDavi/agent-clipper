@@ -625,5 +625,181 @@ class TestLLMProviderNeutralitySceneExtraction(unittest.TestCase):
                     self.assertEqual(cortes[0]["scenes"][1]["animation_trigger"], "impact")
 
 
+class TestSqliteSaverScenePersistence(unittest.TestCase):
+    """T018: Integration test verifying SqliteSaver checkpoint persistence and crash recovery."""
+
+    def test_sqlite_saver_persists_and_restores_cortes_finais_with_scenes(self):
+        """Assert cortes_finais with full scene objects survives checkpointer persistence and crash restart."""
+        import tempfile
+        from langgraph.checkpoint.sqlite import SqliteSaver
+        from langgraph.graph import StateGraph, START, END
+        from langgraph.types import Command, interrupt
+        from clipper.core.orchestrator import VideoState
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = str(Path(temp_dir) / "estado.db")
+            thread_id = "test-thread-scene-recovery"
+            config = {"configurable": {"thread_id": thread_id}}
+
+            test_cortes = [
+                {
+                    "title": "Corte de Teste Persistido",
+                    "description": "Validação de checkpoint com cenas.",
+                    "start_time": 10.0,
+                    "end_time": 30.0,
+                    "scenes": [
+                        {
+                            "start_word": "Primeira",
+                            "end_word": "fala",
+                            "visual_metaphor": "engrenagens girando",
+                            "animation_trigger": "zoom_in",
+                        },
+                        {
+                            "start_word": "Segunda",
+                            "end_word": "conclusão",
+                            "visual_metaphor": "troféu dourado",
+                            "animation_trigger": "cut_transition",
+                        },
+                    ],
+                }
+            ]
+
+            def extract_step(state: VideoState) -> dict:
+                return {"cortes_finais": test_cortes}
+
+            def hitl_step(state: VideoState) -> dict:
+                decision = interrupt("Aprovação manual necessária")
+                return {"approved_cut_ids": decision.get("approved_ids", [])}
+
+            # Phase A: Initial execution up to interrupt (simulating crash before completion)
+            builder = StateGraph(VideoState)
+            builder.add_node("extract", extract_step)
+            builder.add_node("hitl", hitl_step)
+            builder.add_edge(START, "extract")
+            builder.add_edge("extract", "hitl")
+            builder.add_edge("hitl", END)
+
+            with SqliteSaver.from_conn_string(db_path) as saver:
+                app = builder.compile(checkpointer=saver)
+                initial_state: VideoState = {
+                    "video_path": "test.mp4",
+                    "transcript_grouped": "Transcrição...",
+                }
+                app.invoke(initial_state, config=config)
+
+            # Phase B: Simulate crash recovery by re-opening the checkpointer on a fresh graph instance
+            with SqliteSaver.from_conn_string(db_path) as saver:
+                app2 = builder.compile(checkpointer=saver)
+                snapshot = app2.get_state(config)
+                self.assertTrue(any(t.interrupts for t in snapshot.tasks))
+
+                # Verify cortes_finais stored in checkpoint retains full scene details
+                recovered_cortes = snapshot.values.get("cortes_finais")
+                self.assertIsNotNone(recovered_cortes)
+                self.assertEqual(len(recovered_cortes), 1)
+                self.assertEqual(recovered_cortes[0]["title"], "Corte de Teste Persistido")
+                scenes = recovered_cortes[0]["scenes"]
+                self.assertEqual(len(scenes), 2)
+                self.assertEqual(scenes[0]["start_word"], "Primeira")
+                self.assertEqual(scenes[0]["end_word"], "fala")
+                self.assertEqual(scenes[0]["visual_metaphor"], "engrenagens girando")
+                self.assertEqual(scenes[0]["animation_trigger"], "zoom_in")
+                self.assertEqual(scenes[1]["start_word"], "Segunda")
+                self.assertEqual(scenes[1]["end_word"], "conclusão")
+                self.assertEqual(scenes[1]["visual_metaphor"], "troféu dourado")
+                self.assertEqual(scenes[1]["animation_trigger"], "cut_transition")
+
+                # Resume execution with Command(resume=...)
+                final_state = app2.invoke(Command(resume={"approved_ids": [1]}), config=config)
+                self.assertEqual(final_state.get("approved_cut_ids"), [1])
+
+                # Check final snapshot still preserves cortes_finais and scenes
+                final_snap = app2.get_state(config)
+                final_cortes = final_snap.values.get("cortes_finais")
+                self.assertEqual(len(final_cortes[0]["scenes"]), 2)
+                self.assertEqual(final_cortes[0]["scenes"][0]["visual_metaphor"], "engrenagens girando")
+
+
+class TestExtractionStaticAnalysisCompliance(unittest.TestCase):
+    """T021: Static analysis scan asserting zero occurrences of regex or manual json.loads (SC-002)."""
+
+    def test_zero_regex_or_manual_json_loads_in_extractor_node(self):
+        """Verify extractor_node uses instructor constrained decoding with zero regex or json.loads calls."""
+        import ast
+        import inspect
+        from clipper.core.orchestrator import extractor_node
+
+        source = inspect.getsource(extractor_node)
+        tree = ast.parse(source)
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Attribute):
+                    if isinstance(node.func.value, ast.Name):
+                        mod_name = node.func.value.id
+                        attr_name = node.func.attr
+                        self.assertFalse(
+                            mod_name == "json" and attr_name in ("loads", "load"),
+                            f"Disallowed manual json parse '{mod_name}.{attr_name}' found at line {node.lineno}",
+                        )
+                        self.assertFalse(
+                            mod_name in ("re", "regex"),
+                            f"Disallowed regex call '{mod_name}.{attr_name}' found at line {node.lineno}",
+                        )
+                elif isinstance(node.func, ast.Name):
+                    self.assertNotIn(
+                        node.func.id,
+                        {"loads", "search", "match", "findall", "sub"},
+                        f"Disallowed function call '{node.func.id}' found at line {node.lineno}",
+                    )
+
+
+class TestExtractorExecutionOverheadBenchmark(unittest.TestCase):
+    """T022: Benchmark execution overhead of extractor_node with scenes asserting < 50ms (SC-003)."""
+
+    def test_extractor_node_mock_execution_overhead_under_50ms(self):
+        """Assert mock extractor_node execution overhead is strictly under 50ms wall-clock."""
+        import time
+        from unittest.mock import MagicMock, patch
+        from clipper.core.orchestrator import extractor_node
+
+        mock_cut = CorteVideo(
+            title="Benchmark Cut",
+            description="Testing execution overhead.",
+            start_time=10.0,
+            end_time=30.0,
+            scenes=[
+                Scene(start_word="Palavra1", end_word="Palavra2", visual_metaphor="metáfora", animation_trigger="zoom_in"),
+                Scene(start_word="Palavra3", end_word="Palavra4", visual_metaphor="metáfora 2", animation_trigger="cut_transition"),
+            ],
+        )
+        mock_response = CortesResponse(cortes=[mock_cut])
+        mock_client = MagicMock()
+        mock_instructor = MagicMock()
+        mock_instructor.chat.completions.create.return_value = mock_response
+
+        state = {
+            "transcript_grouped": "[10.00 - 30.00] Palavra1 ... Palavra2 Palavra3 ... Palavra4",
+            "raciocinio_bruto": "Raciocínio para benchmark de overhead.",
+            "word_timestamps": [
+                {"word": "Palavra1", "start": 10.0, "end": 10.5},
+                {"word": "Palavra2", "start": 12.0, "end": 12.5},
+                {"word": "Palavra3", "start": 13.0, "end": 13.5},
+                {"word": "Palavra4", "start": 15.0, "end": 15.5},
+            ],
+        }
+
+        with patch("clipper.core.orchestrator.create_llm_client", return_value=mock_client), \
+             patch("instructor.from_openai", return_value=mock_instructor):
+            extractor_node(state)
+
+            start = time.perf_counter()
+            result = extractor_node(state)
+            elapsed_ms = (time.perf_counter() - start) * 1000.0
+
+        self.assertIn("cortes_finais", result)
+        self.assertLess(elapsed_ms, 50.0, f"Extractor node execution {elapsed_ms:.2f}ms exceeds 50ms budget")
+
+
 if __name__ == "__main__":
     unittest.main()

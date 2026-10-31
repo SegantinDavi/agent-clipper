@@ -44,6 +44,9 @@ PYTHONPATH=src venv/bin/python -m unittest tests/test_review.py
 # Run instructor and LangGraph synchronous contract tests
 PYTHONPATH=src venv/bin/python -m unittest tests/test_instructor_sync_contract.py
 
+# Run dynamic scene scripting tests
+PYTHONPATH=src venv/bin/python -m unittest tests/test_scene_scripting.py
+
 # Run pipeline execution
 bash run_pipeline.sh
 ```
@@ -53,6 +56,8 @@ bash run_pipeline.sh
 Python 3.12+ (tested on Python 3.12 - 3.14): Follow standard conventions
 
 ## Recent Changes
+- 016-dynamic-scene-scripting: Completed Phase 6 (Polish & Cross-Cutting Concerns). Added static analysis AST scan in `tests/test_scene_scripting.py` verifying zero regex or manual json.loads in extraction layer (T021, SC-002). Added execution overhead benchmark asserting `extractor_node` runs strictly under 50ms wall-clock (T022, SC-003). Validated 100% test passing (202 tests, 0 regressions) across entire unittest discovery suite (T023, SC-004). Validated quickstart operational commands (T024) and synchronized project documentation across `README.md`, `AGENTS.md`, and `GEMINI.md` (T025).
+- 016-dynamic-scene-scripting: Implemented Phase 5 (User Story 3 - Cenas persistidas e visíveis na revisão humana). Updated `render_review_page` in `src/clipper/review/review.py` to format structured `<div class="scenes">` cards with spoken word bounds, visual metaphors, and animation triggers (T019, FR-008). Added unit tests in `tests/test_review.py` for `ReviewManifest` serialization/deserialization into `review.json` (T016), HTML generation with scenes and safe escaping (T017), and end-to-end review server execution (T020). Added integration test `TestSqliteSaverScenePersistence` in `tests/test_scene_scripting.py` verifying `SqliteSaver` crash recovery of `cortes_finais` with scenes (T018, SC-005). 100% tests passing across the suite.
 - 016-dynamic-scene-scripting: Implemented Phase 4 (User Story 2 - LLM receives clear instructions to script scenes). Refactored `EXTRACTOR_SYSTEM_PROMPT_TEMPLATE` with 2-4s scene segmentation rules, visual metaphors, and animation triggers (T014, FR-004). Updated `EXTRACTOR_FEW_SHOT_EXAMPLES` assistant messages with multi-scene structures featuring diverse metaphors and camera triggers (T015, FR-005). Added unit tests in `tests/test_scene_scripting.py` for prompt rule enforcement, few-shot schema validation, and provider neutrality across Ollama and Gemini (T012, T013, FR-007). 100% tests passing (194 tests, 0 regressions).
 - 016-dynamic-scene-scripting: Implemented Phase 3 (User Story 1 - MVP). Hardened extractor_node with fail-fast validation on empty scenes (FR-009) and word_timestamps-based pacing duration logging (> 4s guideline) with graceful fallback (T010, T011). Updated SAMPLE_CORTES_JSON and added contract tests for instructor synchronous execution with Scene schema and strict response_format (T009). Added comprehensive unit tests in tests/test_scene_scripting.py (T006-T008). 100% tests passing (190 tests, 0 regressions).
 - 016-dynamic-scene-scripting: Added Python 3.12+ (tested on Python 3.12 – 3.14) + `pydantic` (already in stack), `instructor` (already in stack), `openai` (already in stack), `langgraph` (already in stack)

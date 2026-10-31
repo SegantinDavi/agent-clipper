@@ -98,14 +98,14 @@ description: "Task list for feature Dynamic Scene Scripting via Constrained Deco
 
 ### Tests for User Story 3
 
-- [ ] T016 [P] [US3] Unit test ReviewManifest serialization and deserialization of cuts with scenes into review.json in tests/test_review.py
-- [ ] T017 [P] [US3] Unit test render_review_page HTML generation asserting scene breakdown details are displayed when scenes are present and omitted when empty in tests/test_review.py
-- [ ] T018 [P] [US3] Integration test verifying SqliteSaver checkpoint persistence and crash recovery of cortes_finais with scenes in tests/test_scene_scripting.py
+- [X] T016 [P] [US3] Unit test ReviewManifest serialization and deserialization of cuts with scenes into review.json in tests/test_review.py
+- [X] T017 [P] [US3] Unit test render_review_page HTML generation asserting scene breakdown details are displayed when scenes are present and omitted when empty in tests/test_review.py
+- [X] T018 [P] [US3] Integration test verifying SqliteSaver checkpoint persistence and crash recovery of cortes_finais with scenes in tests/test_scene_scripting.py
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Update render_review_page to format and render scene breakdowns within each cut card in src/clipper/review/review.py
-- [ ] T020 [US3] Verify end-to-end review lifecycle with prepare_review and create_review_server serving scene cards in tests/test_review.py
+- [X] T019 [US3] Update render_review_page to format and render scene breakdowns within each cut card in src/clipper/review/review.py
+- [X] T020 [US3] Verify end-to-end review lifecycle with prepare_review and create_review_server serving scene cards in tests/test_review.py
 
 **Checkpoint**: All user stories (US1, US2, US3) are implemented, tested, and integrated with the review dashboard and state persistence.
 
@@ -115,11 +115,11 @@ description: "Task list for feature Dynamic Scene Scripting via Constrained Deco
 
 **Purpose**: Verify non-regression across all existing tests (SC-004), verify static analysis compliance (zero regex/manual json.loads, SC-002), benchmark execution overhead (SC-003), validate quickstart workflow, and synchronize project documentation.
 
-- [ ] T021 [P] Static analysis scan asserting zero occurrences of regex or manual json.loads in LLM extraction layer (SC-002) in tests/test_scene_scripting.py
-- [ ] T022 [P] Benchmark execution overhead of extractor_node with scenes asserting mock execution completes strictly under 50ms wall-clock (SC-003) in tests/test_scene_scripting.py
-- [ ] T023 Execute full discovery test suite across tests/ to verify zero regressions across existing 172 tests (SC-004)
-- [ ] T024 Validate operational quickstart workflow per specs/016-dynamic-scene-scripting/quickstart.md
-- [ ] T025 Synchronize project documentation, architecture details, and schema updates across README.md, AGENTS.md, and GEMINI.md
+- [X] T021 [P] Static analysis scan asserting zero occurrences of regex or manual json.loads in LLM extraction layer (SC-002) in tests/test_scene_scripting.py
+- [X] T022 [P] Benchmark execution overhead of extractor_node with scenes asserting mock execution completes strictly under 50ms wall-clock (SC-003) in tests/test_scene_scripting.py
+- [X] T023 Execute full discovery test suite across tests/ to verify zero regressions across existing 172 tests (SC-004)
+- [X] T024 Validate operational quickstart workflow per specs/016-dynamic-scene-scripting/quickstart.md
+- [X] T025 Synchronize project documentation, architecture details, and schema updates across README.md, AGENTS.md, and GEMINI.md
 
 ---
 

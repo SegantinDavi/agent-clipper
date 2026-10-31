@@ -18,10 +18,10 @@ from moviepy.editor import ColorClip, VideoFileClip
 import clipper.core.orchestrator as orchestrator
 from clipper.review.review import (
     ApprovalDecision, ReviewManifest, create_review_server, load_approval_decision,
-    prepare_review, render_review_page, save_approval_decision, validate_approval,
-    wait_for_approval,
+    load_review_plans, prepare_review, render_review_page, save_approval_decision,
+    validate_approval, wait_for_approval,
 )
-from clipper.core.schemas import CorteVideo
+from clipper.core.schemas import CorteVideo, Scene
 from clipper.video.pause_editing import PauseSettings, identity_plan
 
 
@@ -506,6 +506,154 @@ class ReviewTests(unittest.TestCase):
                     res3 = orchestrator.run_with_review(app, state_invalid, config_corrupt2, restart=False)
                     mock_wait_invalid.assert_called_once_with(str(rev_dir_invalid), port=8765)
                     self.assertEqual(res3.get("approved_cut_ids"), [1])
+
+
+class ReviewSceneScriptingTests(unittest.TestCase):
+    """User Story 3: Cenas persistidas e visíveis na revisão humana (T016, T017, T020)."""
+
+    def setUp(self):
+        Path("output").mkdir(exist_ok=True)
+        self.temporary = tempfile.TemporaryDirectory(dir="output")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name).resolve()
+
+        self.cuts_with_scenes = [
+            CorteVideo(
+                title="Corte com Cenas",
+                description="Descrição detalhada",
+                start_time=10.0,
+                end_time=25.0,
+                scenes=[
+                    Scene(
+                        start_word="Comecei",
+                        end_word="projeto",
+                        visual_metaphor="mesa de trabalho",
+                        animation_trigger="zoom_in",
+                    ),
+                    Scene(
+                        start_word="Depois",
+                        end_word="sucesso",
+                        visual_metaphor="gráfico subindo",
+                        animation_trigger="cut_transition",
+                    ),
+                ],
+            )
+        ]
+
+    def test_t016_review_manifest_serialization_deserialization_with_scenes(self):
+        """T016: ReviewManifest serialization and deserialization of cuts with scenes into review.json."""
+        manifest = ReviewManifest(
+            cuts=self.cuts_with_scenes,
+            pause_plans=[
+                identity_plan(c.start_time, c.end_time, PauseSettings(enabled=False))
+                for c in self.cuts_with_scenes
+            ],
+        )
+        json_str = manifest.model_dump_json()
+        review_file = self.root / "review.json"
+        review_file.write_text(json_str, encoding="utf-8")
+
+        loaded_manifest = ReviewManifest.model_validate_json(review_file.read_text(encoding="utf-8"))
+        self.assertEqual(len(loaded_manifest.cuts), 1)
+        loaded_cut = loaded_manifest.cuts[0]
+        self.assertEqual(loaded_cut.title, "Corte com Cenas")
+        self.assertEqual(len(loaded_cut.scenes), 2)
+        self.assertEqual(loaded_cut.scenes[0].start_word, "Comecei")
+        self.assertEqual(loaded_cut.scenes[0].end_word, "projeto")
+        self.assertEqual(loaded_cut.scenes[0].visual_metaphor, "mesa de trabalho")
+        self.assertEqual(loaded_cut.scenes[0].animation_trigger, "zoom_in")
+        self.assertEqual(loaded_cut.scenes[1].start_word, "Depois")
+        self.assertEqual(loaded_cut.scenes[1].end_word, "sucesso")
+        self.assertEqual(loaded_cut.scenes[1].visual_metaphor, "gráfico subindo")
+        self.assertEqual(loaded_cut.scenes[1].animation_trigger, "cut_transition")
+
+        plans = load_review_plans(str(self.root), self.cuts_with_scenes)
+        self.assertEqual(len(plans), 1)
+
+    def test_t017_render_review_page_displays_scenes_when_present(self):
+        """T017: render_review_page includes scene breakdown details when scenes are present."""
+        page = render_review_page(self.cuts_with_scenes, "token-123")
+        self.assertIn('<div class="scenes">', page)
+        self.assertIn("Comecei", page)
+        self.assertIn("projeto", page)
+        self.assertIn("mesa de trabalho", page)
+        self.assertIn("zoom_in", page)
+        self.assertIn("gráfico subindo", page)
+        self.assertIn("cut_transition", page)
+
+    def test_t017_render_review_page_omits_scenes_when_empty(self):
+        """T017: render_review_page omits scene breakdown when scenes list is empty."""
+        cuts_without_scenes = [
+            CorteVideo(
+                title="Corte Legado",
+                description="Sem cenas",
+                start_time=0.0,
+                end_time=10.0,
+                scenes=[],
+            )
+        ]
+        page = render_review_page(cuts_without_scenes, "token-123")
+        self.assertNotIn('<div class="scenes">', page)
+        self.assertNotIn('class="scenes-title"', page)
+
+    def test_t017_render_review_page_escapes_special_characters_in_scenes(self):
+        """T017: render_review_page safely HTML escapes scene fields."""
+        cuts_with_xss = [
+            CorteVideo(
+                title="Corte XSS",
+                description="Desc",
+                start_time=0.0,
+                end_time=10.0,
+                scenes=[
+                    Scene(
+                        start_word="<script>alert(1)</script>",
+                        end_word="fim & teste",
+                        visual_metaphor='imagem "especial" & bonita',
+                        animation_trigger="<custom_anim>",
+                    )
+                ],
+            )
+        ]
+        page = render_review_page(cuts_with_xss, "token-123")
+        self.assertNotIn("<script>alert(1)</script>", page)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", page)
+        self.assertIn("fim &amp; teste", page)
+        self.assertIn("imagem &quot;especial&quot; &amp; bonita", page)
+        self.assertIn("&lt;custom_anim&gt;", page)
+
+    def test_t020_review_server_serves_scene_cards_end_to_end(self):
+        """T020: Verify review server serves scene breakdown HTML and accepts approval decision."""
+        manifest = ReviewManifest(
+            cuts=self.cuts_with_scenes,
+            pause_plans=[
+                identity_plan(c.start_time, c.end_time, PauseSettings(enabled=False))
+                for c in self.cuts_with_scenes
+            ],
+        )
+        (self.root / "review.json").write_text(manifest.model_dump_json(), encoding="utf-8")
+        (self.root / "preview-1.mp4").write_bytes(b"dummy-video-data")
+
+        with create_review_server(str(self.root), port=0) as server:
+            thread = Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                url = f"http://127.0.0.1:{server.server_port}"
+                with urlopen(url, timeout=5) as response:
+                    self.assertEqual(response.status, 200)
+                    body = response.read().decode("utf-8")
+                    self.assertIn('<div class="scenes">', body)
+                    self.assertIn("mesa de trabalho", body)
+                    parser = TokenParser()
+                    parser.feed(body)
+                    self.assertIsNotNone(parser.token)
+
+                form = {"token": parser.token, "action": "approve", "cut_id": 1}
+                with urlopen(Request(url + "/approve", data=urlencode(form).encode()), timeout=5) as response:
+                    self.assertEqual(response.status, 200)
+                self.assertEqual(server.decision, [1])
+            finally:
+                server.shutdown()
+                thread.join(timeout=5)
 
 
 if __name__ == "__main__":

@@ -41,7 +41,7 @@ flowchart TD
 
 1. **Cognitive Routing (Single-Model)**: Utiliza o mesmo modelo do perfil selecionado (Qwen2.5:14b local ou `GEMINI_MODEL` via API) em dois papéis complementares:
    - **Nó Pensador (`thinker_node`)**: Analisa a transcrição agrupada para produzir recomendações editoriais concisas para identificar ganchos de retenção e momentos virais.
-   - **Nó Extrator (`extractor_node`)**: Lê a transcrição e o raciocínio estratégico, ancorado por exemplos Few-Shot multi-turno e **Constrained Decoding** (Instructor + Pydantic), garantindo 100% de conformidade com o schema `CorteVideo` sem alucinações de formatação e sem regex.
+   - **Nó Extrator (`extractor_node`)**: Lê a transcrição e o raciocínio estratégico, ancorado por exemplos Few-Shot multi-turno e **Constrained Decoding** (Instructor + Pydantic), particionando cortes em cenas sequenciais de 2–4s (`Scene`) com metáforas visuais e gatilhos de animação, garantindo 100% de conformidade com o schema `CorteVideo` sem alucinações de formatação e sem regex.
 2. **Centralização de Prompts (`prompts.py`)**: Todos os artefatos de prompt e exemplos Few-Shot residem isolados em `prompts.py`, desacoplados da lógica de orquestração do grafo.
 3. **Gerenciamento Estrito de Memória (WSL 8GB RAM / 12GB VRAM)**:
    - Com Ollama, `faster-whisper` roda na CPU/int8 e a VRAM fica para o Qwen. Com Gemini, Whisper roda na GPU/float16 e a LLM permanece na API.
@@ -74,7 +74,7 @@ agent-clipper/
 │       │   ├── orchestrator.py  # DAG LangGraph (download -> fatiamento -> estilo -> transcrição -> pensador -> extrator -> editor)
 │       │   ├── style_loader.py  # Carregador e validador de identidade visual (estilo.json) com fallback
 │       │   ├── prompts.py       # Templates de prompt imutáveis e exemplos Few-Shot multi-turno
-│       │   ├── schemas.py       # Modelos Pydantic (CorteVideo, CortesResponse)
+│       │   ├── schemas.py       # Modelos Pydantic (CorteVideo, CortesResponse, Scene)
 │       │   ├── node_0.py        # Fatiamento preventivo de áudio baseado em silêncio
 │       │   └── ingestion.py     # Download via yt-dlp e transcrição via faster-whisper
 │       ├── video/               # Composição de vídeo, enquadramento e corte de pausas
