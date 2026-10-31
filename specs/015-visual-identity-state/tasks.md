@@ -101,12 +101,12 @@ description: "Task list for feature Visual Identity & Global State implementatio
 
 ### Tests for User Story 3
 
-- [ ] T019 [P] [US3] Unit test verifying INFO log entries upon successful estilo.json loading in tests/test_style_node.py
-- [ ] T020 [P] [US3] Unit test verifying WARNING log entries for absent estilo.json, corrupted JSON syntax, and fallback keys in tests/test_style_node.py
+- [X] T019 [P] [US3] Unit test verifying INFO log entries upon successful estilo.json loading in tests/test_style_node.py
+- [X] T020 [P] [US3] Unit test verifying WARNING log entries for absent estilo.json, corrupted JSON syntax, and fallback keys in tests/test_style_node.py
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Add structured INFO and WARNING log formatting with style_node prefix for loaded styles and missing keys in src/clipper/core/style_loader.py
+- [X] T021 [US3] Add structured INFO and WARNING log formatting with style_node prefix for loaded styles and missing keys in src/clipper/core/style_loader.py
 
 **Checkpoint**: All user stories (US1, US2, US3) are implemented, tested, and observable.
 
@@ -116,9 +116,9 @@ description: "Task list for feature Visual Identity & Global State implementatio
 
 **Purpose**: Verify non-regression across all existing pipeline tests, enforce execution timing budgets, and update project documentation.
 
-- [ ] T022 Execute full test suite discover via tests/ to verify zero regressions across the codebase
-- [ ] T023 [P] Verify wall-clock execution overhead benchmark of style_node remains under 100ms in tests/test_style_node.py
-- [ ] T024 [P] Update operational documentation, architecture DAG diagram, and configuration reference in AGENTS.md, GEMINI.md, and README.md
+- [X] T022 Execute full test suite discover via tests/ to verify zero regressions across the codebase
+- [X] T023 [P] Verify wall-clock execution overhead benchmark of style_node remains under 100ms in tests/test_style_node.py
+- [X] T024 [P] Update operational documentation, architecture DAG diagram, and configuration reference in AGENTS.md, GEMINI.md, and README.md
 
 ---
 

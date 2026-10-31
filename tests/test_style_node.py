@@ -4,13 +4,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.clipper.core.style_loader import (
+from clipper.core.style_loader import (
     DEFAULT_VISUAL_IDENTITY,
     VisualIdentityConfig,
     load_visual_identity,
     validate_visual_identity_primitives,
 )
-from src.clipper.runtime import config
+from clipper.runtime import config
 
 
 class TestVisualIdentityConfig(unittest.TestCase):
@@ -40,7 +40,7 @@ class TestVisualIdentityConfig(unittest.TestCase):
         self.assertEqual(model.caption_stroke_color, "#123456")
 
     def test_invalid_hex_color_falls_back_to_defaults(self):
-        with self.assertLogs("src.clipper.core.style_loader", level="WARNING") as cm:
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
             model = VisualIdentityConfig(
                 caption_color="#ZZZZZZ",
                 caption_stroke_color="invalid-color",
@@ -50,7 +50,7 @@ class TestVisualIdentityConfig(unittest.TestCase):
         self.assertTrue(any("Invalid hex color" in msg for msg in cm.output))
 
     def test_positive_integers_fallback(self):
-        with self.assertLogs("src.clipper.core.style_loader", level="WARNING") as cm:
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
             model = VisualIdentityConfig(
                 caption_font_size=0,
                 caption_stroke_width=-5,
@@ -64,7 +64,7 @@ class TestVisualIdentityConfig(unittest.TestCase):
         self.assertTrue(any("Invalid positive integer" in msg for msg in cm.output))
 
     def test_positive_floats_fallback(self):
-        with self.assertLogs("src.clipper.core.style_loader", level="WARNING") as cm:
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
             model = VisualIdentityConfig(
                 caption_max_gap=0.0,
                 caption_max_duration=-2.5,
@@ -74,7 +74,7 @@ class TestVisualIdentityConfig(unittest.TestCase):
         self.assertTrue(any("Invalid positive number" in msg for msg in cm.output))
 
     def test_ratios_fallback(self):
-        with self.assertLogs("src.clipper.core.style_loader", level="WARNING") as cm:
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
             model = VisualIdentityConfig(
                 caption_center_x_ratio=-0.1,
                 caption_center_y_ratio=1.5,
@@ -105,7 +105,7 @@ class TestLoadVisualIdentity(unittest.TestCase):
 
     def test_load_absent_file_returns_defaults_with_warning(self):
         nonexistent = self.temp_dir_path / "absent_estilo.json"
-        with self.assertLogs("src.clipper.core.style_loader", level="WARNING") as cm:
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
             loaded = load_visual_identity(nonexistent)
 
         self.assertEqual(loaded, DEFAULT_VISUAL_IDENTITY)
@@ -115,7 +115,7 @@ class TestLoadVisualIdentity(unittest.TestCase):
         corrupt_file = self.temp_dir_path / "corrupt_estilo.json"
         corrupt_file.write_text("{ unclosed json: ", encoding="utf-8")
 
-        with self.assertLogs("src.clipper.core.style_loader", level="WARNING") as cm:
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
             loaded = load_visual_identity(corrupt_file)
 
         self.assertEqual(loaded, DEFAULT_VISUAL_IDENTITY)
@@ -125,7 +125,7 @@ class TestLoadVisualIdentity(unittest.TestCase):
         list_file = self.temp_dir_path / "list_estilo.json"
         list_file.write_text(json.dumps(["item1", "item2"]), encoding="utf-8")
 
-        with self.assertLogs("src.clipper.core.style_loader", level="WARNING") as cm:
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
             loaded = load_visual_identity(list_file)
 
         self.assertEqual(loaded, DEFAULT_VISUAL_IDENTITY)
@@ -156,7 +156,7 @@ class TestLoadVisualIdentity(unittest.TestCase):
         }
         valid_file.write_text(json.dumps(style_payload), encoding="utf-8")
 
-        with self.assertLogs("src.clipper.core.style_loader", level="INFO") as cm:
+        with self.assertLogs("clipper.core.style_loader", level="INFO") as cm:
             loaded = load_visual_identity(valid_file)
 
         self.assertEqual(loaded["caption_color"], "#FF5500")
@@ -181,7 +181,7 @@ class TestLoadVisualIdentity(unittest.TestCase):
         }
         partial_file.write_text(json.dumps(style_payload), encoding="utf-8")
 
-        with self.assertLogs("src.clipper.core.style_loader", level="WARNING") as cm:
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
             loaded = load_visual_identity(partial_file)
 
         self.assertEqual(loaded["caption_color"], "#336699")
@@ -202,7 +202,7 @@ class TestLoadVisualIdentity(unittest.TestCase):
         }
         invalid_val_file.write_text(json.dumps(style_payload), encoding="utf-8")
 
-        with self.assertLogs("src.clipper.core.style_loader", level="WARNING") as cm:
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
             loaded = load_visual_identity(invalid_val_file)
 
         self.assertEqual(loaded["caption_color"], config.CAPTION_COLOR)
@@ -215,7 +215,7 @@ class TestLoadVisualIdentity(unittest.TestCase):
         valid_file = self.temp_dir_path / "primitives.json"
         valid_file.write_text(json.dumps({"caption_color": "#123456"}), encoding="utf-8")
 
-        with self.assertLogs("src.clipper.core.style_loader", level="WARNING"):
+        with self.assertLogs("clipper.core.style_loader", level="WARNING"):
             loaded = load_visual_identity(valid_file)
         # Verify json dumps succeeds and all values are primitive
         serialized = json.dumps(loaded)
@@ -232,7 +232,7 @@ class TestLoadVisualIdentity(unittest.TestCase):
             "invalid_obj": object(),
             "caption_max_words": [1, 2, 3],
         }
-        with self.assertLogs("src.clipper.core.style_loader", level="WARNING") as cm:
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
             cleaned = validate_visual_identity_primitives(payload)
 
         self.assertEqual(cleaned["caption_color"], "#AABBCC")
@@ -258,12 +258,36 @@ class TestStyleNode(unittest.TestCase):
 
     def test_style_node_is_strictly_synchronous(self):
         import inspect
-        from src.clipper.core.orchestrator import style_node
+        from clipper.core.orchestrator import style_node
 
         self.assertFalse(inspect.iscoroutinefunction(style_node))
 
+    def test_t023_style_node_wall_clock_execution_overhead_under_100ms(self):
+        """T023 / SC-005: Verify style_node execution overhead is strictly under 100ms wall-clock."""
+        import time
+        from clipper.core.orchestrator import style_node
+
+        style_file = self.temp_dir_path / "estilo.json"
+        style_file.write_text(
+            json.dumps({
+                "palette": {"caption_color": "#123456", "caption_stroke_color": "#654321"},
+                "typography": {"caption_font_size": 85, "caption_stroke_width": 7, "caption_reference_width": 1080},
+                "layout": {"caption_center_x_ratio": 0.5, "caption_center_y_ratio": 0.8, "caption_safe_width_ratio": 0.9},
+                "motion": {"caption_max_words": 3, "caption_max_gap": 0.5, "caption_max_duration": 2.0},
+            }),
+            encoding="utf-8",
+        )
+        state = {"video_url": "https://example.com/test", "style_path": str(style_file)}
+
+        start_time = time.perf_counter()
+        result = style_node(state)
+        elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+
+        self.assertIn("visual_identity", result)
+        self.assertLess(elapsed_ms, 100.0, f"Execution overhead {elapsed_ms:.2f}ms exceeds 100ms budget")
+
     def test_style_node_with_custom_file_populates_visual_identity(self):
-        from src.clipper.core.orchestrator import style_node
+        from clipper.core.orchestrator import style_node
 
         style_file = self.temp_dir_path / "estilo.json"
         style_file.write_text(
@@ -281,7 +305,7 @@ class TestStyleNode(unittest.TestCase):
         )
 
     def test_style_node_with_absent_file_returns_all_defaults(self):
-        from src.clipper.core.orchestrator import style_node
+        from clipper.core.orchestrator import style_node
 
         nonexistent = self.temp_dir_path / "nonexistent.json"
         state = {"video_url": "https://youtu.be/dummy", "style_path": str(nonexistent)}
@@ -291,7 +315,7 @@ class TestStyleNode(unittest.TestCase):
 
     def test_editor_node_passes_visual_identity_to_cut_and_format_video(self):
         from unittest.mock import patch, MagicMock
-        from src.clipper.core.orchestrator import editor_node
+        from clipper.core.orchestrator import editor_node
 
         state = {
             "approval_complete": True,
@@ -304,8 +328,8 @@ class TestStyleNode(unittest.TestCase):
         }
 
         with patch("os.path.exists", return_value=True), \
-             patch("src.clipper.core.orchestrator.load_review_plans", return_value=[MagicMock()]), \
-             patch("src.clipper.core.orchestrator.cut_and_format_video", return_value=["/fake/cut1.mp4"]) as mock_cut:
+             patch("clipper.core.orchestrator.load_review_plans", return_value=[MagicMock()]), \
+             patch("clipper.core.orchestrator.cut_and_format_video", return_value=["/fake/cut1.mp4"]) as mock_cut:
             editor_node(state)
             mock_cut.assert_called_once()
             _, kwargs = mock_cut.call_args
@@ -317,7 +341,7 @@ class TestCreateGraphStyleNodeContract(unittest.TestCase):
     """Contract tests for create_graph DAG edges and synchronous node compliance (T008)."""
 
     def test_create_graph_includes_style_node_between_fatiamento_and_transcricao(self):
-        from src.clipper.core.orchestrator import create_graph
+        from clipper.core.orchestrator import create_graph
 
         workflow = create_graph()
         self.assertIn("style", workflow.nodes)
@@ -527,6 +551,147 @@ class TestStyleCheckpointRecovery(unittest.TestCase):
             initial_state = {"video_url": "https://example.com/test", "style_path": str(style_file)}
             res2 = app.invoke(initial_state, config=graph_config)
             self.assertEqual(res2["visual_identity"]["caption_color"], "#990099")
+
+
+class TestStyleObservabilityLogging(unittest.TestCase):
+    """Unit tests for User Story 3: Operator Inspects Loaded Style at Runtime (T019, T020)."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_path = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_t019_info_log_on_successful_estilo_loading(self):
+        """T019: Assert INFO log emitted listing all loaded style keys and values with style_node prefix."""
+        style_file = self.temp_path / "estilo.json"
+        style_payload = {
+            "palette": {
+                "caption_color": "#FFAA00",
+                "caption_stroke_color": "#222222",
+            },
+            "typography": {
+                "caption_font_size": 92,
+                "caption_stroke_width": 9,
+                "caption_reference_width": 1080,
+            },
+            "layout": {
+                "caption_center_x_ratio": 0.52,
+                "caption_center_y_ratio": 0.78,
+                "caption_safe_width_ratio": 0.88,
+            },
+            "motion": {
+                "caption_max_words": 4,
+                "caption_max_gap": 0.45,
+                "caption_max_duration": 1.75,
+            },
+        }
+        style_file.write_text(json.dumps(style_payload), encoding="utf-8")
+
+        # 1. Test via load_visual_identity
+        with self.assertLogs("clipper.core.style_loader", level="INFO") as cm:
+            loaded = load_visual_identity(style_file)
+
+        info_entries = [m for m in cm.output if "INFO" in m and "style_node: Loaded visual identity from" in m]
+        self.assertEqual(len(info_entries), 1)
+        logged_text = info_entries[0]
+        self.assertIn(str(style_file), logged_text)
+        # Ensure all recognized style keys and their loaded values appear in the log
+        for key, value in loaded.items():
+            self.assertIn(f"'{key}': {repr(value)}", logged_text)
+
+        # 2. Test via style_node execution
+        from clipper.core.orchestrator import style_node
+        with self.assertLogs("clipper.core.style_loader", level="INFO") as cm_node:
+            node_state = {"video_url": "https://example.com/test", "style_path": str(style_file)}
+            node_result = style_node(node_state)
+
+        node_info_entries = [m for m in cm_node.output if "INFO" in m and "style_node: Loaded visual identity from" in m]
+        self.assertEqual(len(node_info_entries), 1)
+        self.assertEqual(node_result["visual_identity"], loaded)
+
+    def test_t020_warning_log_on_absent_estilo_file(self):
+        """T020: Assert WARNING log emitted when estilo.json is absent, stating fallback to defaults."""
+        from clipper.core.orchestrator import style_node
+
+        absent_path = self.temp_path / "nonexistent_estilo.json"
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
+            result = style_node({"style_path": str(absent_path)})
+
+        self.assertEqual(result["visual_identity"], DEFAULT_VISUAL_IDENTITY)
+        warning_entries = [m for m in cm.output if "WARNING" in m and "style_node: Style file not found at" in m]
+        self.assertEqual(len(warning_entries), 1)
+        self.assertIn("Using default visual identity", warning_entries[0])
+
+    def test_t020_warning_log_on_corrupted_json_syntax(self):
+        """T020: Assert WARNING log emitted when estilo.json has corrupt syntax."""
+        from clipper.core.orchestrator import style_node
+
+        corrupted_file = self.temp_path / "corrupted_estilo.json"
+        corrupted_file.write_text("{ unclosed invalid json : [", encoding="utf-8")
+
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
+            result = style_node({"style_path": str(corrupted_file)})
+
+        self.assertEqual(result["visual_identity"], DEFAULT_VISUAL_IDENTITY)
+        warning_entries = [m for m in cm.output if "WARNING" in m and "style_node: Failed to parse style file" in m]
+        self.assertEqual(len(warning_entries), 1)
+        self.assertIn("Using default visual identity", warning_entries[0])
+
+    def test_t020_warning_log_on_missing_fields_in_partial_file(self):
+        """T020: Assert WARNING log emitted for each missing field with style_node prefix and default value."""
+        from clipper.core.orchestrator import style_node
+
+        partial_file = self.temp_path / "partial_estilo.json"
+        partial_file.write_text(json.dumps({"palette": {"caption_color": "#112233"}}), encoding="utf-8")
+
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
+            result = style_node({"style_path": str(partial_file)})
+
+        # 10 missing fields out of 11 total
+        missing_warnings = [m for m in cm.output if "WARNING" in m and "style_node: Missing field" in m]
+        self.assertEqual(len(missing_warnings), 10)
+        self.assertNotIn("Missing field 'caption_color'", "\n".join(missing_warnings))
+        for key in DEFAULT_VISUAL_IDENTITY:
+            if key != "caption_color":
+                self.assertTrue(
+                    any(f"Missing field '{key}' in style file. Using default '{DEFAULT_VISUAL_IDENTITY[key]}'." in m for m in missing_warnings),
+                    f"Expected warning for missing field {key}",
+                )
+
+    def test_t020_warning_log_on_invalid_hex_and_numeric_constraints(self):
+        """T020: Assert WARNING log emitted when invalid hex, non-positive numbers, or bad ratios fall back."""
+        invalid_file = self.temp_path / "invalid_constraints.json"
+        payload = {
+            "palette": {
+                "caption_color": "#BADHEXCOLOR",
+            },
+            "typography": {
+                "caption_font_size": -10,
+            },
+            "layout": {
+                "caption_center_x_ratio": 2.5,
+            },
+            "motion": {
+                "caption_max_gap": -0.5,
+            },
+        }
+        invalid_file.write_text(json.dumps(payload), encoding="utf-8")
+
+        with self.assertLogs("clipper.core.style_loader", level="WARNING") as cm:
+            loaded = load_visual_identity(invalid_file)
+
+        self.assertEqual(loaded["caption_color"], DEFAULT_VISUAL_IDENTITY["caption_color"])
+        self.assertEqual(loaded["caption_font_size"], DEFAULT_VISUAL_IDENTITY["caption_font_size"])
+        self.assertEqual(loaded["caption_center_x_ratio"], DEFAULT_VISUAL_IDENTITY["caption_center_x_ratio"])
+        self.assertEqual(loaded["caption_max_gap"], DEFAULT_VISUAL_IDENTITY["caption_max_gap"])
+
+        warnings = "\n".join(cm.output)
+        self.assertIn("style_node: Invalid hex color '#BADHEXCOLOR' for field 'caption_color'", warnings)
+        self.assertIn("style_node: Invalid positive integer '-10' for field 'caption_font_size'", warnings)
+        self.assertIn("style_node: Invalid ratio '2.5' for field 'caption_center_x_ratio'", warnings)
+        self.assertIn("style_node: Invalid positive number '-0.5' for field 'caption_max_gap'", warnings)
 
 
 if __name__ == "__main__":

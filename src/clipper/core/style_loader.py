@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
 
-from src.clipper.runtime.config import (
+from clipper.runtime.config import (
     CAPTION_CENTER_X_RATIO,
     CAPTION_CENTER_Y_RATIO,
     CAPTION_COLOR,
@@ -21,7 +21,7 @@ from src.clipper.runtime.config import (
     PROJECT_ROOT,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("clipper.core.style_loader")
 
 _HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
