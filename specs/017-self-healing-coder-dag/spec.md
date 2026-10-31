@@ -19,7 +19,7 @@ An operator approves a video cut. Instead of MoviePy being called directly, the 
 
 1. **Given** a `VideoState` containing an approved cut with scene list, word timestamps, style dict, and audio path, **When** `coder_node` is invoked, **Then** a `render_script.py` file is written to `/app/output/<cut_id>/render_script.py` and its path is stored in `VideoState["render_script_path"]`.
 2. **Given** `coder_node` receives all required inputs, **When** the LLM returns a valid Python string, **Then** the file is saved with UTF-8 encoding and the node does not raise an exception.
-3. **Given** the LLM response is empty or malformed, **When** `coder_node` processes the response, **Then** the node raises an error that triggers the self-healing retry flow (sets `render_error` in state).
+3. **Given** the LLM response is empty or malformed, **When** `coder_node` processes the response, **Then** the node captures the validation failure without crashing, records the diagnostic in `VideoState["render_error"]`, leaves `render_script_path` empty, and allows downstream routing to trigger the self-healing retry flow.
 
 ---
 
@@ -55,14 +55,14 @@ When the render script fails, the error log is fed back to the LLM so it can gen
 
 ---
 
-### Edge Cases
+### Edge Cases & Failure Modes
 
-- What happens when the LLM returns an empty string for the render script?
-- What happens when the render subprocess exceeds a reasonable wall-clock time limit (e.g., hangs indefinitely)?
-- What happens if disk is full and the script file cannot be written?
-- What happens when `render_attempts` is missing from `VideoState` (first run with no checkpoint)?
-- What happens if `coder_node` itself raises an exception (network error calling the LLM API)?
-- What happens when `stderr` from the subprocess is longer than a safe token budget for the LLM retry prompt?
+- **Empty or Whitespace Script**: Caught immediately by Pydantic `min_length=1` validation in `RenderScriptPayload`; sets `render_error` in state and triggers retry flow without crashing.
+- **Hanging / Infinite Subprocess**: Subprocess is killed deterministically when execution exceeds `RENDER_TIMEOUT_SECONDS` (default `300s`); sets `render_exit_code = -1` and records timeout diagnostic in `render_error`.
+- **Disk Full / File Write Failure**: I/O errors when persisting `render_script.py` are caught within `coder_node`, recording an operational traceback into `render_error`.
+- **Missing State Defaults**: Nodes use defensive access (`state.get("render_attempts", 0)`, `state.get("current_cut_index", 0)`), ensuring reliable first-run execution without prior checkpoints.
+- **LLM API Network Disconnection**: Network or endpoint timeouts calling Ollama/Gemini are caught in `coder_node`'s `try/except` block, ensuring network errors populate `render_error` without crashing the orchestrator.
+- **Voluminous Stderr Output**: `stderr` is truncated to `RENDER_ERROR_MAX_CHARS` (default `2000` chars, taking the tail where root exceptions reside) before being injected into `CODER_RETRY_PROMPT_TEMPLATE`.
 
 ## Requirements *(mandatory)*
 
@@ -80,6 +80,7 @@ When the render script fails, the error log is fed back to the LLM so it can gen
 - **FR-010**: Both `coder_node` and `execution_node` MUST be synchronous functions (`def`) compatible with LangGraph's `StateGraph` synchronous invocation contract.
 - **FR-011**: The same LLM backend selected by `LLM_PROVIDER` (Ollama or Gemini) MUST be used by `coder_node`, with no additional model loaded simultaneously.
 - **FR-012**: The `render_attempts` counter and `render_aborted` flag MUST be persisted by the existing `SqliteSaver` checkpointer so retries survive container restarts.
+- **FR-013**: When multiple cuts are approved in `approved_cut_ids`, the pipeline MUST process each cut sequentially by tracking `current_cut_index`: resetting `render_attempts` to `0` and `render_error` to `""` at the start of each cut, appending successfully rendered video paths to `rendered_video_paths`, and terminating when all approved cuts are either rendered or aborted.
 
 ### Key Entities
 
@@ -89,6 +90,8 @@ When the render script fails, the error log is fed back to the LLM so it can gen
 - **`render_attempts`** (VideoState field): Integer counter tracking how many execution attempts have been made for the current cut; reset per cut.
 - **`render_error`** (VideoState field): String containing the `stderr` of the last failed subprocess execution; empty string on success.
 - **`render_aborted`** (VideoState field): Boolean flag set to `True` when the cut is skipped after exhausting all retry attempts.
+- **`current_cut_index`** (VideoState field): Integer index tracking the approved cut currently being processed (`0 <= current_cut_index < len(approved_cut_ids)`).
+- **`rendered_video_paths`** (VideoState field): List of string file paths accumulating all successfully generated vertical MP4 videos across cuts.
 - **Conditional Edge (execution → coder / downstream / abort)**: The routing function that reads `render_exit_code` and `render_attempts` to decide the next DAG node.
 
 ## Assumptions

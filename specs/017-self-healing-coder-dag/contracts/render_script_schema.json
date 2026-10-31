@@ -1,0 +1,16 @@
+{
+  "properties": {
+    "script_code": {
+      "description": "Código Python completo e auto-contido para renderização do corte vertical usando MoviePy 1.0.3 e Pillow.",
+      "minLength": 1,
+      "title": "Script Code",
+      "type": "string"
+    }
+  },
+  "required": [
+    "script_code"
+  ],
+  "title": "RenderScriptPayload",
+  "type": "object",
+  "additionalProperties": false
+}
