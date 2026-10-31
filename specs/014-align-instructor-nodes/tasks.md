@@ -76,14 +76,14 @@ description: "Task list for feature Align Instructor Nodes with LangGraph Synchr
 
 ### Tests for User Story 2
 
-- [ ] T010 [P] [US2] Contract test auditing 100% of nodes in create_graph using inspect.iscoroutinefunction and asyncio.iscoroutinefunction (AC-01, FR-001, FR-007, SC-001) in tests/test_instructor_sync_contract.py
-- [ ] T011 [P] [US2] Contract test asserting create_llm_client returns an openai.OpenAI instance and not openai.AsyncOpenAI (AC-02, FR-002, FR-008) in tests/test_instructor_sync_contract.py
-- [ ] T012 [P] [US2] Contract test asserting instructor.from_openai wraps openai.OpenAI into synchronous instructor.Instructor (AC-03, FR-003) in tests/test_instructor_sync_contract.py
+- [X] T010 [P] [US2] Contract test auditing 100% of nodes in create_graph using inspect.iscoroutinefunction and asyncio.iscoroutinefunction (AC-01, FR-001, FR-007, SC-001) in tests/test_instructor_sync_contract.py
+- [X] T011 [P] [US2] Contract test asserting create_llm_client returns an openai.OpenAI instance and not openai.AsyncOpenAI (AC-02, FR-002, FR-008) in tests/test_instructor_sync_contract.py
+- [X] T012 [P] [US2] Contract test asserting instructor.from_openai wraps openai.OpenAI into synchronous instructor.Instructor (AC-03, FR-003) in tests/test_instructor_sync_contract.py
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Add runtime type assertions (openai.OpenAI and not AsyncOpenAI) to create_llm_client in src/clipper/core/orchestrator.py
-- [ ] T014 [US2] Audit all registered graph node signatures against NodeCallable contract specifications in src/clipper/core/orchestrator.py
+- [X] T013 [US2] Add runtime type assertions (openai.OpenAI and not AsyncOpenAI) to create_llm_client in src/clipper/core/orchestrator.py
+- [X] T014 [US2] Audit all registered graph node signatures against NodeCallable contract specifications in src/clipper/core/orchestrator.py
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work together: execution is predictable and architectural compliance is guarded by contract assertions.
 
