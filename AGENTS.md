@@ -57,7 +57,7 @@ Use dois nós sequenciais operando o MESMO modelo do perfil selecionado (Qwen2.5
 
 É expressamente proibido o uso de Regex (re.search) ou json.loads manual para limpar marcações (como ```json ou TERMINATE) das respostas da IA.
 
-- Utilize exclusivamente **Constrained Decoding** acoplando a biblioteca instructor com classes do pydantic (ex: class Corte(BaseModel)).
+- Utilize exclusivamente **Constrained Decoding** acoplando a biblioteca instructor com classes do pydantic (ex: class CorteVideo(BaseModel) e class Scene(BaseModel)).
 - OLLAMA local será forçado pelo schema Pydantic a retornar a estrutura de dados Python exata, impossibilitando erros de sintaxe e alucinações de formatação.
 
 ##### 6. Manipulação de Vídeo (MoviePy & ImageMagick)
@@ -109,7 +109,7 @@ A abordagem robusta é **obrigar matematicamente** o modelo a gerar um JSON, eli
 
 ##### A Tecnologia Mainstream:
 
-- **Pydantic:** Definição rigorosa da saída esperada em classes de Python (ex: class Corte(BaseModel)).
+- **Pydantic:** Definição rigorosa da saída esperada em classes de Python (ex: class CorteVideo(BaseModel) e class Scene(BaseModel)).
 - **Instructor (Python):** Intercepta a chamada da API local do Ollama e injeta o schema. Força o modelo a perder a capacidade de errar a sintaxe da estrutura de dados.
 
 ---

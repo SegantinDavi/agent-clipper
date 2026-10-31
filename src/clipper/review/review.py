@@ -142,6 +142,21 @@ def render_review_page(cuts: list[CorteVideo], token: str,
         duration = pause_plans[index - 1].duration if pause_plans else cut.end_time - cut.start_time
         timing = (f"Original: {cut.end_time - cut.start_time:.1f}s · Após cortes de silêncio: {duration:.1f}s"
                   if pause_plans else f"Duração: {duration:.1f}s")
+        scenes_html = ""
+        if cut.scenes:
+            scene_items = []
+            for scene in cut.scenes:
+                scene_items.append(
+                    f'<li class="scene-item">'
+                    f'<span class="scene-words">"{html.escape(scene.start_word)} … {html.escape(scene.end_word)}"</span> · '
+                    f'<span class="scene-metaphor">Metáfora: <em>{html.escape(scene.visual_metaphor)}</em></span> · '
+                    f'<span class="scene-trigger">Gatilho: <code>{html.escape(scene.animation_trigger)}</code></span>'
+                    f'</li>'
+                )
+            scenes_html = f"""<div class="scenes">
+<h3 class="scenes-title">Cenas Planejadas ({len(cut.scenes)})</h3>
+<ol class="scenes-list">{"".join(scene_items)}</ol>
+</div>"""
         cards.append(f"""<article>
 <video controls preload="metadata" src="preview-{index}.mp4"></video>
 <div class="details"><span class="badge">CORTE {index} · {duration:.1f}s</span>
@@ -149,6 +164,7 @@ def render_review_page(cuts: list[CorteVideo], token: str,
 <p>{html.escape(cut.description or 'Descrição indisponível neste processamento antigo.')}</p>
 <p class="time">No original: {cut.start_time:.2f}s – {cut.end_time:.2f}s</p>
 <p class="time">{timing}</p>
+{scenes_html}
 <label><input type="checkbox" name="cut_id" value="{index}"> Aprovar este corte</label></div>
 </article>""")
     return """<!doctype html><html lang="pt-BR"><meta charset="utf-8">
@@ -164,7 +180,15 @@ label{display:flex;gap:12px;align-items:center;padding:14px 0;font-weight:600;cu
 input{width:21px;height:21px;accent-color:#6ee7c5}.actions{position:fixed;bottom:0;left:0;right:0;
 background:#10141ef5;border-top:1px solid #303b50;padding:20px;display:flex;justify-content:center;gap:16px;flex-wrap:wrap}
 button{border:0;border-radius:9px;background:#6ee7c5;color:#10241f;font:600 16px system-ui;padding:14px 22px;cursor:pointer}
-button.secondary{background:#303b50;color:white}</style><main>
+button.secondary{background:#303b50;color:white}
+.scenes{margin:16px 0;padding:12px;background:#151c28;border-radius:8px;border:1px solid #283347;font-size:13px}
+.scenes-title{margin:0 0 8px;font-size:13px;color:#84dccc;letter-spacing:0.5px}
+.scenes-list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.scene-item{color:#a7b3c9;line-height:1.4}
+.scene-words{color:#edf2ff;font-weight:600}
+.scene-metaphor em{color:#ccd6ea;font-style:normal}
+.scene-trigger code{color:#6ee7c5;background:#10141e;padding:2px 6px;border-radius:4px;font-family:monospace}
+</style><main>
 <span class="badge">AGENT CLIPPER · REVISÃO</span><h1>Escolha os cortes que vão para edição</h1>
 <p class="intro">Assista aos trechos e selecione os que deseja editar. Os previews mantêm o enquadramento original;
 o ritmo dos cortes de silêncio já está aplicado, quando habilitado.

@@ -142,6 +142,18 @@ PREENCHIMENTO DO SCHEMA
   se tratar de experiência ou opinião. Não apresente o relato como verificado.
   Não inclua nota editorial, justificativa de viralização, hashtags ou comandos.
 - start_time e end_time: somente números, com os valores verificados na entrada.
+- scenes: lista ordenada de cenas lógicas que particionam a fala do corte em
+  segmentos de 2 a 4 segundos de ritmo dinâmico para formato vertical.
+  Toda a fala do corte deve ser coberta sequencialmente por cenas.
+  Cada cena é um objeto com quatro campos obrigatórios:
+  * start_word: palavra exata de início do segmento da cena na transcrição.
+  * end_word: palavra exata de término do segmento da cena na transcrição.
+  * visual_metaphor: metáfora visual, imagem conceitual ou b-roll de apoio.
+    Varie as metáforas dentro do mesmo corte sem repetições monótonas.
+  * animation_trigger: gatilho de animação, corte ou movimento de câmera recomendado
+    (ex: zoom_in, zoom_out, impact, cut_transition, slow_zoom, whip_pan).
+    Em momentos de revelação, quebra de expectativa ou dados surpreendentes,
+    use gatilhos de impacto ou zoom.
 
 Retorne exclusivamente o objeto do schema, sem Markdown ou texto adicional.
 Não acrescente gancho, nota, justificativa ou outros campos.
@@ -170,7 +182,7 @@ EXTRACTOR_FEW_SHOT_EXAMPLES: list[ChatMessage] = [
             "de construir a segunda solução.\n"
             "- Justificativa: erro concreto com consequência e aprendizado.\n\n"
             "Extraia todos os cortes adequados, de 30 a 80 segundos, "
-            "com título e descrição factual."
+            "com título, descrição factual e cenas sequenciais enriquecidas."
         ),
     },
     {
@@ -179,7 +191,30 @@ EXTRACTOR_FEW_SHOT_EXAMPLES: list[ChatMessage] = [
             '{"cortes": [{"title": "Seis meses construindo algo sem demanda", '
             '"description": "O participante relata o fracasso de um produto '
             'e explica como passou a testar a demanda antes de desenvolver.", '
-            '"start_time": 120.0, "end_time": 175.0}]}'
+            '"start_time": 120.0, "end_time": 175.0, '
+            '"scenes": ['
+            '{"start_word": "O", "end_word": "empresa", '
+            '"visual_metaphor": "prédio de startup com luzes apagadas", '
+            '"animation_trigger": "zoom_in"}, '
+            '{"start_word": "foi", "end_word": "problema", '
+            '"visual_metaphor": "alvo com flecha errando o centro", '
+            '"animation_trigger": "impact"}, '
+            '{"start_word": "Passamos", "end_word": "desenvolvendo", '
+            '"visual_metaphor": "calendário folheando rapidamente", '
+            '"animation_trigger": "cut_transition"}, '
+            '{"start_word": "Quando", "end_word": "prioridade", '
+            '"visual_metaphor": "cliente gesticulando desinteresse", '
+            '"animation_trigger": "whip_pan"}, '
+            '{"start_word": "Então", "end_word": "dia", '
+            '"visual_metaphor": "bloco de notas com entrevistas de clientes", '
+            '"animation_trigger": "slow_zoom"}, '
+            '{"start_word": "Na", "end_word": "construir", '
+            '"visual_metaphor": "aperto de mão fechando contrato piloto", '
+            '"animation_trigger": "cut_transition"}, '
+            '{"start_word": "Aprendi", "end_word": "primeiro", '
+            '"visual_metaphor": "gráfico ascendente de validação", '
+            '"animation_trigger": "zoom_in"}'
+            ']}]}'
         ),
     },
     {
@@ -201,7 +236,7 @@ EXTRACTOR_FEW_SHOT_EXAMPLES: list[ChatMessage] = [
             "- Gancho: dormir resolve qualquer problema de produtividade.\n"
             "- Justificativa: o trecho comprova uma regra universal.\n\n"
             "Extraia todos os cortes adequados, de 30 a 80 segundos, "
-            "validando as sugestões contra a transcrição."
+            "validando as sugestões contra a transcrição e roteirizando as cenas."
         ),
     },
     {
@@ -211,7 +246,30 @@ EXTRACTOR_FEW_SHOT_EXAMPLES: list[ChatMessage] = [
             '"description": "O participante relata que passou a concluir '
             'o trabalho mais cedo após regularizar o sono, com a ressalva '
             'de que essa foi uma experiência pessoal.", '
-            '"start_time": 300.0, "end_time": 361.0}]}'
+            '"start_time": 300.0, "end_time": 361.0, '
+            '"scenes": ['
+            '{"start_word": "Eu", "end_word": "mais", '
+            '"visual_metaphor": "lâmpada acesa na madrugada solitária", '
+            '"animation_trigger": "zoom_in"}, '
+            '{"start_word": "Foi", "end_word": "meses", '
+            '"visual_metaphor": "pilha de xícaras de café acumuladas", '
+            '"animation_trigger": "cut_transition"}, '
+            '{"start_word": "No", "end_word": "madrugada", '
+            '"visual_metaphor": "mãos apagando rascunhos com borracha", '
+            '"animation_trigger": "impact"}, '
+            '{"start_word": "Quando", "end_word": "regular", '
+            '"visual_metaphor": "relógio despertador marcando rotina fixa", '
+            '"animation_trigger": "slow_zoom"}, '
+            '{"start_word": "passei", "end_word": "experiência", '
+            '"visual_metaphor": "tarefas marcadas como concluídas em tela limpa", '
+            '"animation_trigger": "cut_transition"}, '
+            '{"start_word": "Não", "end_word": "caso", '
+            '"visual_metaphor": "balança equilibrada com ressalvas", '
+            '"animation_trigger": "whip_pan"}, '
+            '{"start_word": "Naquela", "end_word": "resultado", '
+            '"visual_metaphor": "gráfico comparativo esforço versus impacto real", '
+            '"animation_trigger": "impact"}'
+            ']}]}'
         ),
     },
 ]
