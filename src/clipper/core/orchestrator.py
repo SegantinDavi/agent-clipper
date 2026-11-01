@@ -31,8 +31,9 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Command, interrupt
 
-from clipper.core.schemas import CorteVideo, CortesResponse
+from clipper.core.schemas import CorteVideo, CortesResponse, RenderScriptPayload
 from clipper.core.prompts import (
+    CODER_SYSTEM_PROMPT,
     EXTRACTOR_FEW_SHOT_EXAMPLES,
     EXTRACTOR_SYSTEM_PROMPT_TEMPLATE,
     THINKER_SYSTEM_PROMPT,
@@ -71,6 +72,8 @@ from clipper.runtime.config import (
     YOUTUBE_URL,
     SILENCE_CUT_ENABLED,
     SILENCE_MIN_PAUSE,
+    RENDER_TIMEOUT_SECONDS,
+    RENDER_ERROR_MAX_CHARS,
 )
 
 logging.basicConfig(
@@ -524,6 +527,150 @@ def editor_node(state: VideoState) -> dict:
         logger.info("  - %s", arq)
 
     return {}
+
+
+def coder_node(state: VideoState) -> dict:
+    """Nó Coder: Gera script Python auto-contido para renderização do corte vertical aprovado."""
+    if state.get("approval_complete") is not True:
+        logger.error("Cut approval is required before code generation.")
+        raise ValueError("Cut approval is required before code generation.")
+
+    cortes = state.get("cortes_finais", [])
+    approved_ids = state.get("approved_cut_ids", [])
+    current_cut_index = state.get("current_cut_index", 0)
+
+    if not approved_ids or current_cut_index >= len(approved_ids):
+        logger.warning(
+            "No approved cuts available to generate code for at index %s.",
+            current_cut_index,
+        )
+        return {
+            "render_script_path": "",
+            "render_error": "No approved cuts available to process.",
+        }
+
+    cut_id = approved_ids[current_cut_index]
+    if isinstance(cut_id, int) and 1 <= cut_id <= len(cortes):
+        corte_raw = cortes[cut_id - 1]
+    else:
+        corte_raw = cortes[0] if cortes else {}
+
+    corte = (
+        corte_raw.model_dump()
+        if hasattr(corte_raw, "model_dump")
+        else (corte_raw.dict() if hasattr(corte_raw, "dict") else corte_raw)
+    )
+
+    video_path = state.get("video_path", "")
+    word_timestamps = state.get("word_timestamps", [])
+    visual_identity = state.get("visual_identity", {})
+    render_attempts = state.get("render_attempts", 0)
+    render_error = state.get("render_error", "")
+
+    cut_output_dir = os.path.join(OUTPUT_DIR, str(cut_id))
+    os.makedirs(cut_output_dir, exist_ok=True)
+    script_path = os.path.join(cut_output_dir, "render_script.py")
+    output_video_path = os.path.join(cut_output_dir, f"cut_{cut_id}.mp4")
+
+    cut_start = corte.get("start_time", 0.0)
+    cut_end = corte.get("end_time", 0.0)
+    cut_words = [
+        w
+        for w in word_timestamps
+        if isinstance(w, dict)
+        and cut_start <= w.get("start", 0.0) <= cut_end
+    ]
+
+    if render_attempts > 0 and render_error:
+        truncated_error = render_error[-RENDER_ERROR_MAX_CHARS:]
+        previous_script_content = ""
+        if os.path.exists(script_path):
+            try:
+                with open(script_path, "r", encoding="utf-8") as f:
+                    previous_script_content = f.read()
+            except Exception:
+                pass
+
+        user_prompt = (
+            f"O script anterior falhou durante a execução (Tentativa {render_attempts}).\n\n"
+            f"DIAGNÓSTICO DO ERRO (STDERR):\n{truncated_error}\n\n"
+            f"SCRIPT ANTERIOR:\n{previous_script_content}\n\n"
+            f"METADADOS DO CORTE:\n"
+            f"- Arquivo fonte: {video_path}\n"
+            f"- Destino do vídeo renderizado: {output_video_path}\n"
+            f"- Início: {cut_start}s, Fim: {cut_end}s\n"
+            f"- Cenas: {corte.get('scenes', [])}\n"
+            f"- Identidade visual: {visual_identity}\n\n"
+            f"Corrija os erros apontados e gere o script Python completo e funcional sem usar métodos inexistentes."
+        )
+    else:
+        user_prompt = (
+            f"Gere o script Python para renderizar o seguinte corte de podcast em formato vertical 9:16:\n\n"
+            f"METADADOS DO CORTE:\n"
+            f"- Título: {corte.get('title', '')}\n"
+            f"- Descrição: {corte.get('description', '')}\n"
+            f"- Arquivo de vídeo fonte: {video_path}\n"
+            f"- Destino do vídeo renderizado: {output_video_path}\n"
+            f"- Início: {cut_start}s, Fim: {cut_end}s\n"
+            f"- Cenas: {corte.get('scenes', [])}\n"
+            f"- Palavras e timestamps: {cut_words[:100]}\n"
+            f"- Identidade visual: {visual_identity}\n\n"
+            f"O script deve importar moviepy.editor e gerar o vídeo 9:16 com dimensões pares, salvando em '{output_video_path}'."
+        )
+
+    logger.info(
+        "Generating render script for cut %s (attempt %d)...",
+        cut_id,
+        render_attempts + 1,
+    )
+    raw_client = create_llm_client()
+    try:
+        instructor_client = instructor.from_openai(
+            raw_client, mode=instructor.Mode.JSON_SCHEMA
+        )
+        messages = [
+            {"role": "system", "content": CODER_SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        payload: RenderScriptPayload = instructor_client.chat.completions.create(
+            model=MODEL_NAME,
+            response_model=RenderScriptPayload,
+            messages=messages,
+            max_tokens=LLM_MAX_COMPLETION_TOKENS,
+            max_retries=2,
+            extra_body={
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": RenderScriptPayload.__name__,
+                        "strict": True,
+                        "schema": openai.pydantic_function_tool(RenderScriptPayload)[
+                            "function"
+                        ]["parameters"],
+                    },
+                },
+            },
+        )
+
+        with open(script_path, "w", encoding="utf-8") as f:
+            f.write(payload.script_code)
+
+        logger.info("Render script successfully written to: %s", script_path)
+        return {
+            "render_script_path": os.path.abspath(script_path),
+            "render_error": "",
+        }
+    except Exception as exc:
+        logger.error(
+            "Failed to generate or persist render script: %s", exc, exc_info=True
+        )
+        return {
+            "render_script_path": "",
+            "render_error": str(exc),
+        }
+    finally:
+        raw_client.close()
 
 
 # Aliases para máxima flexibilidade e compatibilidade

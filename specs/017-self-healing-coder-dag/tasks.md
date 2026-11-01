@@ -58,15 +58,15 @@ description: "Task list for feature Self-Healing Coder DAG implementation"
 
 > **NOTE: Write these tests FIRST, ensure they fail before full implementation**
 
-- [ ] T008 [P] [US1] Unit test coder_node generating render_script.py and storing path in VideoState with mocked instructor client in tests/test_coder_dag.py
-- [ ] T009 [P] [US1] Unit test coder_node fail-fast and error handling on empty or malformed LLM completions in tests/test_coder_dag.py
-- [ ] T010 [P] [US1] Unit test coder_node client lifecycle and resource cleanup ensuring raw_client.close is called deterministically in tests/test_coder_dag.py
-- [ ] T011 [P] [US1] Contract test verifying coder_node strict synchronous function contract (inspect.iscoroutinefunction is False) in tests/test_instructor_sync_contract.py
+- [X] T008 [P] [US1] Unit test coder_node generating render_script.py and storing path in VideoState with mocked instructor client in tests/test_coder_dag.py
+- [X] T009 [P] [US1] Unit test coder_node fail-fast and error handling on empty or malformed LLM completions in tests/test_coder_dag.py
+- [X] T010 [P] [US1] Unit test coder_node client lifecycle and resource cleanup ensuring raw_client.close is called deterministically in tests/test_coder_dag.py
+- [X] T011 [P] [US1] Contract test verifying coder_node strict synchronous function contract (inspect.iscoroutinefunction is False) in tests/test_instructor_sync_contract.py
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Define CODER_SYSTEM_PROMPT with strict MoviePy 1.0.3, Pillow, Liberation fonts, and even dimension constraints in src/clipper/core/prompts.py
-- [ ] T013 [US1] Implement coder_node with Instructor constrained decoding, UTF-8 file writing, and error capture in src/clipper/core/orchestrator.py
+- [X] T012 [P] [US1] Define CODER_SYSTEM_PROMPT with strict MoviePy 1.0.3, Pillow, Liberation fonts, and even dimension constraints in src/clipper/core/prompts.py
+- [X] T013 [US1] Implement coder_node with Instructor constrained decoding, UTF-8 file writing, and error capture in src/clipper/core/orchestrator.py
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently (MVP delivered!).
 

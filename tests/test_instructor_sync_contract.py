@@ -553,6 +553,27 @@ class InstructorSyncContractTests(unittest.TestCase):
         self.assertEqual(len(cortes[0]["scenes"]), 1)
         self.assertEqual(cortes[0]["scenes"][0]["start_word"], "Welcome")
 
+    def test_coder_node_strict_synchronous_contract(self):
+        """T011 [US1]: Contract test verifying coder_node strict synchronous function contract (FR-010)."""
+        self.assertTrue(
+            hasattr(orchestrator, "coder_node"),
+            "orchestrator.coder_node is not defined",
+        )
+        fn = orchestrator.coder_node
+        self.assertTrue(callable(fn), "coder_node must be callable")
+        self.assertFalse(
+            inspect.iscoroutinefunction(fn),
+            "coder_node must not be an inspect.iscoroutinefunction",
+        )
+        self.assertFalse(
+            is_async_coroutine_function(fn),
+            "coder_node must not be an asyncio.iscoroutinefunction",
+        )
+        self.assertFalse(
+            inspect.isasyncgenfunction(fn),
+            "coder_node must not be an async generator function",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
