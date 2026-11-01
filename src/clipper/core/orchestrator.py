@@ -1,4 +1,6 @@
 import os
+import sys
+import subprocess
 import re
 import gc
 import hashlib
@@ -31,8 +33,10 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Command, interrupt
 
-from clipper.core.schemas import CorteVideo, CortesResponse
+from clipper.core.schemas import CorteVideo, CortesResponse, RenderScriptPayload
 from clipper.core.prompts import (
+    CODER_RETRY_PROMPT_TEMPLATE,
+    CODER_SYSTEM_PROMPT,
     EXTRACTOR_FEW_SHOT_EXAMPLES,
     EXTRACTOR_SYSTEM_PROMPT_TEMPLATE,
     THINKER_SYSTEM_PROMPT,
@@ -71,6 +75,8 @@ from clipper.runtime.config import (
     YOUTUBE_URL,
     SILENCE_CUT_ENABLED,
     SILENCE_MIN_PAUSE,
+    RENDER_TIMEOUT_SECONDS,
+    RENDER_ERROR_MAX_CHARS,
 )
 
 logging.basicConfig(
@@ -99,6 +105,13 @@ class VideoState(TypedDict):
     approval_complete: bool
     visual_identity: dict
     style_path: str
+    render_script_path: str
+    render_attempts: int
+    render_error: str
+    render_exit_code: int
+    render_aborted: bool
+    current_cut_index: int
+    rendered_video_paths: list[str]
 
 
 def create_llm_client() -> openai.OpenAI:
@@ -519,6 +532,300 @@ def editor_node(state: VideoState) -> dict:
     return {}
 
 
+def coder_node(state: VideoState) -> dict:
+    """Nó Coder: Gera script Python auto-contido para renderização do corte vertical aprovado."""
+    if state.get("approval_complete") is not True:
+        logger.error("Cut approval is required before code generation.")
+        raise ValueError("Cut approval is required before code generation.")
+
+    cortes = state.get("cortes_finais", [])
+    approved_ids = state.get("approved_cut_ids", [])
+    current_cut_index = state.get("current_cut_index", 0)
+
+    if not approved_ids or current_cut_index >= len(approved_ids):
+        logger.warning(
+            "No approved cuts available to generate code for at index %s.",
+            current_cut_index,
+        )
+        return {
+            "render_script_path": "",
+            "render_error": "No approved cuts available to process.",
+        }
+
+    cut_id = approved_ids[current_cut_index]
+    if isinstance(cut_id, int) and 1 <= cut_id <= len(cortes):
+        corte_raw = cortes[cut_id - 1]
+    else:
+        corte_raw = cortes[0] if cortes else {}
+
+    corte = (
+        corte_raw.model_dump()
+        if hasattr(corte_raw, "model_dump")
+        else (corte_raw.dict() if hasattr(corte_raw, "dict") else corte_raw)
+    )
+
+    video_path = state.get("video_path", "")
+    word_timestamps = state.get("word_timestamps", [])
+    visual_identity = state.get("visual_identity", {})
+    render_attempts = state.get("render_attempts", 0)
+    render_error = state.get("render_error", "")
+
+    cut_output_dir = os.path.join(OUTPUT_DIR, str(cut_id))
+    os.makedirs(cut_output_dir, exist_ok=True)
+    script_path = os.path.join(cut_output_dir, "render_script.py")
+    output_video_path = os.path.join(cut_output_dir, f"cut_{cut_id}.mp4")
+
+    cut_start = corte.get("start_time", 0.0)
+    cut_end = corte.get("end_time", 0.0)
+    cut_words = [
+        w
+        for w in word_timestamps
+        if isinstance(w, dict)
+        and cut_start <= w.get("start", 0.0) <= cut_end
+    ]
+
+    if render_attempts > 0 and render_error:
+        truncated_error = render_error[-RENDER_ERROR_MAX_CHARS:]
+        previous_script_content = ""
+        if os.path.exists(script_path):
+            try:
+                with open(script_path, "r", encoding="utf-8") as f:
+                    previous_script_content = f.read()
+            except Exception:
+                pass
+
+        cut_metadata = (
+            f"- Arquivo fonte: {video_path}\n"
+            f"- Destino do vídeo renderizado: {output_video_path}\n"
+            f"- Início: {cut_start}s, Fim: {cut_end}s\n"
+            f"- Cenas: {corte.get('scenes', [])}\n"
+            f"- Identidade visual: {visual_identity}"
+        )
+        user_prompt = CODER_RETRY_PROMPT_TEMPLATE.format(
+            attempt=render_attempts,
+            error_diagnostic=truncated_error,
+            previous_script=previous_script_content,
+            cut_metadata=cut_metadata,
+        )
+    else:
+        user_prompt = (
+            f"Gere o script Python para renderizar o seguinte corte de podcast em formato vertical 9:16:\n\n"
+            f"METADADOS DO CORTE:\n"
+            f"- Título: {corte.get('title', '')}\n"
+            f"- Descrição: {corte.get('description', '')}\n"
+            f"- Arquivo de vídeo fonte: {video_path}\n"
+            f"- Destino do vídeo renderizado: {output_video_path}\n"
+            f"- Início: {cut_start}s, Fim: {cut_end}s\n"
+            f"- Cenas: {corte.get('scenes', [])}\n"
+            f"- Palavras e timestamps: {cut_words[:100]}\n"
+            f"- Identidade visual: {visual_identity}\n\n"
+            f"O script deve importar moviepy.editor e gerar o vídeo 9:16 com dimensões pares, salvando em '{output_video_path}'."
+        )
+
+    logger.info(
+        "Generating render script for cut %s (attempt %d)...",
+        cut_id,
+        render_attempts + 1,
+    )
+    raw_client = create_llm_client()
+    try:
+        instructor_client = instructor.from_openai(
+            raw_client, mode=instructor.Mode.JSON_SCHEMA
+        )
+        messages = [
+            {"role": "system", "content": CODER_SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        payload: RenderScriptPayload = instructor_client.chat.completions.create(
+            model=MODEL_NAME,
+            response_model=RenderScriptPayload,
+            messages=messages,
+            max_tokens=LLM_MAX_COMPLETION_TOKENS,
+            max_retries=2,
+            extra_body={
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": RenderScriptPayload.__name__,
+                        "strict": True,
+                        "schema": openai.pydantic_function_tool(RenderScriptPayload)[
+                            "function"
+                        ]["parameters"],
+                    },
+                },
+            },
+        )
+
+        with open(script_path, "w", encoding="utf-8") as f:
+            f.write(payload.script_code)
+
+        logger.info("Render script successfully written to: %s", script_path)
+        return {
+            "render_script_path": os.path.abspath(script_path),
+            "render_error": "",
+        }
+    except Exception as exc:
+        logger.error(
+            "Failed to generate or persist render script: %s", exc, exc_info=True
+        )
+        return {
+            "render_script_path": "",
+            "render_error": str(exc),
+        }
+    finally:
+        raw_client.close()
+
+
+def execution_node(state: VideoState) -> dict:
+    """Nó de Execução: Executa o render_script.py em subprocesso isolado com proteção de timeout."""
+    attempts = state.get("render_attempts", 0) + 1
+    script_path = state.get("render_script_path", "")
+
+    if not script_path or not os.path.exists(script_path):
+        err_msg = (
+            state.get("render_error")
+            or f"Render script file missing or not found: '{script_path}'"
+        )
+        logger.warning(
+            "Execution skipped (Attempt %d): %s",
+            attempts,
+            err_msg,
+        )
+        return {
+            "render_attempts": attempts,
+            "render_exit_code": -1,
+            "render_error": err_msg,
+        }
+
+    logger.info(
+        "Executing render script '%s' in isolated subprocess (Attempt %d, Timeout: %ss)...",
+        script_path,
+        attempts,
+        RENDER_TIMEOUT_SECONDS,
+    )
+
+    try:
+        completed = subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True,
+            text=True,
+            timeout=RENDER_TIMEOUT_SECONDS,
+        )
+        exit_code = completed.returncode
+        stderr = completed.stderr or ""
+
+        if exit_code == 0:
+            logger.info("Script executed successfully with return code 0.")
+            return {
+                "render_attempts": attempts,
+                "render_exit_code": 0,
+                "render_error": "",
+            }
+        else:
+            logger.warning(
+                "Script execution failed with return code %d. Stderr: %s",
+                exit_code,
+                stderr.strip(),
+            )
+            return {
+                "render_attempts": attempts,
+                "render_exit_code": exit_code,
+                "render_error": stderr or f"Process exited with non-zero status {exit_code}",
+            }
+    except subprocess.TimeoutExpired as exc:
+        timeout_msg = f"Script execution timed out after {RENDER_TIMEOUT_SECONDS} seconds"
+        logger.error(timeout_msg)
+        return {
+            "render_attempts": attempts,
+            "render_exit_code": -1,
+            "render_error": timeout_msg,
+        }
+    except Exception as exc:
+        logger.error("Unexpected error executing render script: %s", exc, exc_info=True)
+        return {
+            "render_attempts": attempts,
+            "render_exit_code": -1,
+            "render_error": str(exc),
+        }
+
+
+def route_execution_outcome(state: VideoState) -> str:
+    """Função de roteamento condicional avaliada pelo LangGraph após execution_node."""
+    exit_code = state.get("render_exit_code", 0)
+    attempts = state.get("render_attempts", 0)
+
+    if exit_code == 0:
+        return "complete"
+    if attempts < 3:
+        return "retry"
+    return "abort"
+
+
+def abort_node(state: VideoState) -> dict:
+    """Nó Terminal de Aborto: Chamado quando um corte esgota todas as 3 tentativas sem sucesso."""
+    current_cut_index = state.get("current_cut_index", 0)
+    approved_ids = state.get("approved_cut_ids", [])
+    cut_id = (
+        approved_ids[current_cut_index]
+        if approved_ids and current_cut_index < len(approved_ids)
+        else "unknown"
+    )
+    logger.warning(
+        "Render aborted for cut '%s' after %d failed attempts. Last error: %s",
+        cut_id,
+        state.get("render_attempts", 0),
+        state.get("render_error", ""),
+    )
+    return {"render_aborted": True}
+
+
+def advance_cut_node(state: VideoState) -> dict:
+    """Avança para o próximo corte aprovado e acumula vídeos renderizados."""
+    current_index = state.get("current_cut_index", 0)
+    approved_ids = state.get("approved_cut_ids", [])
+    rendered_paths = list(state.get("rendered_video_paths", []))
+
+    if approved_ids and current_index < len(approved_ids):
+        cut_id = approved_ids[current_index]
+        expected_output = os.path.join(OUTPUT_DIR, str(cut_id), f"cut_{cut_id}.mp4")
+        if (
+            state.get("render_exit_code") == 0
+            and os.path.exists(expected_output)
+            and expected_output not in rendered_paths
+        ):
+            rendered_paths.append(expected_output)
+
+    next_index = current_index + 1
+    more_cuts_remain = next_index < len(approved_ids)
+
+    update = {
+        "current_cut_index": next_index,
+        "rendered_video_paths": rendered_paths,
+    }
+
+    if more_cuts_remain:
+        update.update({
+            "render_attempts": 0,
+            "render_error": "",
+            "render_exit_code": 0,
+            "render_aborted": False,
+            "render_script_path": "",
+        })
+
+    return update
+
+
+def route_cut_iteration(state: VideoState) -> str:
+    """Verifica se restam cortes aprovados pendentes de processamento."""
+    current_index = state.get("current_cut_index", 0)
+    approved_ids = state.get("approved_cut_ids", [])
+
+    if current_index < len(approved_ids):
+        return "coder"
+    return "end"
+
+
 # Aliases para máxima flexibilidade e compatibilidade
 preventive_slicing_node = fatiamento_node
 transcricao_node = transcription_node
@@ -526,7 +833,7 @@ estilo_node = style_node
 
 
 def create_graph() -> StateGraph:
-    """Constrói o Directed Acyclic Graph (DAG) sequencial do pipeline."""
+    """Constrói o Directed Acyclic Graph (DAG) sequencial e auto-recuperável do pipeline."""
     workflow = StateGraph(VideoState)
 
     workflow.add_node("download", download_node)
@@ -537,6 +844,10 @@ def create_graph() -> StateGraph:
     workflow.add_node("extrator", extractor_node)
     workflow.add_node("preview", preview_node)
     workflow.add_node("approval", approval_node)
+    workflow.add_node("coder", coder_node)
+    workflow.add_node("execution", execution_node)
+    workflow.add_node("abort", abort_node)
+    workflow.add_node("advance", advance_cut_node)
     workflow.add_node("editor", editor_node)
 
     workflow.add_edge(START, "download")
@@ -547,8 +858,29 @@ def create_graph() -> StateGraph:
     workflow.add_edge("pensador", "extrator")
     workflow.add_edge("extrator", "preview")
     workflow.add_edge("preview", "approval")
-    workflow.add_edge("approval", "editor")
-    workflow.add_edge("editor", END)
+    workflow.add_edge("approval", "coder")
+    workflow.add_edge("coder", "execution")
+
+    workflow.add_conditional_edges(
+        "execution",
+        route_execution_outcome,
+        {
+            "retry": "coder",
+            "abort": "abort",
+            "complete": "advance",
+        },
+    )
+
+    workflow.add_edge("abort", "advance")
+
+    workflow.add_conditional_edges(
+        "advance",
+        route_cut_iteration,
+        {
+            "coder": "coder",
+            "end": END,
+        },
+    )
 
     # Architectural contract verification: 100% of nodes must be synchronous callables
     for node_name, node_spec in workflow.nodes.items():
