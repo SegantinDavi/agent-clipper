@@ -95,7 +95,12 @@ def create_mock_transport_handler(respond_callback=None, response_contents=None)
         if responses:
             content = responses.pop(0)
         elif "response_format" in body:
-            content = SAMPLE_CORTES_JSON
+            rf = body.get("response_format", {})
+            schema_name = rf.get("json_schema", {}).get("name", "")
+            if schema_name == "RenderScriptPayload":
+                content = json.dumps({"script_code": "print('ok')"})
+            else:
+                content = SAMPLE_CORTES_JSON
         else:
             content = SAMPLE_THINKER_REASONING
 
@@ -250,6 +255,8 @@ class InstructorSyncContractTests(unittest.TestCase):
                  patch.object(orchestrator, "transcription_node", return_value={"transcript_grouped": SAMPLE_TRANSCRIPT, "word_timestamps": []}), \
                  patch.object(orchestrator, "preview_node", return_value={"review_directory": "/fake/rev"}), \
                  patch.object(orchestrator, "approval_node", return_value={"approved_cut_ids": [1], "approval_complete": True}), \
+                 patch.object(orchestrator, "coder_node", return_value={"render_script_path": "/fake/script.py"}), \
+                 patch.object(orchestrator, "execution_node", return_value={"render_attempts": 1, "render_exit_code": 0, "render_error": ""}), \
                  patch.object(orchestrator, "editor_node", return_value={}):
 
                 workflow = orchestrator.create_graph()
@@ -572,6 +579,48 @@ class InstructorSyncContractTests(unittest.TestCase):
         self.assertFalse(
             inspect.isasyncgenfunction(fn),
             "coder_node must not be an async generator function",
+        )
+
+    def test_execution_node_strict_synchronous_contract(self):
+        """T017 [US2]: Contract test verifying execution_node strict synchronous function contract (FR-010)."""
+        self.assertTrue(
+            hasattr(orchestrator, "execution_node"),
+            "orchestrator.execution_node is not defined",
+        )
+        fn = orchestrator.execution_node
+        self.assertTrue(callable(fn), "execution_node must be callable")
+        self.assertFalse(
+            inspect.iscoroutinefunction(fn),
+            "execution_node must not be an inspect.iscoroutinefunction",
+        )
+        self.assertFalse(
+            is_async_coroutine_function(fn),
+            "execution_node must not be an asyncio.iscoroutinefunction",
+        )
+        self.assertFalse(
+            inspect.isasyncgenfunction(fn),
+            "execution_node must not be an async generator function",
+        )
+
+    def test_abort_node_strict_synchronous_contract(self):
+        """T022 [US3]: Contract test verifying abort_node strict synchronous function contract (FR-010)."""
+        self.assertTrue(
+            hasattr(orchestrator, "abort_node"),
+            "orchestrator.abort_node is not defined",
+        )
+        fn = orchestrator.abort_node
+        self.assertTrue(callable(fn), "abort_node must be callable")
+        self.assertFalse(
+            inspect.iscoroutinefunction(fn),
+            "abort_node must not be an inspect.iscoroutinefunction",
+        )
+        self.assertFalse(
+            is_async_coroutine_function(fn),
+            "abort_node must not be an asyncio.iscoroutinefunction",
+        )
+        self.assertFalse(
+            inspect.isasyncgenfunction(fn),
+            "abort_node must not be an async generator function",
         )
 
 

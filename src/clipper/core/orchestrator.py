@@ -1,4 +1,6 @@
 import os
+import sys
+import subprocess
 import re
 import gc
 import hashlib
@@ -33,6 +35,7 @@ from langgraph.types import Command, interrupt
 
 from clipper.core.schemas import CorteVideo, CortesResponse, RenderScriptPayload
 from clipper.core.prompts import (
+    CODER_RETRY_PROMPT_TEMPLATE,
     CODER_SYSTEM_PROMPT,
     EXTRACTOR_FEW_SHOT_EXAMPLES,
     EXTRACTOR_SYSTEM_PROMPT_TEMPLATE,
@@ -591,17 +594,18 @@ def coder_node(state: VideoState) -> dict:
             except Exception:
                 pass
 
-        user_prompt = (
-            f"O script anterior falhou durante a execução (Tentativa {render_attempts}).\n\n"
-            f"DIAGNÓSTICO DO ERRO (STDERR):\n{truncated_error}\n\n"
-            f"SCRIPT ANTERIOR:\n{previous_script_content}\n\n"
-            f"METADADOS DO CORTE:\n"
+        cut_metadata = (
             f"- Arquivo fonte: {video_path}\n"
             f"- Destino do vídeo renderizado: {output_video_path}\n"
             f"- Início: {cut_start}s, Fim: {cut_end}s\n"
             f"- Cenas: {corte.get('scenes', [])}\n"
-            f"- Identidade visual: {visual_identity}\n\n"
-            f"Corrija os erros apontados e gere o script Python completo e funcional sem usar métodos inexistentes."
+            f"- Identidade visual: {visual_identity}"
+        )
+        user_prompt = CODER_RETRY_PROMPT_TEMPLATE.format(
+            attempt=render_attempts,
+            error_diagnostic=truncated_error,
+            previous_script=previous_script_content,
+            cut_metadata=cut_metadata,
         )
     else:
         user_prompt = (
@@ -673,6 +677,155 @@ def coder_node(state: VideoState) -> dict:
         raw_client.close()
 
 
+def execution_node(state: VideoState) -> dict:
+    """Nó de Execução: Executa o render_script.py em subprocesso isolado com proteção de timeout."""
+    attempts = state.get("render_attempts", 0) + 1
+    script_path = state.get("render_script_path", "")
+
+    if not script_path or not os.path.exists(script_path):
+        err_msg = (
+            state.get("render_error")
+            or f"Render script file missing or not found: '{script_path}'"
+        )
+        logger.warning(
+            "Execution skipped (Attempt %d): %s",
+            attempts,
+            err_msg,
+        )
+        return {
+            "render_attempts": attempts,
+            "render_exit_code": -1,
+            "render_error": err_msg,
+        }
+
+    logger.info(
+        "Executing render script '%s' in isolated subprocess (Attempt %d, Timeout: %ss)...",
+        script_path,
+        attempts,
+        RENDER_TIMEOUT_SECONDS,
+    )
+
+    try:
+        completed = subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True,
+            text=True,
+            timeout=RENDER_TIMEOUT_SECONDS,
+        )
+        exit_code = completed.returncode
+        stderr = completed.stderr or ""
+
+        if exit_code == 0:
+            logger.info("Script executed successfully with return code 0.")
+            return {
+                "render_attempts": attempts,
+                "render_exit_code": 0,
+                "render_error": "",
+            }
+        else:
+            logger.warning(
+                "Script execution failed with return code %d. Stderr: %s",
+                exit_code,
+                stderr.strip(),
+            )
+            return {
+                "render_attempts": attempts,
+                "render_exit_code": exit_code,
+                "render_error": stderr or f"Process exited with non-zero status {exit_code}",
+            }
+    except subprocess.TimeoutExpired as exc:
+        timeout_msg = f"Script execution timed out after {RENDER_TIMEOUT_SECONDS} seconds"
+        logger.error(timeout_msg)
+        return {
+            "render_attempts": attempts,
+            "render_exit_code": -1,
+            "render_error": timeout_msg,
+        }
+    except Exception as exc:
+        logger.error("Unexpected error executing render script: %s", exc, exc_info=True)
+        return {
+            "render_attempts": attempts,
+            "render_exit_code": -1,
+            "render_error": str(exc),
+        }
+
+
+def route_execution_outcome(state: VideoState) -> str:
+    """Função de roteamento condicional avaliada pelo LangGraph após execution_node."""
+    exit_code = state.get("render_exit_code", 0)
+    attempts = state.get("render_attempts", 0)
+
+    if exit_code == 0:
+        return "complete"
+    if attempts < 3:
+        return "retry"
+    return "abort"
+
+
+def abort_node(state: VideoState) -> dict:
+    """Nó Terminal de Aborto: Chamado quando um corte esgota todas as 3 tentativas sem sucesso."""
+    current_cut_index = state.get("current_cut_index", 0)
+    approved_ids = state.get("approved_cut_ids", [])
+    cut_id = (
+        approved_ids[current_cut_index]
+        if approved_ids and current_cut_index < len(approved_ids)
+        else "unknown"
+    )
+    logger.warning(
+        "Render aborted for cut '%s' after %d failed attempts. Last error: %s",
+        cut_id,
+        state.get("render_attempts", 0),
+        state.get("render_error", ""),
+    )
+    return {"render_aborted": True}
+
+
+def advance_cut_node(state: VideoState) -> dict:
+    """Avança para o próximo corte aprovado e acumula vídeos renderizados."""
+    current_index = state.get("current_cut_index", 0)
+    approved_ids = state.get("approved_cut_ids", [])
+    rendered_paths = list(state.get("rendered_video_paths", []))
+
+    if approved_ids and current_index < len(approved_ids):
+        cut_id = approved_ids[current_index]
+        expected_output = os.path.join(OUTPUT_DIR, str(cut_id), f"cut_{cut_id}.mp4")
+        if (
+            state.get("render_exit_code") == 0
+            and os.path.exists(expected_output)
+            and expected_output not in rendered_paths
+        ):
+            rendered_paths.append(expected_output)
+
+    next_index = current_index + 1
+    more_cuts_remain = next_index < len(approved_ids)
+
+    update = {
+        "current_cut_index": next_index,
+        "rendered_video_paths": rendered_paths,
+    }
+
+    if more_cuts_remain:
+        update.update({
+            "render_attempts": 0,
+            "render_error": "",
+            "render_exit_code": 0,
+            "render_aborted": False,
+            "render_script_path": "",
+        })
+
+    return update
+
+
+def route_cut_iteration(state: VideoState) -> str:
+    """Verifica se restam cortes aprovados pendentes de processamento."""
+    current_index = state.get("current_cut_index", 0)
+    approved_ids = state.get("approved_cut_ids", [])
+
+    if current_index < len(approved_ids):
+        return "coder"
+    return "end"
+
+
 # Aliases para máxima flexibilidade e compatibilidade
 preventive_slicing_node = fatiamento_node
 transcricao_node = transcription_node
@@ -680,7 +833,7 @@ estilo_node = style_node
 
 
 def create_graph() -> StateGraph:
-    """Constrói o Directed Acyclic Graph (DAG) sequencial do pipeline."""
+    """Constrói o Directed Acyclic Graph (DAG) sequencial e auto-recuperável do pipeline."""
     workflow = StateGraph(VideoState)
 
     workflow.add_node("download", download_node)
@@ -691,6 +844,10 @@ def create_graph() -> StateGraph:
     workflow.add_node("extrator", extractor_node)
     workflow.add_node("preview", preview_node)
     workflow.add_node("approval", approval_node)
+    workflow.add_node("coder", coder_node)
+    workflow.add_node("execution", execution_node)
+    workflow.add_node("abort", abort_node)
+    workflow.add_node("advance", advance_cut_node)
     workflow.add_node("editor", editor_node)
 
     workflow.add_edge(START, "download")
@@ -701,8 +858,29 @@ def create_graph() -> StateGraph:
     workflow.add_edge("pensador", "extrator")
     workflow.add_edge("extrator", "preview")
     workflow.add_edge("preview", "approval")
-    workflow.add_edge("approval", "editor")
-    workflow.add_edge("editor", END)
+    workflow.add_edge("approval", "coder")
+    workflow.add_edge("coder", "execution")
+
+    workflow.add_conditional_edges(
+        "execution",
+        route_execution_outcome,
+        {
+            "retry": "coder",
+            "abort": "abort",
+            "complete": "advance",
+        },
+    )
+
+    workflow.add_edge("abort", "advance")
+
+    workflow.add_conditional_edges(
+        "advance",
+        route_cut_iteration,
+        {
+            "coder": "coder",
+            "end": END,
+        },
+    )
 
     # Architectural contract verification: 100% of nodes must be synchronous callables
     for node_name, node_spec in workflow.nodes.items():

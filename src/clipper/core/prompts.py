@@ -308,3 +308,23 @@ REGRAS ARQUITETURAIS E RESTRIÇÕES OBRIGATÓRIAS (NÃO NEGOCIÁVEIS):
    - Deve ser executável diretamente pelo interpretador Python (`python render_script.py`).
    - Deve assegurar fechamento de recursos (`clip.close()`) e tratamento de exceções.
 """.strip()
+
+
+CODER_RETRY_PROMPT_TEMPLATE: str = """
+O script anterior de renderização falhou durante a execução (Tentativa {attempt}).
+
+DIAGNÓSTICO DO ERRO (STDERR):
+{error_diagnostic}
+
+SCRIPT ANTERIOR:
+{previous_script}
+
+METADADOS DO CORTE:
+{cut_metadata}
+
+INSTRUÇÕES DE CORREÇÃO:
+1. Analise o traceback e a causa raiz do erro reportado acima.
+2. Corrija o código respeitando rigorosamente as restrições de MoviePy 1.0.3 (sem métodos de v2.x como with_duration ou with_position), dimensões pares (9:16) e fontes Liberation.
+3. Gere o script Python completo, auto-contido e corrigido para renderizar o corte com sucesso.
+""".strip()
+

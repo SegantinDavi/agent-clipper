@@ -23,7 +23,7 @@ O sistema adota os princípios de **AI Systems Engineering**: abandona chat proc
 
 ## 🏛️ Arquitetura do Pipeline (LangGraph DAG)
 
-O pipeline opera como um Grafo Acíclico Dirigido (DAG) de 9 nós sequenciais com persistência de estado via SQLite (`SqliteSaver`), garantindo retomada imediata em caso de falhas:
+O pipeline opera como um Grafo Acíclico Dirigido (DAG) modular e auto-recuperável com persistência de estado via SQLite (`SqliteSaver`), garantindo retomada imediata em caso de falhas:
 
 ```mermaid
 flowchart TD
@@ -34,20 +34,32 @@ flowchart TD
     D --> E["Nó 6: Extrator (mesmo modelo)<br>Few-Shot + Instructor + JSON Schema"]
     E --> P["Nó 7: Plano de pausas + Previews<br>FFmpeg na CPU"]
     P --> R["Nó 8: Aprovação humana<br>Página local + SQLite"]
-    R --> F["Nó 9: Edição dos aprovados<br>MoviePy + Pillow (9:16)"]
+    R --> CD["Nó 9: Coder (Geração de Script)<br>Instructor + RenderScriptPayload"]
+    CD --> EX["Nó 10: Execução Isolada<br>Subprocess + Timeout"]
+    EX -->|Sucesso / exit 0| ADV["Nó 11: Avanço / Iteração<br>rendered_video_paths"]
+    EX -->|Falha & attempts < 3| CD
+    EX -->|Falha & attempts >= 3| AB["Nó 12: Aborto Seguro<br>render_aborted"]
+    AB --> ADV
+    ADV -->|Próximo corte| CD
+    ADV -->|Todos finalizados| END_NODE["Fim (END)"]
 ```
 
 ### Destaques Arquiteturais
 
-1. **Cognitive Routing (Single-Model)**: Utiliza o mesmo modelo do perfil selecionado (Qwen2.5:14b local ou `GEMINI_MODEL` via API) em dois papéis complementares:
+1. **Cognitive Routing (Single-Model)**: Utiliza o mesmo modelo do perfil selecionado (Qwen2.5:14b local ou `GEMINI_MODEL` via API) em papéis complementares:
    - **Nó Pensador (`thinker_node`)**: Analisa a transcrição agrupada para produzir recomendações editoriais concisas para identificar ganchos de retenção e momentos virais.
    - **Nó Extrator (`extractor_node`)**: Lê a transcrição e o raciocínio estratégico, ancorado por exemplos Few-Shot multi-turno e **Constrained Decoding** (Instructor + Pydantic), particionando cortes em cenas sequenciais de 2–4s (`Scene`) com metáforas visuais e gatilhos de animação, garantindo 100% de conformidade com o schema `CorteVideo` sem alucinações de formatação e sem regex.
-2. **Centralização de Prompts (`prompts.py`)**: Todos os artefatos de prompt e exemplos Few-Shot residem isolados em `prompts.py`, desacoplados da lógica de orquestração do grafo.
-3. **Gerenciamento Estrito de Memória (WSL 8GB RAM / 12GB VRAM)**:
+   - **Nó Coder (`coder_node`)**: Gera scripts Python auto-contidos (`render_script.py`) via Constrained Decoding com `RenderScriptPayload` para renderizar os cortes aprovados com MoviePy 1.0.3, Pillow e fontes Liberation.
+2. **Self-Healing Coder DAG & Isolamento de Subprocessos**:
+   - **Nó de Execução (`execution_node`)**: Executa `render_script.py` em subprocesso Python isolado com timeout (`RENDER_TIMEOUT_SECONDS`), capturando stdout, stderr e código de saída.
+   - **Bordas Condicionais de Auto-Cura**: Em caso de falha de execução, roteia de volta ao `coder_node` com o `stderr` truncado (`RENDER_ERROR_MAX_CHARS`) injetado no prompt de correção até 3 tentativas. Se as tentativas se esgotarem, roteia para `abort_node` marcando `render_aborted = True` e continua com os demais cortes sem derrubar o orquestrador.
+   - **Iteração Sequencial de Cortes (`advance_cut_node`)**: Processa cada corte aprovado individualmente, acumulando vídeos gerados em `rendered_video_paths`.
+3. **Centralização de Prompts (`prompts.py`)**: Todos os artefatos de prompt, templates de retry e exemplos Few-Shot residem isolados em `prompts.py`, desacoplados da lógica de orquestração do grafo.
+4. **Gerenciamento Estrito de Memória (WSL 8GB RAM / 12GB VRAM)**:
    - Com Ollama, `faster-whisper` roda na CPU/int8 e a VRAM fica para o Qwen. Com Gemini, Whisper roda na GPU/float16 e a LLM permanece na API.
    - Fatiamento preventivo de áudio via FFmpeg em pausas silenciosas (`node_0.py`) para evitar estouro de contexto e esgotamento de memória.
    - Coleta de lixo forçada (`gc.collect()`) após processamento de chunks.
-4. **Resiliência e Persistência**: Grafo compilado com `SqliteSaver` gravando checkpoints em `/app/output/estado.db`. A etapa de aprovação humana utiliza **Human-in-the-Loop nativo** (`interrupt()` e `Command(resume=...)`), persistindo o estado de suspensão antes de iniciar o servidor web e tolerando reinicializações do container sem reprocessamento de nós anteriores.
+5. **Resiliência e Persistência**: Grafo compilado com `SqliteSaver` gravando checkpoints em `/app/output/estado.db`. A etapa de aprovação humana utiliza **Human-in-the-Loop nativo** (`interrupt()` e `Command(resume=...)`), persistindo o estado de suspensão antes de iniciar o servidor web e tolerando reinicializações do container sem reprocessamento de nós anteriores. As variáveis de tentativas (`render_attempts`) e diagnósticos de erro (`render_error`) também sobrevivem a reinicializações.
 
 ---
 

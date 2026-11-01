@@ -67,6 +67,7 @@ Use dois nós sequenciais operando o MESMO modelo do perfil selecionado (Qwen2.5
 - **Fontes:** Use estritamente fontes do fonts-liberation (ex: font="Liberation-Sans-Bold"). Nenhuma fonte do Windows.
 - **Cortes de silêncio:** Encurte apenas silêncios confirmados pelo FFmpeg em intervalos entre palavras do Whisper, com margens de proteção. Padrões: pausa mínima de 0,6s, retenção de pelo menos 0,2s, proteção de 0,1s por lado e limiar de -35dB, configuráveis por `SILENCE_*`. Preserve bordas do corte e trechos sem timestamps confiáveis/áudio. Não introduza outro modelo ou carga na GPU para esta função.
 - **Sincronização e aprovação:** Salve os intervalos mantidos em `review.json` e aplique o mesmo plano a áudio/vídeo no preview e no MP4 aprovado. Reutilize o plano salvo na retomada. Faça a análise de enquadramento no tempo original antes da concatenação; remapeie as legendas e não agrupe palavras através de uma remoção. Salve `.pauses.json` por MP4; `.focus.json` continua no tempo do corte original. Use uma única sequência de vídeo para os filtros de preview e concatenação MoviePy `method="chain"`, sem acumular frames em RAM.
+- **Renderização via Script Coder Auto-recuperável:** A renderização dos cortes aprovados é orquestrada via code-generation (`coder_node`) com decodificação restrita (`RenderScriptPayload`), execução em subprocesso isolado (`execution_node` com timeout `RENDER_TIMEOUT_SECONDS`) e loop condicional de auto-cura (até 3 tentativas com feedback do traceback/stderr), abortando graciosamente via `abort_node` sem derrubar o orquestrador.
 
 ##### 7. Containerização e Variáveis (Dockerfile)
 
@@ -129,7 +130,12 @@ graph TD
     C --> D["Nó 6: Extrator (mesmo modelo)<br>(Instructor + Pydantic)"]
     D --> E["Nó 7: Previews & Pausas<br>(FFmpeg na CPU)"]
     E --> F["Nó 8: Aprovação HITL<br>(interrupt() + SQLite)"]
-    F --> G["Nó 9: Edição dos Aprovados<br>(MoviePy + Pillow 9:16)"]
+    F --> G["Nó 9: Coder (Script)<br>(Instructor + RenderScriptPayload)"]
+    G --> H["Nó 10: Execução Isolada<br>(Subprocess + Timeout)"]
+    H -->|Sucesso / exit 0| I["Nó 11: Avanço / Iteração<br>(rendered_video_paths)"]
+    H -->|Falha & attempts < 3| G
+    H -->|Falha & attempts >= 3| J["Nó 12: Aborto Seguro<br>(render_aborted)"]
+    J --> I
 
 ```
 
