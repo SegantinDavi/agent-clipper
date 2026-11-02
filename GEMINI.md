@@ -64,6 +64,9 @@ PYTHONPATH=src venv/bin/python -m unittest tests/test_scene_scripting.py
 # Run motion engine and deterministic editor tests
 PYTHONPATH=src venv/bin/python -m unittest tests/test_motion_engine.py tests/test_editor.py
 
+# Run asset resolver and motion inserts tests
+PYTHONPATH=src venv/bin/python -m unittest tests/test_asset_resolver.py tests/test_asset_tool.py tests/test_motion_inserts.py
+
 # Run pipeline execution
 bash run_pipeline.sh
 ```
