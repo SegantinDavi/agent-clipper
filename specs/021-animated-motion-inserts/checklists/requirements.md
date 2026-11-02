@@ -19,16 +19,16 @@
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
 - [x] Edge cases are identified
-- [x] Scope is clearly bounded
+- [x] Scope is clearly bounded (Asset catalog, Easing composition, SFX sync, Asset CLI tool, Resource governance)
 - [x] Dependencies and assumptions identified
 
 ## Feature Readiness
 
-- [x] All functional requirements have clear acceptance criteria
-- [x] User scenarios cover primary flows (Asset Catalog & Resolution, Easing & Alpha Composition, Audio SFX Sync, Resource Governance)
-- [x] Feature meets measurable outcomes defined in Success Criteria
+- [x] All functional requirements have clear acceptance criteria (FR-001 through FR-012)
+- [x] User scenarios cover primary flows (US1: Asset Catalog & Resolution, US2: Easing & Alpha Composition, US3: Audio SFX Sync, US4: Auxiliary Asset CLI Tool, US5: Resource Governance)
+- [x] Feature meets measurable outcomes defined in Success Criteria (SC-001 through SC-007)
 - [x] No implementation details leak into specification
 
 ## Notes
 
-- Feature spec validada e completa. Pronta para a etapa de planejamento técnico (`speckit.plan`).
+- Feature spec atualizada com a ferramenta auxiliar de validação (`asset_tool`) e pronta para a etapa de planejamento técnico (`speckit.plan`).

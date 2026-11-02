@@ -3,7 +3,7 @@
 **Feature Branch**: `021-animated-motion-inserts`  
 **Created**: 2026-11-02  
 **Status**: Draft  
-**Input**: User description: "vamos com a opção A então, pode começar a gerar as especificações com o número 021 e crie uma nova branch." (Opção A: Pipeline Híbrido com diretório /assets, clipes transparentes com canal alfa, cards/ícones procedurais com curvas de easing e sincronização sonora).
+**Input**: User description: "vamos com a opção A então, pode começar a gerar as especificações com o número 021 e crie uma nova branch." e "sobre a ferramenta auxiliar, pode incluí-la no spec."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -55,7 +55,23 @@ Como criador de conteúdo, quero que a entrada dos inserts visuais seja acompanh
 
 ---
 
-### User Story 4 - Governança de Recursos e Fallback Resiliente (Priority: P4)
+### User Story 4 - Ferramenta Auxiliar de Validação e Indexação de Assets (Priority: P3)
+
+Como mantenedor ou operador do repositório, quero executar uma ferramenta CLI de apoio para validar a integridade técnica dos arquivos colocados em `/assets` (presença de canal alfa, codecs corretos, dimensões pares, durações aceitáveis) e sincronizar o `manifest.json`, para que novos pacotes de assets possam ser adicionados com total segurança e sem erros em tempo de renderização.
+
+**Why this priority**: Evita que assets mal formatados (como WebM sem transparência, dimensões ímpares que quebram o FFmpeg, ou áudios longos) sejam introduzidos no repositório, reduzindo o atrito para quem alimenta o Starter Kit.
+
+**Independent Test**: Executar a ferramenta CLI via terminal apontando para um diretório de teste contendo arquivos válidos e inválidos (ex: vídeo sem alfa, dimensão ímpar 501x501) e verificar que o relatório diagnostica com precisão os erros e gera o esqueleto de `manifest.json` para os válidos.
+
+**Acceptance Scenarios**:
+
+1. **Given** um conjunto de arquivos em `/assets`, **When** o operador executar a ferramenta de validação (ex: `python -m clipper.tools.asset_tool --validate`), **Then** o sistema deve inspecionar cada arquivo (vídeo WebM, imagem PNG/SVG e áudio WAV), reportando dimensões, canais alfa, duração e aprovação técnica.
+2. **Given** um vídeo com dimensões ímpares ou sem canal alfa, **When** a ferramenta inspecionar o arquivo, **Then** ela deve emitir um alerta de erro com recomendação de correção (ex: redimensionar para par, reexportar com VP9 alpha).
+3. **Given** arquivos novos em `/assets` ainda não registrados, **When** o operador executar o comando de sincronização (ex: `python -m clipper.tools.asset_tool --sync-manifest`), **Then** a ferramenta deve atualizar o `manifest.json` adicionando os novos arquivos com templates de tags vazias sem sobrescrever os itens já configurados.
+
+---
+
+### User Story 5 - Governança de Recursos e Fallback Resiliente (Priority: P4)
 
 Como operador do sistema em hardware restrito (WSL2 8GB RAM / RTX 3060 12GB VRAM), quero que o processamento de inserts animados desaloque recursos intermediários de memória de forma contínua e mantenha o consumo sob controle rigoroso, para que vídeos de até 3 minutos rodem sem estourar a memória.
 
@@ -92,14 +108,17 @@ Como operador do sistema em hardware restrito (WSL2 8GB RAM / RTX 3060 12GB VRAM
 - **FR-006**: O sistema DEVE garantir que todas as camadas compostas possuam dimensões pares de largura e altura antes da codificação H.264 pelo FFmpeg.
 - **FR-007**: O sistema DEVE posicionar os inserts em zonas seguras de enquadramento vertical 9:16 (terço superior entre 12% e 35% da altura), sem colidir com as legendas (localizadas entre 75% e 85%).
 - **FR-008**: O sistema DEVE mixar efeitos sonoros auxiliares (`.wav` curto) no timestamp exato de entrada de cada insert visual, com volume balanceado e respeitando a faixa principal de fala.
-- **FR-009**: O sistema DEVE encerrar explicitamente instâncias de `VideoClip`, `AudioClip` e arrays intermediários após a geração de cada corte, mantendo pico de memória RAM < 2 GB.
-- **FR-010**: O sistema DEVE manter o disparo incondicional de `release_cuda_memory()` ao término de cada corte no perfil CUDA dentro do bloco `finally:`.
+- **FR-009**: O sistema DEVE fornecer uma ferramenta CLI (`clipper.tools.asset_tool`) para validar integridade técnica dos assets (decodificação, canal alfa, paridade dimensional, duração máxima e volume) e sincronizar registros no `manifest.json`.
+- **FR-010**: A ferramenta CLI DEVE gerar relatórios claros de aprovação/rejeição com orientações de correção para arquivos que não atendam aos requisitos de renderização.
+- **FR-011**: O sistema DEVE encerrar explicitamente instâncias de `VideoClip`, `AudioClip` e arrays intermediários após a geração de cada corte, mantendo pico de memória RAM < 2 GB.
+- **FR-012**: O sistema DEVE manter o disparo incondicional de `release_cuda_memory()` ao término de cada corte no perfil CUDA dentro do bloco `finally:`.
 
 ### Key Entities
 
 - **AssetMetadata**: Representa a entrada catalogada no `manifest.json` com campos como `id`, `file`, `type` (`animated_video`, `icon_with_card`, `sfx`), `tags` (lista de palavras-chave para busca semântica), `default_position` (`upper_third`, `middle_third`, `lower_third`) e `default_sfx` (caminho relativo do áudio opcional).
 - **ResolvedInsert**: Entidade que encapsula o plano de execução do insert para uma cena específica, contendo: `scene_index`, `start_time`, `duration`, `asset_path`, `asset_type`, `position_coordinates`, `sfx_path` e `animation_curve`.
 - **EasingProfile**: Configuração matemática da curva de aceleração temporal para animação procedural (parâmetros de escala inicial, pico de overshoot, tempo de estabilização e amortecimento).
+- **AssetValidationResult**: Resultado da auditoria técnica executada pela ferramenta auxiliar para um determinado arquivo, registrando: `valid: bool`, `file_type: str`, `has_alpha: bool`, `dimensions: tuple[int, int]`, `duration: float`, `errors: list[str]`, `warnings: list[str]`.
 
 ---
 
@@ -110,6 +129,7 @@ Como operador do sistema em hardware restrito (WSL2 8GB RAM / RTX 3060 12GB VRAM
 - **SC-001**: 100% dos cortes aprovados que possuam cenas com metáforas visuais mapeadas recebem inserts animados (pré-renderizados ou procedurais) sem falhas de decodificação ou travamentos.
 - **SC-002**: A resolução de assets a partir da metáfora visual da cena ocorre em tempo de execução de forma determinística em menos de 10 milissegundos por cena.
 - **SC-003**: 100% dos inserts animados respeitam a zona segura vertical 9:16, apresentando zero sobreposição com a caixa delimitadora das legendas transcritas.
-- **SC-004**: A renderização com inserts animados e mixagem de SFX adiciona menos de 25% de tempo extra ao processamento total de cada corte em comparação com a renderização base.
-- **SC-005**: O consumo máximo de memória RAM durante a composição de vídeo com múltiplas camadas permanece estritamente inferior a 2 GB.
-- **SC-006**: A suíte completa de testes de regressão do projeto mantém 100% de taxa de aprovação com zero regressões em todas as suítes existentes.
+- **SC-004**: A ferramenta auxiliar de assets valida e diagnostica um catálogo de 50 arquivos em menos de 5 segundos.
+- **SC-005**: A renderização com inserts animados e mixagem de SFX adiciona menos de 25% de tempo extra ao processamento total de cada corte em comparação com a renderização base.
+- **SC-006**: O consumo máximo de memória RAM durante a composição de vídeo com múltiplas camadas permanece estritamente inferior a 2 GB.
+- **SC-007**: A suíte completa de testes de regressão do projeto mantém 100% de taxa de aprovação com zero regressões em todas as suítes existentes.
