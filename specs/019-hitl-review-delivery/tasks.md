@@ -51,15 +51,15 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T004 [P] [US1] Create unit and contract tests for render_review_page scene display, "No scene script available" fallback, and "—" placeholders in tests/test_review_delivery.py
-- [ ] T005 [P] [US1] Create unit tests for viewport responsiveness CSS (meta viewport, word-break, mobile max-width 480px rules) in tests/test_review_delivery.py
+- [X] T004 [P] [US1] Create unit and contract tests for render_review_page scene display, "No scene script available" fallback, and "—" placeholders in tests/test_review_delivery.py
+- [X] T005 [P] [US1] Create unit tests for viewport responsiveness CSS (meta viewport, word-break, mobile max-width 480px rules) in tests/test_review_delivery.py
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Implement scene field sanitization and "—" placeholders for visual_metaphor, animation_trigger, and timing words with html.escape in src/clipper/review/review.py
-- [ ] T007 [US1] Implement empty/null scenes fallback container rendering "No scene script available" in render_review_page in src/clipper/review/review.py
-- [ ] T008 [US1] Add responsive CSS rules for scenes container and mobile viewports down to 320px in render_review_page in src/clipper/review/review.py
-- [ ] T009 [US1] Run User Story 1 test suite to verify implementation passes independently via PYTHONPATH=src venv/bin/python -m unittest tests/test_review_delivery.py tests/test_review.py
+- [X] T006 [US1] Implement scene field sanitization and "—" placeholders for visual_metaphor, animation_trigger, and timing words with html.escape in src/clipper/review/review.py
+- [X] T007 [US1] Implement empty/null scenes fallback container rendering "No scene script available" in render_review_page in src/clipper/review/review.py
+- [X] T008 [US1] Add responsive CSS rules for scenes container and mobile viewports down to 320px in render_review_page in src/clipper/review/review.py
+- [X] T009 [US1] Run User Story 1 test suite to verify implementation passes independently via PYTHONPATH=src venv/bin/python -m unittest tests/test_review_delivery.py tests/test_review.py
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -75,18 +75,18 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US2] Create unit and contract tests for decision.json fail-fast validation (missing, malformed) in coder_node in tests/test_review_delivery.py
-- [ ] T011 [P] [US2] Create unit and integration tests for cut gating, skip logging (INFO), unmatched cut ID handling (WARNING), and 0% subprocesses for unapproved cuts in tests/test_review_delivery.py
-- [ ] T012 [P] [US2] Create unit and integration tests for route_approval_outcome empty approval routing to END with zero subprocesses in tests/test_review_delivery.py
-- [ ] T013 [P] [US2] Create resumption test verifying checkpoint reload re-applies decision.json from review directory in tests/test_review_delivery.py
+- [X] T010 [P] [US2] Create unit and contract tests for decision.json fail-fast validation (missing, malformed) in coder_node in tests/test_review_delivery.py
+- [X] T011 [P] [US2] Create unit and integration tests for cut gating, skip logging (INFO), unmatched cut ID handling (WARNING), and 0% subprocesses for unapproved cuts in tests/test_review_delivery.py
+- [X] T012 [P] [US2] Create unit and integration tests for route_approval_outcome empty approval routing to END with zero subprocesses in tests/test_review_delivery.py
+- [X] T013 [P] [US2] Create resumption test verifying checkpoint reload re-applies decision.json from review directory in tests/test_review_delivery.py
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Implement fail-fast decision.json validation in coder_node (raising ValueError if missing or malformed when review_directory is present) in src/clipper/core/orchestrator.py
-- [ ] T015 [US2] Implement deterministic cut resolution (dict id, cut-{i} 0-based pattern, 1-based integer), cut gating logic, and single-pass skip audit logging in coder_node in src/clipper/core/orchestrator.py
-- [ ] T016 [US2] Implement route_approval_outcome conditional edge and wire conditional edges in create_graph in src/clipper/core/orchestrator.py
-- [ ] T017 [US2] Add defensive safeguards for empty approved cuts in coder_node and execution_node in src/clipper/core/orchestrator.py
-- [ ] T018 [US2] Run User Story 2 test suite to verify implementation passes independently via PYTHONPATH=src venv/bin/python -m unittest tests/test_review_delivery.py tests/test_coder_dag.py
+- [X] T014 [US2] Implement fail-fast decision.json validation in coder_node (raising ValueError if missing or malformed when review_directory is present) in src/clipper/core/orchestrator.py
+- [X] T015 [US2] Implement deterministic cut resolution (dict id, cut-{i} 0-based pattern, 1-based integer), cut gating logic, and single-pass skip audit logging in coder_node in src/clipper/core/orchestrator.py
+- [X] T016 [US2] Implement route_approval_outcome conditional edge and wire conditional edges in create_graph in src/clipper/core/orchestrator.py
+- [X] T017 [US2] Add defensive safeguards for empty approved cuts in coder_node and execution_node in src/clipper/core/orchestrator.py
+- [X] T018 [US2] Run User Story 2 test suite to verify implementation passes independently via PYTHONPATH=src venv/bin/python -m unittest tests/test_review_delivery.py tests/test_coder_dag.py
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
