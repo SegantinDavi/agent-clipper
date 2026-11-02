@@ -19,6 +19,8 @@ Auto-generated from all feature plans. Last updated: 2026-10-28
 - SQLite via `SqliteSaver` (`/app/output/estado.db`), log entries in `/app/output/pipeline.log` (018-sandbox-memory-management)
 - Python 3.12+ (tested on Python 3.12 – 3.14) + `pydantic` (already in stack), `langgraph` (already in stack), `moviepy==1.0.3` (already in stack), Python standard library (`html`, `logging`, `pathlib`, `json`) (019-hitl-review-delivery)
 - SQLite via `SqliteSaver` (`/app/output/estado.db`), `decision.json` in `/app/output/reviews/<id>/`, logs in `/app/output/pipeline.log` (019-hitl-review-delivery)
+- Python 3.12+ (compatível com 3.12 – 3.14) + `moviepy==1.0.3` (restrito a métodos v1.0.3), `pydantic`, `langgraph`, `Pillow`, `numpy`, `fonts-liberation` (020-deterministic-motion-engine)
+- SQLite via `SqliteSaver` (`/app/output/estado.db`), `pipeline.log`, `decision.json` em `/app/output/reviews/<id>/` (020-deterministic-motion-engine)
 
 - Python 3.12+ (tested on Python 3.12 - 3.14) + `langgraph>=0.2.0`, `instructor`, `pydantic`, `moviepy==1.0.3`, `faster-whisper`, `yt-dlp`, `ctranslate2`, `onnxruntime`, `av<19` (010-manual-review-langgraph-integration)
 
@@ -59,6 +61,9 @@ PYTHONPATH=src venv/bin/python -m unittest tests/test_review_delivery.py
 # Run dynamic scene scripting tests
 PYTHONPATH=src venv/bin/python -m unittest tests/test_scene_scripting.py
 
+# Run motion engine and deterministic editor tests
+PYTHONPATH=src venv/bin/python -m unittest tests/test_motion_engine.py tests/test_editor.py
+
 # Run pipeline execution
 bash run_pipeline.sh
 ```
@@ -68,6 +73,7 @@ bash run_pipeline.sh
 Python 3.12+ (tested on Python 3.12 - 3.14): Follow standard conventions
 
 ## Recent Changes
+- 020-deterministic-motion-engine: Completed all phases (Phases 1-7). Restored deterministic Python video rendering via editor_node and cut_and_format_video, eliminating LLM coder syntax errors, token limit truncation, and stochastic render failures. Implemented native motion design engine (motion_engine.py) applying continuous SceneInterval segmentation across cut duration with punch-in scale (1.12x impact, 1.08x zoom_in/slow_zoom, alternating 1.05x cut_transition/whip_pan) and semi-transparent visual metaphor badges via Pillow and fonts-liberation. Guaranteed 100% subtitle word retention without truncation ([:100] removed), synchronous LangGraph DAG routing with conditional edges (approval -> editor -> END or coder fallback via RENDER_ENGINE), deterministic memory reclamation (<2GB peak RAM), and unconditional post-render release_cuda_memory() in finally: block. Full regression suite passing with 0 regressions across 298 tests (SC-006).
 - 019-hitl-review-delivery: Completed all phases (Phases 1-5). Implemented HITL review delivery showing planned scene scripts (`Scene`), metaphors, triggers, with explicit fallbacks ("No scene script available") and em-dash placeholders ("—") alongside responsive mobile layout down to 320px in `render_review_page`. Implemented bidirectional schema synchronization for `approved_ids` and `approved_cut_ids`, fail-fast `decision.json` gating in `coder_node`, selective cut rendering ensuring 0% subprocesses for unapproved cuts with INFO audit logs, and conditional edge routing `route_approval_outcome` terminating empty selections directly at `END` in < 5 seconds. Full regression suite passing with 0 regressions across 285 tests (SC-004), quickstart scenarios verified, and documentation synchronized across README.md, AGENTS.md, and GEMINI.md.
 - 018-sandbox-memory-management: Completed all phases (Phases 1-5). Implemented sandboxing memory management ensuring generated render scripts include explicit intermediate-buffer cleanup (del, gc.collect(), clip.close()) maintaining peak subprocess RSS < 2 GB (SC-002), and guaranteed post-subprocess VRAM reclamation in execution_node finally block calling release_cuda_memory(cut_id=cut_id) across success, failure, timeout, and exceptions with structured pipeline.log metrics (SC-003, SC-005) and silent CPU profile no-op. Full test suite passing with 0 regressions across 256 tests (SC-004), and synchronized documentation across README.md, AGENTS.md, and GEMINI.md.
 

@@ -169,6 +169,7 @@ def cut_and_format_video(
                         safe_title, corte.start_time, corte.end_time)
             filepath = os.path.join(output_dir, f"{safe_title}.mp4")
             text_clips = []
+            overlay_clips = []
             final_clip = None
             joined_clip = None
             try:
@@ -187,6 +188,39 @@ def cut_and_format_video(
                     width, height = portrait_size(clip.size)
                     clip = crop(clip, width=width, height=height,
                                 x_center=clip.w / 2, y_center=clip.h / 2)
+
+                # Motion design engine: aplica variações de escala/enquadramento por cena
+                from clipper.video.motion_engine import (
+                    build_motion_plan,
+                    apply_motion_design,
+                    create_metaphor_badge_clip,
+                )
+                motion_plan = build_motion_plan(
+                    corte=corte,
+                    words=word_timestamps,
+                    duration=corte.end_time - corte.start_time,
+                )
+                clip = apply_motion_design(clip, motion_plan, visual_identity=visual_identity)
+
+                # Metáforas visuais opcionais em badge sutil no topo do vídeo
+                for interval in motion_plan.intervals:
+                    if interval.visual_metaphor:
+                        badge = create_metaphor_badge_clip(
+                            interval.visual_metaphor,
+                            frame_width=clip.w,
+                            visual_identity=visual_identity,
+                        )
+                        if badge is not None:
+                            badge_dur = min(interval.duration, 2.5)
+                            badge_x = max(0, int((clip.w - badge.w) / 2))
+                            badge_y = max(10, int(clip.h * 0.06))
+                            badge = (
+                                badge.set_start(interval.rel_start)
+                                .set_duration(badge_dur)
+                                .set_position((badge_x, badge_y))
+                            )
+                            overlay_clips.append(badge)
+
                 if len(pause_plan.kept) > 1:
                     # Frame selection and speaker focus still use the original source clock.
                     joined_clip = concatenate_videoclips(
@@ -202,7 +236,7 @@ def cut_and_format_video(
                         position_caption_clip(caption, tuple(clip.size), visual_identity=visual_identity)
                         .set_start(group["start"]).set_end(group["end"])
                     )
-                final_clip = CompositeVideoClip([clip] + text_clips)
+                final_clip = CompositeVideoClip([clip] + text_clips + overlay_clips)
                 final_clip.write_videofile(
                     filepath, codec="libx264", audio_codec="aac",
                     ffmpeg_params=["-pix_fmt", "yuv420p", "-profile:v", "main"],
@@ -217,7 +251,23 @@ def cut_and_format_video(
                 if final_clip is not None:
                     final_clip.close()
                 for text_clip in text_clips:
-                    text_clip.close()
+                    try:
+                        text_clip.close()
+                    except Exception:
+                        pass
+                for overlay_clip in overlay_clips:
+                    try:
+                        overlay_clip.close()
+                    except Exception:
+                        pass
                 if joined_clip is not None:
                     joined_clip.close()
+                import gc
+                gc.collect()
+                try:
+                    from clipper.runtime.cuda_runtime import release_cuda_memory
+                    cut_id = getattr(corte, "id", None) or (cut_index + 1)
+                    release_cuda_memory(cut_id=cut_id)
+                except Exception as cuda_err:
+                    logger.debug("CUDA memory release in cut_and_format_video: %s", cuda_err)
     return generated_files

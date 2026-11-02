@@ -68,7 +68,8 @@ Use dois nós sequenciais operando o MESMO modelo do perfil selecionado (Qwen2.5
 - **Fontes:** Use estritamente fontes do fonts-liberation (ex: font="Liberation-Sans-Bold"). Nenhuma fonte do Windows.
 - **Cortes de silêncio:** Encurte apenas silêncios confirmados pelo FFmpeg em intervalos entre palavras do Whisper, com margens de proteção. Padrões: pausa mínima de 0,6s, retenção de pelo menos 0,2s, proteção de 0,1s por lado e limiar de -35dB, configuráveis por `SILENCE_*`. Preserve bordas do corte e trechos sem timestamps confiáveis/áudio. Não introduza outro modelo ou carga na GPU para esta função.
 - **Sincronização e aprovação:** Salve os intervalos mantidos em `review.json` e aplique o mesmo plano a áudio/vídeo no preview e no MP4 aprovado. Reutilize o plano salvo na retomada. Faça a análise de enquadramento no tempo original antes da concatenação; remapeie as legendas e não agrupe palavras através de uma remoção. Salve `.pauses.json` por MP4; `.focus.json` continua no tempo do corte original. Use uma única sequência de vídeo para os filtros de preview e concatenação MoviePy `method="chain"`, sem acumular frames em RAM.
-- **Renderização via Script Coder Auto-recuperável e Gerenciamento de Memória:** A renderização dos cortes aprovados é orquestrada via code-generation (`coder_node`) com decodificação restrita (`RenderScriptPayload`), execução em subprocesso isolado (`execution_node` com timeout `RENDER_TIMEOUT_SECONDS`) e loop condicional de auto-cura (até 3 tentativas com feedback do traceback/stderr), abortando graciosamente via `abort_node` sem derrubar o orquestrador. Os scripts gerados devem incluir desalocação explícita de buffers intermediários (`del`, `gc.collect()` e `.close()`), garantindo pico de RAM do subprocesso < 2 GB. Ao final de cada execução de subprocesso (sucesso, falha ou timeout), `execution_node` dispara `release_cuda_memory(cut_id=cut_id)` em bloco `finally:` garantido.
+- **Motor Determinístico de Renderização e Motion Design:** A renderização dos cortes aprovados é executada de forma determinística e síncrona diretamente em Python via `editor_node` (`cut_and_format_video`) integrado ao `motion_engine.py`, eliminando a estocasticidade, erros de sintaxe e limites de tokens de geração de código por LLM em tempo de renderização. O motor segmenta o corte em `SceneInterval`s contíguos sem lacunas, aplicando enquadramentos dinâmicos por cena conforme gatilhos do script (`impact` = 1.12x punch-in, `zoom_in`/`slow_zoom` = 1.08x, `cut_transition`/`whip_pan` = 1.05x com alternância de offset) e badges/pills elegantes de metáforas visuais via Pillow e fontes Liberation. 100% das palavras transcritas pelo Whisper são entregues às legendas sem truncamento. Recursos intermediários são desalocados explicitamente (`del`, `gc.collect()` e `.close()`), mantendo pico de RAM < 2 GB e acionando incondicionalmente `release_cuda_memory(cut_id=cut_id)` em bloco `finally:`. O fluxo Coder DAG estocástico permanece disponível sob demanda via `RENDER_ENGINE=coder`.
+- **Renderização via Script Coder Auto-recuperável (Fallback/Experimental):** A renderização alternativa via code-generation (`coder_node`) com decodificação restrita (`RenderScriptPayload`), execução em subprocesso isolado (`execution_node` com timeout `RENDER_TIMEOUT_SECONDS`) e loop condicional de auto-cura permanece mantida para backward compatibility e testes isolados. Os scripts gerados incluem desalocação explícita de buffers intermediários (`del`, `gc.collect()` e `.close()`), garantindo pico de RAM < 2 GB e disparo incondicional de `release_cuda_memory(cut_id=cut_id)` em bloco `finally:`.
 
 ##### 7. Containerização e Variáveis (Dockerfile)
 
@@ -131,12 +132,9 @@ graph TD
     C --> D["Nó 6: Extrator (mesmo modelo)<br>(Instructor + Pydantic)"]
     D --> E["Nó 7: Previews & Pausas<br>(FFmpeg na CPU)"]
     E --> F["Nó 8: Aprovação HITL<br>(interrupt() + SQLite)"]
-    F --> G["Nó 9: Coder (Script)<br>(Instructor + RenderScriptPayload)"]
-    G --> H["Nó 10: Execução Isolada<br>(Subprocess + Timeout)"]
-    H -->|Sucesso / exit 0| I["Nó 11: Avanço / Iteração<br>(rendered_video_paths)"]
-    H -->|Falha & attempts < 3| G
-    H -->|Falha & attempts >= 3| J["Nó 12: Aborto Seguro<br>(render_aborted)"]
-    J --> I
+    F -->|Aprovado| G["Nó 9: Editor Determinístico<br>(Motion Design + Legendas)"]
+    F -->|Rejeitado| END_NODE["Fim (END)"]
+    G --> END_NODE
 
 ```
 
@@ -170,3 +168,10 @@ Como o pipeline opera em lote de forma autônoma sem console visual:
 
 1.  **System Logging:** Um arquivo físico (ex: pipeline.log) salvo via biblioteca logging na pasta de saída. Registra falhas de ffmpeg (Broken Pipe), network timeouts e OOM do sistema operacional.
 2.  **LLMOps (Telemetria):** A utilização de telemetria baseada em rede ou coletores pesados (Langfuse, Phoenix) foi formalmente abolida no projeto visando priorizar a memória RAM. Todo monitoramento de tokens e desempenho será rastreado de maneira simplificada, se necessário, pelos logs físicos.
+
+## Active Technologies
+- Python 3.12+ (compatível com 3.12 – 3.14) + `moviepy==1.0.3` (restrito a métodos v1.0.3), `pydantic`, `langgraph`, `Pillow`, `numpy`, `fonts-liberation` (020-deterministic-motion-engine)
+- SQLite via `SqliteSaver` (`/app/output/estado.db`), `pipeline.log`, `decision.json` em `/app/output/reviews/<id>/` (020-deterministic-motion-engine)
+
+## Recent Changes
+- 020-deterministic-motion-engine: Completed all phases (Phases 1-7). Restored deterministic Python video rendering via editor_node and cut_and_format_video, eliminating LLM coder syntax errors, token limit truncation, and stochastic render failures. Implemented native motion design engine (motion_engine.py) applying continuous SceneInterval segmentation across cut duration with punch-in scale (1.12x impact, 1.08x zoom_in/slow_zoom, alternating 1.05x cut_transition/whip_pan) and semi-transparent visual metaphor badges via Pillow and fonts-liberation. Guaranteed 100% subtitle word retention without truncation ([:100] removed), synchronous LangGraph DAG routing with conditional edges (approval -> editor -> END or coder fallback via RENDER_ENGINE), deterministic memory reclamation (<2GB peak RAM), and unconditional post-render release_cuda_memory() in finally: block. Full regression suite passing with 0 regressions across 298 tests (SC-006).

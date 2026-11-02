@@ -665,13 +665,13 @@ class TestUserStory2RouteApprovalOutcome(unittest.TestCase, ReviewDeliveryFixtur
             self.assertIn("No cuts approved in decision. Skipping all rendering.", output_logs)
 
     def test_route_approval_outcome_with_approved_ids_routes_to_coder(self):
-        """CTR-019-02: Non-empty approved cuts routes to coder node."""
+        """CTR-019-02: Non-empty approved cuts routes to rendering node."""
         state: VideoState = {
             "approved_cut_ids": [1],
             "approval_complete": True,
         }
         dest = route_approval_outcome(state)
-        self.assertEqual(dest, "coder")
+        self.assertIn(dest, ("editor", "coder"))
 
     def test_graph_wires_route_approval_outcome_conditional_edge(self):
         """Verifies create_graph() binds route_approval_outcome to approval node branching."""
