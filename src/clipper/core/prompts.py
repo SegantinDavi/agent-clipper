@@ -307,6 +307,13 @@ REGRAS ARQUITETURAIS E RESTRIÇÕES OBRIGATÓRIAS (NÃO NEGOCIÁVEIS):
    - O script deve conter todos os imports necessários (`os`, `sys`, `moviepy.editor`, etc.).
    - Deve ser executável diretamente pelo interpretador Python (`python render_script.py`).
    - Deve assegurar fechamento de recursos (`clip.close()`) e tratamento de exceções.
+
+6. GERENCIAMENTO ESTREITO DE MEMÓRIA (MÁXIMO 2 GB RAM):
+   - O ambiente opera sob limite estrito de hardware. O processo de renderização NUNCA deve ultrapassar 2 GB de memória RAM.
+   - Inclua obrigatoriamente `import gc` no script.
+   - Em qualquer loop ou processamento iterativo de frames, arrays numpy ou transformações Pillow, delete explicitamente os buffers intermediários (`del frame_arr`, `del temp_buf`) imediatamente após o uso.
+   - Invoque periodicamente `gc.collect()` para forçar a coleta de lixo e descarregar alocações de memória C/NumPy.
+   - Feche obrigatoriamente todos os clips abertos e intermediários chamando `.close()` (ex: `clip.close()`, `final_clip.close()`), preferencialmente dentro de um bloco `finally:`.
 """.strip()
 
 
@@ -324,7 +331,8 @@ METADADOS DO CORTE:
 
 INSTRUÇÕES DE CORREÇÃO:
 1. Analise o traceback e a causa raiz do erro reportado acima.
-2. Corrija o código respeitando rigorosamente as restrições de MoviePy 1.0.3 (sem métodos de v2.x como with_duration ou with_position), dimensões pares (9:16) e fontes Liberation.
-3. Gere o script Python completo, auto-contido e corrigido para renderizar o corte com sucesso.
+2. Corrija o código respeitando restrições de MoviePy 1.0.3, dimensões pares (9:16) e fontes Liberation.
+3. Mantenha a limpeza de buffers com del, chamadas a gc.collect(), .close() e o limite de 2 GB de RAM.
+4. Gere o script Python completo, auto-contido e corrigido para renderizar o corte com sucesso.
 """.strip()
 

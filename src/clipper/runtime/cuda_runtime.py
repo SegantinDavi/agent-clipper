@@ -57,7 +57,10 @@ def get_gpu_memory_info(device_index: int = 0) -> tuple[float, float, float] | N
         return None
 
 
-def release_cuda_memory(before_mb: float | None = None) -> None:
+def release_cuda_memory(
+    before_mb: float | None = None,
+    cut_id: int | str | None = None,
+) -> None:
     if WHISPER_DEVICE != "cuda":
         return
 
@@ -83,14 +86,26 @@ def release_cuda_memory(before_mb: float | None = None) -> None:
         if before_mb is not None and after_info is not None:
             after_mb = after_info[0]
             freed_mb = max(0.0, before_mb - after_mb)
-            logger.info(
-                "GPU memory flushed successfully: before=%.1f MB, after=%.1f MB (freed=%.1f MB)",
-                before_mb,
-                after_mb,
-                freed_mb,
-            )
+            if cut_id is not None:
+                logger.info(
+                    "GPU memory flushed successfully [cut=%s]: before=%.1f MB, after=%.1f MB (freed=%.1f MB)",
+                    cut_id,
+                    before_mb,
+                    after_mb,
+                    freed_mb,
+                )
+            else:
+                logger.info(
+                    "GPU memory flushed successfully: before=%.1f MB, after=%.1f MB (freed=%.1f MB)",
+                    before_mb,
+                    after_mb,
+                    freed_mb,
+                )
         else:
-            logger.info("GPU memory flushed successfully.")
+            if cut_id is not None:
+                logger.info("GPU memory flushed successfully [cut=%s].", cut_id)
+            else:
+                logger.info("GPU memory flushed successfully.")
     except Exception as error:
         logger.warning("GPU memory cleanup failed: %s", error)
 

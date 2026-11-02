@@ -59,6 +59,8 @@ flowchart TD
    - Com Ollama, `faster-whisper` roda na CPU/int8 e a VRAM fica para o Qwen. Com Gemini, Whisper roda na GPU/float16 e a LLM permanece na API.
    - Fatiamento preventivo de áudio via FFmpeg em pausas silenciosas (`node_0.py`) para evitar estouro de contexto e esgotamento de memória.
    - Coleta de lixo forçada (`gc.collect()`) após processamento de chunks.
+   - **Controle de Pico de RAM em Renderização (< 2 GB)**: Scripts Python gerados pelo `coder_node` incluem diretrizes estritas de desalocação explícita de buffers intermediários (arrays numpy, objetos de frame Pillow, `.close()` em todos os clips do MoviePy e chamadas periódicas a `gc.collect()`), garantindo consumo de memória estritamente controlado em vídeos de qualquer extensão.
+   - **Descarga Incondicional de VRAM pós-Subprocesso**: O nó `execution_node` executa `release_cuda_memory(cut_id=cut_id)` dentro de um bloco `finally:` infalível, liberando cache CUDA e gravando auditoria com métricas de memória em `pipeline.log` após qualquer desfecho do subprocesso (código 0, erro ou timeout), com execução segura e silenciosa no perfil CPU/Ollama.
 5. **Resiliência e Persistência**: Grafo compilado com `SqliteSaver` gravando checkpoints em `/app/output/estado.db`. A etapa de aprovação humana utiliza **Human-in-the-Loop nativo** (`interrupt()` e `Command(resume=...)`), persistindo o estado de suspensão antes de iniciar o servidor web e tolerando reinicializações do container sem reprocessamento de nós anteriores. As variáveis de tentativas (`render_attempts`) e diagnósticos de erro (`render_error`) também sobrevivem a reinicializações.
 
 ---

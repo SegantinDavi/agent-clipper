@@ -15,6 +15,8 @@ Auto-generated from all feature plans. Last updated: 2026-10-28
 - SQLite via `SqliteSaver` (`/app/output/estado.db`), `review.json` in `/app/output/reviews/<id>/` (016-dynamic-scene-scripting)
 - Python 3.12+ (tested on Python 3.12 – 3.14) + `pydantic` (already in stack), `instructor` (already in stack), `openai` (already in stack), `langgraph` (already in stack), `moviepy==1.0.3` (already in stack) (017-self-healing-coder-dag)
 - SQLite via `SqliteSaver` (`/app/output/estado.db`), script files in `/app/output/<cut_id>/render_script.py` (017-self-healing-coder-dag)
+- Python 3.12+ (tested on Python 3.12 – 3.14) + `moviepy==1.0.3` (already in stack), `pydantic` (already in stack), `instructor` (already in stack), `langgraph` (already in stack), Python standard library (`gc`, `resource`, `ast`, `subprocess`) (018-sandbox-memory-management)
+- SQLite via `SqliteSaver` (`/app/output/estado.db`), log entries in `/app/output/pipeline.log` (018-sandbox-memory-management)
 
 - Python 3.12+ (tested on Python 3.12 - 3.14) + `langgraph>=0.2.0`, `instructor`, `pydantic`, `moviepy==1.0.3`, `faster-whisper`, `yt-dlp`, `ctranslate2`, `onnxruntime`, `av<19` (010-manual-review-langgraph-integration)
 
@@ -46,6 +48,9 @@ PYTHONPATH=src venv/bin/python -m unittest tests/test_review.py
 # Run instructor and LangGraph synchronous contract tests
 PYTHONPATH=src venv/bin/python -m unittest tests/test_instructor_sync_contract.py
 
+# Run sandbox memory management tests
+PYTHONPATH=src venv/bin/python -m unittest tests/test_sandbox_memory.py
+
 # Run dynamic scene scripting tests
 PYTHONPATH=src venv/bin/python -m unittest tests/test_scene_scripting.py
 
@@ -58,10 +63,10 @@ bash run_pipeline.sh
 Python 3.12+ (tested on Python 3.12 - 3.14): Follow standard conventions
 
 ## Recent Changes
+- 018-sandbox-memory-management: Completed all phases (Phases 1-5). Implemented sandboxing memory management ensuring generated render scripts include explicit intermediate-buffer cleanup (del, gc.collect(), clip.close()) maintaining peak subprocess RSS < 2 GB (SC-002), and guaranteed post-subprocess VRAM reclamation in execution_node finally block calling release_cuda_memory(cut_id=cut_id) across success, failure, timeout, and exceptions with structured pipeline.log metrics (SC-003, SC-005) and silent CPU profile no-op. Full test suite passing with 0 regressions across 256 tests (SC-004), and synchronized documentation across README.md, AGENTS.md, and GEMINI.md.
+- 018-sandbox-memory-management: Added Python 3.12+ (tested on Python 3.12 – 3.14) + `moviepy==1.0.3` (already in stack), `pydantic` (already in stack), `instructor` (already in stack), `langgraph` (already in stack), Python standard library (`gc`, `resource`, `ast`, `subprocess`)
 - 017-self-healing-coder-dag: Completed all phases (Phases 1-6). Implemented `coder_node` with Constrained Decoding via Instructor and `RenderScriptPayload` for MoviePy 1.0.3, `execution_node` with isolated subprocess execution and timeout protection, conditional self-healing retry loop (up to 3 attempts with truncated `stderr`), `abort_node` graceful failure handling, and `advance_cut_node` sequential cut iteration. Added AST static analysis scan verifying zero regex/manual json.loads in coder layer (SC-002), benchmark verifying wrapper overhead < 500ms (SC-003), verified 100% test pass rate with 0 regressions across 234 discovery tests (SC-004), and synchronized documentation across `README.md`, `AGENTS.md`, and `GEMINI.md`.
 - 017-self-healing-coder-dag: Added Python 3.12+ (tested on Python 3.12 – 3.14) + `pydantic` (already in stack), `instructor` (already in stack), `openai` (already in stack), `langgraph` (already in stack), `moviepy==1.0.3` (already in stack)
-- 016-dynamic-scene-scripting: Completed Phase 6 (Polish & Cross-Cutting Concerns). Added static analysis AST scan in `tests/test_scene_scripting.py` verifying zero regex or manual json.loads in extraction layer (T021, SC-002). Added execution overhead benchmark asserting `extractor_node` runs strictly under 50ms wall-clock (T022, SC-003). Validated 100% test passing (202 tests, 0 regressions) across entire unittest discovery suite (T023, SC-004). Validated quickstart operational commands (T024) and synchronized project documentation across `README.md`, `AGENTS.md`, and `GEMINI.md` (T025).
-- 016-dynamic-scene-scripting: Implemented Phase 5 (User Story 3 - Cenas persistidas e visíveis na revisão humana). Updated `render_review_page` in `src/clipper/review/review.py` to format structured `<div class="scenes">` cards with spoken word bounds, visual metaphors, and animation triggers (T019, FR-008). Added unit tests in `tests/test_review.py` for `ReviewManifest` serialization/deserialization into `review.json` (T016), HTML generation with scenes and safe escaping (T017), and end-to-end review server execution (T020). Added integration test `TestSqliteSaverScenePersistence` in `tests/test_scene_scripting.py` verifying `SqliteSaver` crash recovery of `cortes_finais` with scenes (T018, SC-005). 100% tests passing across the suite.
 
 
 <!-- MANUAL ADDITIONS START -->
