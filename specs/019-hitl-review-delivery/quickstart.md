@@ -47,7 +47,7 @@ cuts = [
         end_time=30.0,
         scenes=[
             Scene(start_word="hello", end_word="world", visual_metaphor="globe spinning", animation_trigger="zoom_in"),
-            Scene(start_word="next", end_word="step", visual_metaphor="", animation_trigger="impact"),
+            Scene.model_construct(start_word="next", end_word="step", visual_metaphor="", animation_trigger="impact"),
         ]
     ),
     CorteVideo(

@@ -340,13 +340,17 @@ Execute normalmente com `bash run_pipeline.sh`. Depois da extração, o pipeline
 Revise e aprove os cortes no navegador: http://127.0.0.1:8765/
 ```
 
-Abra o endereço no navegador do Windows/WSL. Cada cartão contém o vídeo do trecho, título, breve descrição do tema, intervalo no original e duração antes/depois dos cortes de silêncio. Marque os cortes desejados e clique em **Confirmar seleção e editar**. Nenhum vem pré-selecionado. **Rejeitar todos** encerra o processamento sem gerar vídeos finais. Os previews têm resolução reduzida, com as pausas já encurtadas quando habilitado, e não contêm o corte vertical nem as legendas finais.
+Abra o endereço no navegador do Windows/WSL. Cada cartão contém o vídeo do trecho, título, breve descrição do tema, intervalo no original, duração antes/depois dos cortes de silêncio e a lista detalhada de cenas planejadas (`Scene`) com palavras limítrofes, metáforas visuais e gatilhos de animação. Caso um corte não possua cenas estruturadas ou tenha campos vazios, a interface exibe automaticamente um container com fallback explícito (*"No scene script available"*) ou marcadores de travessão (`—`), com layout responsivo garantido desde telas móveis (320px) até desktops (1920px).
+
+Marque os cortes desejados e clique em **Confirmar seleção e editar**. Nenhum vem pré-selecionado. **Rejeitar todos** (ou submissão com lista vazia) encerra o pipeline diretamente em `END` em menos de 5 segundos, sem iniciar subprocessos desnecessários de renderização. Os previews têm resolução reduzida, com as pausas já encurtadas quando habilitado, e não contêm o corte vertical nem as legendas finais.
+
+Apenas os cortes explicitamente aprovados em `decision.json` (`approved_cut_ids`) são encaminhados para o Coder DAG; qualquer corte rejeitado é ignorado com registro informativo no log de auditoria, garantindo 0% de subprocessos executados para cortes descartados.
 
 A página só é servida enquanto a revisão está pendente; após confirmar, a edição continua no terminal. O serviço escuta apenas em localhost. Previews, metadados e decisões ficam em `output/reviews/<identificador>/`. Não há dependência de um serviço web externo. A decisão humana é gravada atomicamente em `decision.json`.
 
 O nó de aprovação utiliza a primitiva nativa `interrupt()` do LangGraph, garantindo que o estado fique salvo no SQLite antes de abrir o servidor. Caso o container ou processo seja interrompido (via **Ctrl+C**, reinicialização do Docker ou falha do sistema), ao executar novamente o mesmo comando com a mesma `YOUTUBE_URL`:
 
-- Se a decisão já tiver sido confirmada no navegador (`decision.json`), o pipeline ignora o servidor HTTP e retoma imediatamente no nó de edição (`editor_node`).
+- Se a decisão já tiver sido confirmada no navegador (`decision.json`), o pipeline ignora o servidor HTTP e retoma imediatamente no nó Coder (`coder_node`), re-aplicando rigorosamente o filtro dos cortes aprovados.
 - Se a decisão ainda estava pendente, o pipeline reabre o servidor de revisão na mesma URL sem reprocessar download, transcrição ou análise do LLM.
 
 Para reprocessar um vídeo do início ou limpar um histórico:

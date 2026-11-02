@@ -53,6 +53,9 @@ PYTHONPATH=src venv/bin/python -m unittest tests/test_instructor_sync_contract.p
 # Run sandbox memory management tests
 PYTHONPATH=src venv/bin/python -m unittest tests/test_sandbox_memory.py
 
+# Run review delivery and selective gating tests
+PYTHONPATH=src venv/bin/python -m unittest tests/test_review_delivery.py
+
 # Run dynamic scene scripting tests
 PYTHONPATH=src venv/bin/python -m unittest tests/test_scene_scripting.py
 
@@ -65,8 +68,7 @@ bash run_pipeline.sh
 Python 3.12+ (tested on Python 3.12 - 3.14): Follow standard conventions
 
 ## Recent Changes
-- 019-hitl-review-delivery: Added Python 3.12+ (tested on Python 3.12 – 3.14) + `pydantic` (already in stack), `langgraph` (already in stack), `moviepy==1.0.3` (already in stack), Python standard library (`html`, `logging`, `pathlib`, `json`)
-- 019-hitl-review-delivery: Added SQLite via `SqliteSaver` (`/app/output/estado.db`), `decision.json` in `/app/output/reviews/<id>/`, logs in `/app/output/pipeline.log`
+- 019-hitl-review-delivery: Completed all phases (Phases 1-5). Implemented HITL review delivery showing planned scene scripts (`Scene`), metaphors, triggers, with explicit fallbacks ("No scene script available") and em-dash placeholders ("—") alongside responsive mobile layout down to 320px in `render_review_page`. Implemented bidirectional schema synchronization for `approved_ids` and `approved_cut_ids`, fail-fast `decision.json` gating in `coder_node`, selective cut rendering ensuring 0% subprocesses for unapproved cuts with INFO audit logs, and conditional edge routing `route_approval_outcome` terminating empty selections directly at `END` in < 5 seconds. Full regression suite passing with 0 regressions across 285 tests (SC-004), quickstart scenarios verified, and documentation synchronized across README.md, AGENTS.md, and GEMINI.md.
 - 018-sandbox-memory-management: Completed all phases (Phases 1-5). Implemented sandboxing memory management ensuring generated render scripts include explicit intermediate-buffer cleanup (del, gc.collect(), clip.close()) maintaining peak subprocess RSS < 2 GB (SC-002), and guaranteed post-subprocess VRAM reclamation in execution_node finally block calling release_cuda_memory(cut_id=cut_id) across success, failure, timeout, and exceptions with structured pipeline.log metrics (SC-003, SC-005) and silent CPU profile no-op. Full test suite passing with 0 regressions across 256 tests (SC-004), and synchronized documentation across README.md, AGENTS.md, and GEMINI.md.
 
 

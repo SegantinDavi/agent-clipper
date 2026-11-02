@@ -96,9 +96,9 @@
 
 **Purpose**: Regression prevention, end-to-end verification, and documentation synchronization across the project
 
-- [ ] T019 [P] Run full project regression test suite via PYTHONPATH=src venv/bin/python -m unittest discover tests/ -p "test_*.py"
-- [ ] T020 Execute interactive quickstart verification scenarios from specs/019-hitl-review-delivery/quickstart.md
-- [ ] T021 [P] Synchronize feature documentation and operational guidelines in README.md, AGENTS.md, and GEMINI.md
+- [X] T019 [P] Run full project regression test suite via PYTHONPATH=src venv/bin/python -m unittest discover tests/ -p "test_*.py"
+- [X] T020 Execute interactive quickstart verification scenarios from specs/019-hitl-review-delivery/quickstart.md
+- [X] T021 [P] Synchronize feature documentation and operational guidelines in README.md, AGENTS.md, and GEMINI.md
 
 ---
 
