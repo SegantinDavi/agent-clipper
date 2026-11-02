@@ -491,53 +491,6 @@ def approval_node(state: VideoState) -> dict:
     return {"approved_cut_ids": ids, "approval_complete": True}
 
 
-def editor_node(state: VideoState) -> dict:
-    """Renderiza apenas cortes explicitamente aprovados pelo usuário."""
-    if state.get("approval_complete") is not True:
-        raise ValueError("Cut approval is required before editing.")
-    video_path = state.get("video_path", "")
-    cortes = state.get("cortes_finais", [])
-    word_timestamps = state.get("word_timestamps", [])
-    approved_ids = validate_approval(
-        {"approved_ids": state.get("approved_cut_ids", [])}, len(cortes)
-    )
-    all_cuts = [CorteVideo.model_validate(cut) for cut in cortes]
-    cortes = [cortes[index - 1] for index in approved_ids]
-
-    if not cortes:
-        logger.info("No approved cuts. Skipping final editing.")
-        return {}
-
-    if not video_path or not os.path.exists(video_path):
-        logger.error("Video file not found for editing: %s", video_path)
-        raise FileNotFoundError(
-            f"Arquivo de vídeo não encontrado para edição: {video_path}"
-        )
-
-    cortes_validados = [
-        corte if isinstance(corte, CorteVideo) else CorteVideo(**corte)
-        for corte in cortes
-    ]
-
-    logger.info("Rendering %d vertical videos (9:16)...", len(cortes_validados))
-    plans = load_review_plans(state["review_directory"], all_cuts)
-    visual_identity = state.get("visual_identity", {})
-    arquivos_gerados = cut_and_format_video(
-        video_path=video_path,
-        cortes_validados=cortes_validados,
-        word_timestamps=word_timestamps,
-        output_dir=OUTPUT_DIR,
-        pause_plans=[plans[index - 1] for index in approved_ids],
-        visual_identity=visual_identity,
-    )
-
-    logger.info("Rendering completed! %d files created:", len(arquivos_gerados))
-    for arq in arquivos_gerados:
-        logger.info("  - %s", arq)
-
-    return {}
-
-
 def _parse_cut_pattern_index(cut_id: str) -> int | None:
     r"""Parses positional index N from string matching ^cut[-_]?(\d+)$ (case-insensitive)."""
     s = cut_id.strip().lower()
@@ -587,6 +540,104 @@ def resolve_cut(
 
     # 4. Fallback Unmatched
     return None, None
+
+
+def editor_node(state: VideoState) -> dict:
+    """Renderiza apenas cortes explicitamente aprovados pelo usuário."""
+    if state.get("approval_complete") is not True:
+        raise ValueError("Cut approval is required before editing.")
+
+    approved_ids = state.get("approved_cut_ids")
+    review_dir = state.get("review_directory")
+    if (not approved_ids) and review_dir and os.path.exists(review_dir):
+        decision_file = Path(review_dir) / "decision.json"
+        if decision_file.exists():
+            try:
+                content = decision_file.read_text(encoding="utf-8")
+                decision_obj = ApprovalDecision.model_validate_json(content)
+                approved_ids = (
+                    decision_obj.approved_cut_ids
+                    if decision_obj.approved_cut_ids is not None
+                    else decision_obj.approved_ids
+                )
+            except Exception as exc:
+                raise ValueError(
+                    f"decision.json is unreadable or structurally invalid in: {review_dir}"
+                ) from exc
+    approved_ids = approved_ids or []
+
+    if not approved_ids:
+        logger.warning("No cuts approved in decision. Skipping all rendering.")
+        return {}
+
+    video_path = state.get("video_path", "")
+    if not video_path or not os.path.exists(video_path):
+        logger.error("Video file not found for editing: %s", video_path)
+        raise FileNotFoundError(
+            f"Arquivo de vídeo não encontrado para edição: {video_path}"
+        )
+
+    cortes = state.get("cortes_finais", []) or state.get("cuts", [])
+    word_timestamps = state.get("word_timestamps", [])
+
+    # Resolve approved cuts and audit skipped cuts
+    approved_cut_indices = set()
+    for aid in approved_ids:
+        res_idx, _ = resolve_cut(aid, cortes)
+        if res_idx is not None:
+            approved_cut_indices.add(res_idx)
+
+    uses_cut_pattern = any(
+        isinstance(aid, str) and _parse_cut_pattern_index(aid) is not None
+        for aid in approved_ids
+    )
+
+    for idx, c in enumerate(cortes):
+        if idx not in approved_cut_indices:
+            c_id = None
+            if isinstance(c, dict) and c.get("id") is not None:
+                c_id = c["id"]
+            elif hasattr(c, "id") and getattr(c, "id", None) is not None:
+                c_id = getattr(c, "id")
+            elif uses_cut_pattern:
+                c_id = f"cut-{idx}"
+            else:
+                c_id = idx + 1
+            logger.info("Cut '%s' is not in approved_cut_ids. Skipping rendering.", c_id)
+
+    cortes_para_renderizar = [cortes[idx] for idx in sorted(approved_cut_indices)]
+    cortes_validados = [
+        c if isinstance(c, CorteVideo) else CorteVideo(**c)
+        for c in cortes_para_renderizar
+    ]
+
+    all_cuts = [c if isinstance(c, CorteVideo) else CorteVideo(**c) for c in cortes]
+    plans = load_review_plans(review_dir, all_cuts) if review_dir and os.path.exists(review_dir) else None
+    pause_plans_approved = [plans[idx] for idx in sorted(approved_cut_indices)] if plans else None
+
+    visual_identity = state.get("visual_identity", {})
+
+    logger.info("Rendering %d vertical videos (9:16)...", len(cortes_validados))
+    try:
+        arquivos_gerados = cut_and_format_video(
+            video_path=video_path,
+            cortes_validados=cortes_validados,
+            word_timestamps=word_timestamps,
+            output_dir=OUTPUT_DIR,
+            pause_plans=pause_plans_approved,
+            visual_identity=visual_identity,
+        )
+        logger.info("Rendering completed! %d files created:", len(arquivos_gerados))
+        for arq in arquivos_gerados:
+            logger.info("  - %s", arq)
+        return {"rendered_video_paths": arquivos_gerados}
+    finally:
+        import gc
+        gc.collect()
+        try:
+            release_cuda_memory()
+        except Exception:
+            pass
 
 
 def coder_node(state: VideoState) -> dict:
@@ -657,7 +708,7 @@ def coder_node(state: VideoState) -> dict:
         for idx, c in enumerate(cortes):
             if idx not in approved_cut_indices:
                 c_id = None
-                if isinstance(c, dict) and "id" in c:
+                if isinstance(c, dict) and c.get("id") is not None:
                     c_id = c["id"]
                 elif hasattr(c, "id") and getattr(c, "id", None) is not None:
                     c_id = getattr(c, "id")
@@ -910,7 +961,12 @@ def route_approval_outcome(state: VideoState) -> str:
     if not approved_ids:
         logger.warning("No cuts approved in decision. Skipping all rendering.")
         return "end"
-    return "coder"
+
+    engine = os.getenv("RENDER_ENGINE", "deterministic").strip().lower()
+    if state.get("render_engine") == "coder" or engine == "coder":
+        return "coder"
+
+    return "editor"
 
 
 def route_execution_outcome(state: VideoState) -> str:
@@ -1025,10 +1081,12 @@ def create_graph() -> StateGraph:
         "approval",
         route_approval_outcome,
         {
+            "editor": "editor",
             "coder": "coder",
             "end": END,
         },
     )
+    workflow.add_edge("editor", END)
     workflow.add_edge("coder", "execution")
 
     workflow.add_conditional_edges(

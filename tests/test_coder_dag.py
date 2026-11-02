@@ -566,6 +566,18 @@ class TestAbortNode(unittest.TestCase):
 class TestSelfHealingIntegration(unittest.TestCase):
     """T023, T024, T025 [US3]: Integration tests for self-healing retry loop, abort termination, and SqliteSaver persistence."""
 
+    def setUp(self):
+        import os
+        self._prev_engine = os.environ.get("RENDER_ENGINE")
+        os.environ["RENDER_ENGINE"] = "coder"
+
+    def tearDown(self):
+        import os
+        if self._prev_engine is not None:
+            os.environ["RENDER_ENGINE"] = self._prev_engine
+        else:
+            os.environ.pop("RENDER_ENGINE", None)
+
     def test_end_to_end_self_healing_retry_loop_recovering(self):
         """T023 [US3]: Verify DAG self-healing recovers from initial failure on attempt 2."""
         import tempfile
