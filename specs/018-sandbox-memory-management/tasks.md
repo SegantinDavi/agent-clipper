@@ -100,9 +100,9 @@ description: "Task list for feature 018: Sandbox Memory Management"
 
 **Purpose**: Regression testing, quality gate enforcement, and documentation synchronization
 
-- [ ] T015 [P] Run regression validation against coder DAG and CUDA cleanup test suites in tests/test_coder_dag.py and tests/test_cuda_cleanup.py
-- [ ] T016 Run full test discovery suite ensuring zero regressions across all 234+ tests in tests/
-- [ ] T017 [P] Update feature documentation and architecture rules in README.md, AGENTS.md, and GEMINI.md
+- [X] T015 [P] Run regression validation against coder DAG and CUDA cleanup test suites in tests/test_coder_dag.py and tests/test_cuda_cleanup.py
+- [X] T016 Run full test discovery suite ensuring zero regressions across all 234+ tests in tests/
+- [X] T017 [P] Update feature documentation and architecture rules in README.md, AGENTS.md, and GEMINI.md
 
 ---
 

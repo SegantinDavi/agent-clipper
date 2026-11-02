@@ -48,6 +48,9 @@ PYTHONPATH=src venv/bin/python -m unittest tests/test_review.py
 # Run instructor and LangGraph synchronous contract tests
 PYTHONPATH=src venv/bin/python -m unittest tests/test_instructor_sync_contract.py
 
+# Run sandbox memory management tests
+PYTHONPATH=src venv/bin/python -m unittest tests/test_sandbox_memory.py
+
 # Run dynamic scene scripting tests
 PYTHONPATH=src venv/bin/python -m unittest tests/test_scene_scripting.py
 
@@ -60,6 +63,7 @@ bash run_pipeline.sh
 Python 3.12+ (tested on Python 3.12 - 3.14): Follow standard conventions
 
 ## Recent Changes
+- 018-sandbox-memory-management: Completed all phases (Phases 1-5). Implemented sandboxing memory management ensuring generated render scripts include explicit intermediate-buffer cleanup (del, gc.collect(), clip.close()) maintaining peak subprocess RSS < 2 GB (SC-002), and guaranteed post-subprocess VRAM reclamation in execution_node finally block calling release_cuda_memory(cut_id=cut_id) across success, failure, timeout, and exceptions with structured pipeline.log metrics (SC-003, SC-005) and silent CPU profile no-op. Full test suite passing with 0 regressions across 256 tests (SC-004), and synchronized documentation across README.md, AGENTS.md, and GEMINI.md.
 - 018-sandbox-memory-management: Added Python 3.12+ (tested on Python 3.12 – 3.14) + `moviepy==1.0.3` (already in stack), `pydantic` (already in stack), `instructor` (already in stack), `langgraph` (already in stack), Python standard library (`gc`, `resource`, `ast`, `subprocess`)
 - 017-self-healing-coder-dag: Completed all phases (Phases 1-6). Implemented `coder_node` with Constrained Decoding via Instructor and `RenderScriptPayload` for MoviePy 1.0.3, `execution_node` with isolated subprocess execution and timeout protection, conditional self-healing retry loop (up to 3 attempts with truncated `stderr`), `abort_node` graceful failure handling, and `advance_cut_node` sequential cut iteration. Added AST static analysis scan verifying zero regex/manual json.loads in coder layer (SC-002), benchmark verifying wrapper overhead < 500ms (SC-003), verified 100% test pass rate with 0 regressions across 234 discovery tests (SC-004), and synchronized documentation across `README.md`, `AGENTS.md`, and `GEMINI.md`.
 - 017-self-healing-coder-dag: Added Python 3.12+ (tested on Python 3.12 – 3.14) + `pydantic` (already in stack), `instructor` (already in stack), `openai` (already in stack), `langgraph` (already in stack), `moviepy==1.0.3` (already in stack)
