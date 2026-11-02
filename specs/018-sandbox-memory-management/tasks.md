@@ -32,8 +32,8 @@ description: "Task list for feature 018: Sandbox Memory Management"
 
 **Purpose**: Test environment verification and shared test harness configuration
 
-- [ ] T001 Verify runtime environment and test suite execution with venv in tests/
-- [ ] T002 Configure memory profiling test helpers (ru_maxrss / proc status) in tests/test_sandbox_memory.py
+- [X] T001 Verify runtime environment and test suite execution with venv in tests/
+- [X] T002 Configure memory profiling test helpers (ru_maxrss / proc status) in tests/test_sandbox_memory.py
 
 ---
 
@@ -43,7 +43,7 @@ description: "Task list for feature 018: Sandbox Memory Management"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Scaffold sandbox memory test module with shared mock fixtures in tests/test_sandbox_memory.py
+- [X] T003 Scaffold sandbox memory test module with shared mock fixtures in tests/test_sandbox_memory.py
 
 **Checkpoint**: Foundation ready — user story implementation can now begin in priority order
 
@@ -59,14 +59,14 @@ description: "Task list for feature 018: Sandbox Memory Management"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T004 [P] [US1] Add unit tests for Rule 6 prompt constants (CODER_SYSTEM_PROMPT and CODER_RETRY_PROMPT_TEMPLATE) in tests/test_sandbox_memory.py
-- [ ] T005 [P] [US1] Add AST verification tests for intermediate-buffer cleanup and gc.collect constructs in tests/test_sandbox_memory.py
-- [ ] T006 [US1] Add integration test asserting peak RSS < 2 GB during long video render execution in tests/test_sandbox_memory.py
+- [X] T004 [P] [US1] Add unit tests for Rule 6 prompt constants (CODER_SYSTEM_PROMPT and CODER_RETRY_PROMPT_TEMPLATE) in tests/test_sandbox_memory.py
+- [X] T005 [P] [US1] Add AST verification tests for intermediate-buffer cleanup and gc.collect constructs in tests/test_sandbox_memory.py
+- [X] T006 [US1] Add integration test asserting peak RSS < 2 GB during long video render execution in tests/test_sandbox_memory.py
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Add Rule 6 memory management directives to CODER_SYSTEM_PROMPT in src/clipper/core/prompts.py
-- [ ] T008 [US1] Reinforce memory management directives in CODER_RETRY_PROMPT_TEMPLATE in src/clipper/core/prompts.py
+- [X] T007 [US1] Add Rule 6 memory management directives to CODER_SYSTEM_PROMPT in src/clipper/core/prompts.py
+- [X] T008 [US1] Reinforce memory management directives in CODER_RETRY_PROMPT_TEMPLATE in src/clipper/core/prompts.py
 
 **Checkpoint**: At this point, User Story 1 is fully functional and testable independently. LLM prompts generate scripts with memory deallocation and peak RSS stays under 2 GB.
 
@@ -82,15 +82,15 @@ description: "Task list for feature 018: Sandbox Memory Management"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T009 [P] [US2] Add unit tests for release_cuda_memory signature and cut_id audit logging using mock fixtures in tests/test_sandbox_memory.py
-- [ ] T010 [P] [US2] Add unit tests verifying release_cuda_memory silent no-op when WHISPER_DEVICE is cpu in tests/test_sandbox_memory.py
-- [ ] T011 [US2] Add unit tests for execution_node guaranteed finally block execution across success, failure, timeout, exceptions, and asserting flush overhead < 50ms (SC-005) in tests/test_sandbox_memory.py
-- [ ] T012 [US2] Add unit tests for execution_node resilience (FR-008) when release_cuda_memory raises an exception in tests/test_sandbox_memory.py
+- [X] T009 [P] [US2] Add unit tests for release_cuda_memory signature and cut_id audit logging using mock fixtures in tests/test_sandbox_memory.py
+- [X] T010 [P] [US2] Add unit tests verifying release_cuda_memory silent no-op when WHISPER_DEVICE is cpu in tests/test_sandbox_memory.py
+- [X] T011 [US2] Add unit tests for execution_node guaranteed finally block execution across success, failure, timeout, exceptions, and asserting flush overhead < 50ms (SC-005) in tests/test_sandbox_memory.py
+- [X] T012 [US2] Add unit tests for execution_node resilience (FR-008) when release_cuda_memory raises an exception in tests/test_sandbox_memory.py
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Extend release_cuda_memory with cut_id parameter and structured audit logging in src/clipper/runtime/cuda_runtime.py
-- [ ] T014 [US2] Implement guaranteed post-subprocess VRAM flush in execution_node finally block in src/clipper/core/orchestrator.py
+- [X] T013 [US2] Extend release_cuda_memory with cut_id parameter and structured audit logging in src/clipper/runtime/cuda_runtime.py
+- [X] T014 [US2] Implement guaranteed post-subprocess VRAM flush in execution_node finally block in src/clipper/core/orchestrator.py
 
 **Checkpoint**: At this point, User Stories 1 AND 2 are both fully functional and independently verified.
 

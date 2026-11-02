@@ -19,7 +19,10 @@ if __name__ == "__main__":
     from clipper.video.pause_editing import PauseSettings
 
     PauseSettings()
-    from clipper.runtime.cuda_runtime import prepare_cuda_environment, validate_cuda_runtime
+    from clipper.runtime.cuda_runtime import (
+        prepare_cuda_environment,
+        validate_cuda_runtime,
+    )
 
     prepare_cuda_environment()
     validate_cuda_runtime()
@@ -78,6 +81,7 @@ from clipper.runtime.config import (
     RENDER_TIMEOUT_SECONDS,
     RENDER_ERROR_MAX_CHARS,
 )
+from clipper.runtime.cuda_runtime import release_cuda_memory
 
 logging.basicConfig(
     level=logging.INFO,
@@ -678,9 +682,16 @@ def coder_node(state: VideoState) -> dict:
 
 
 def execution_node(state: VideoState) -> dict:
-    """Nó de Execução: Executa o render_script.py em subprocesso isolado com proteção de timeout."""
+    """Nó de Execução: Executa o render_script.py em subprocesso isolado com proteção de timeout e flush de VRAM."""
     attempts = state.get("render_attempts", 0) + 1
     script_path = state.get("render_script_path", "")
+    approved_ids = state.get("approved_cut_ids", [])
+    current_cut_index = state.get("current_cut_index", 0)
+    cut_id = (
+        approved_ids[current_cut_index]
+        if approved_ids and 0 <= current_cut_index < len(approved_ids)
+        else None
+    )
 
     if not script_path or not os.path.exists(script_path):
         err_msg = (
@@ -706,48 +717,58 @@ def execution_node(state: VideoState) -> dict:
     )
 
     try:
-        completed = subprocess.run(
-            [sys.executable, script_path],
-            capture_output=True,
-            text=True,
-            timeout=RENDER_TIMEOUT_SECONDS,
-        )
-        exit_code = completed.returncode
-        stderr = completed.stderr or ""
-
-        if exit_code == 0:
-            logger.info("Script executed successfully with return code 0.")
-            return {
-                "render_attempts": attempts,
-                "render_exit_code": 0,
-                "render_error": "",
-            }
-        else:
-            logger.warning(
-                "Script execution failed with return code %d. Stderr: %s",
-                exit_code,
-                stderr.strip(),
+        try:
+            completed = subprocess.run(
+                [sys.executable, script_path],
+                capture_output=True,
+                text=True,
+                timeout=RENDER_TIMEOUT_SECONDS,
             )
+            exit_code = completed.returncode
+            stderr = completed.stderr or ""
+
+            if exit_code == 0:
+                logger.info("Script executed successfully with return code 0.")
+                return {
+                    "render_attempts": attempts,
+                    "render_exit_code": 0,
+                    "render_error": "",
+                }
+            else:
+                logger.warning(
+                    "Script execution failed with return code %d. Stderr: %s",
+                    exit_code,
+                    stderr.strip(),
+                )
+                return {
+                    "render_attempts": attempts,
+                    "render_exit_code": exit_code,
+                    "render_error": stderr or f"Process exited with non-zero status {exit_code}",
+                }
+        except subprocess.TimeoutExpired as exc:
+            timeout_msg = f"Script execution timed out after {RENDER_TIMEOUT_SECONDS} seconds"
+            logger.error(timeout_msg)
             return {
                 "render_attempts": attempts,
-                "render_exit_code": exit_code,
-                "render_error": stderr or f"Process exited with non-zero status {exit_code}",
+                "render_exit_code": -1,
+                "render_error": timeout_msg,
             }
-    except subprocess.TimeoutExpired as exc:
-        timeout_msg = f"Script execution timed out after {RENDER_TIMEOUT_SECONDS} seconds"
-        logger.error(timeout_msg)
-        return {
-            "render_attempts": attempts,
-            "render_exit_code": -1,
-            "render_error": timeout_msg,
-        }
-    except Exception as exc:
-        logger.error("Unexpected error executing render script: %s", exc, exc_info=True)
-        return {
-            "render_attempts": attempts,
-            "render_exit_code": -1,
-            "render_error": str(exc),
-        }
+        except Exception as exc:
+            logger.error("Unexpected error executing render script: %s", exc, exc_info=True)
+            return {
+                "render_attempts": attempts,
+                "render_exit_code": -1,
+                "render_error": str(exc),
+            }
+    finally:
+        try:
+            release_cuda_memory(cut_id=cut_id)
+        except Exception as cleanup_err:
+            logger.warning(
+                "VRAM release failed in execution_node for cut %s: %s",
+                cut_id,
+                cleanup_err,
+            )
 
 
 def route_execution_outcome(state: VideoState) -> str:
