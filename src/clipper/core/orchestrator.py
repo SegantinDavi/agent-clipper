@@ -105,7 +105,7 @@ class VideoState(TypedDict):
     cortes_finais: list
     review_directory: str
     review_session: str
-    approved_cut_ids: list[int]
+    approved_cut_ids: list[int | str]
     approval_complete: bool
     visual_identity: dict
     style_path: str

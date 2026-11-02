@@ -6,6 +6,7 @@ import math
 from pathlib import Path
 import secrets
 import subprocess
+from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 from pydantic import BaseModel, Field, StrictInt, model_validator
@@ -40,14 +41,50 @@ def load_review_plans(directory: str, cuts: list[CorteVideo]) -> list[PausePlan]
 
 
 class ApprovalDecision(BaseModel):
-    approved_ids: list[StrictInt]
+    """
+    Schema for decision.json representing human approval of proposed cuts.
+    Supports both legacy 'approved_ids' and spec-standard 'approved_cut_ids'.
+    """
+    approved_ids: list[StrictInt | str] = Field(
+        default_factory=list,
+        description="List of approved cut identifiers (integers or strings)."
+    )
+    approved_cut_ids: list[StrictInt | str] = Field(
+        default_factory=list,
+        description="List of approved cut identifiers (integers or strings), matching spec requirement."
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_cut_ids_before(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "approved_cut_ids" not in data and "approved_ids" not in data:
+                raise ValueError("Neither 'approved_ids' nor 'approved_cut_ids' found in decision.")
+            if "approved_cut_ids" in data and "approved_ids" not in data:
+                data = dict(data)
+                data["approved_ids"] = data["approved_cut_ids"]
+            elif "approved_ids" in data and "approved_cut_ids" not in data:
+                data = dict(data)
+                data["approved_cut_ids"] = data["approved_ids"]
+        return data
+
+    @model_validator(mode="after")
+    def sync_cut_ids_after(self):
+        if not self.approved_cut_ids and self.approved_ids:
+            self.approved_cut_ids = list(self.approved_ids)
+        elif not self.approved_ids and self.approved_cut_ids:
+            self.approved_ids = list(self.approved_cut_ids)
+        return self
 
 
-def save_approval_decision(directory: str | Path, decision_or_ids: ApprovalDecision | list[int]) -> Path:
+def save_approval_decision(
+    directory: str | Path,
+    decision_or_ids: ApprovalDecision | list[int | str],
+) -> Path:
     """Atomically serializes an ApprovalDecision to decision.json in the specified review directory."""
     root = Path(directory)
     if isinstance(decision_or_ids, list):
-        decision = ApprovalDecision(approved_ids=decision_or_ids)
+        decision = ApprovalDecision(approved_ids=decision_or_ids, approved_cut_ids=decision_or_ids)
     else:
         decision = decision_or_ids
     temporary = root / "decision.partial.json"
@@ -57,7 +94,7 @@ def save_approval_decision(directory: str | Path, decision_or_ids: ApprovalDecis
     return destination
 
 
-def load_approval_decision(directory: str | Path, cut_count: int | None = None) -> list[int] | None:
+def load_approval_decision(directory: str | Path, cut_count: int | None = None) -> list[int | str] | None:
     """Loads and validates decision.json from the review directory if present and valid, else returns None."""
     path = Path(directory) / "decision.json"
     if not path.exists():
@@ -66,18 +103,30 @@ def load_approval_decision(directory: str | Path, cut_count: int | None = None) 
         data = ApprovalDecision.model_validate_json(path.read_text(encoding="utf-8"))
         if cut_count is not None:
             return validate_approval(data.model_dump(), cut_count)
-        return sorted(data.approved_ids)
+        ids = data.approved_cut_ids if data.approved_cut_ids else data.approved_ids
+        return sorted(ids, key=lambda x: (isinstance(x, str), str(x) if isinstance(x, str) else x))
     except Exception as exc:
         logger.warning("Corrupted or invalid decision.json in %s: %s", directory, exc)
         return None
 
 
-def validate_approval(value: dict, cut_count: int) -> list[int]:
-    decision = ApprovalDecision.model_validate(value)
-    ids = decision.approved_ids
-    if len(ids) != len(set(ids)) or any(index < 1 or index > cut_count for index in ids):
+def validate_approval(value: dict, cut_count: int) -> list[int | str]:
+    if not isinstance(value, dict) or ("approved_ids" not in value and "approved_cut_ids" not in value):
         raise ValueError("A seleção contém cortes inválidos ou repetidos.")
-    return sorted(ids)
+    decision = ApprovalDecision.model_validate(value)
+    ids = decision.approved_cut_ids if decision.approved_cut_ids else decision.approved_ids
+    if len(ids) != len(set(ids)):
+        raise ValueError("A seleção contém cortes inválidos ou repetidos.")
+    for item in ids:
+        if isinstance(item, int) and not isinstance(item, bool):
+            if item < 1 or item > cut_count:
+                raise ValueError("A seleção contém cortes inválidos ou repetidos.")
+        elif isinstance(item, str):
+            if not item.strip() or item.isdigit():
+                raise ValueError("A seleção contém cortes inválidos ou repetidos.")
+        else:
+            raise ValueError("A seleção contém cortes inválidos ou repetidos.")
+    return sorted(ids, key=lambda x: (isinstance(x, str), str(x) if isinstance(x, str) else x))
 
 
 def prepare_review(video_path: str, cuts: list[CorteVideo], output_dir: str,

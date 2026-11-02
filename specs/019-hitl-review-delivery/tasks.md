@@ -24,7 +24,7 @@
 
 **Purpose**: Test infrastructure initialization and shared test fixtures
 
-- [ ] T001 Initialize test suite structure and mock fixtures in tests/test_review_delivery.py
+- [X] T001 Initialize test suite structure and mock fixtures in tests/test_review_delivery.py
 
 ---
 
@@ -34,8 +34,8 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 Implement bidirectional approved_ids and approved_cut_ids synchronization in ApprovalDecision, save_approval_decision, load_approval_decision, and update validate_approval to support string identifiers and integer indices safely in src/clipper/review/review.py
-- [ ] T003 Update VideoState TypedDict to support approved_cut_ids: list[int | str] in src/clipper/core/orchestrator.py
+- [X] T002 Implement bidirectional approved_ids and approved_cut_ids synchronization in ApprovalDecision, save_approval_decision, load_approval_decision, and update validate_approval to support string identifiers and integer indices safely in src/clipper/review/review.py
+- [X] T003 Update VideoState TypedDict to support approved_cut_ids: list[int | str] in src/clipper/core/orchestrator.py
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
