@@ -582,7 +582,7 @@ class ReviewSceneScriptingTests(unittest.TestCase):
         self.assertIn("cut_transition", page)
 
     def test_t017_render_review_page_omits_scenes_when_empty(self):
-        """T017: render_review_page omits scene breakdown when scenes list is empty."""
+        """T017: render_review_page omits scene breakdown list when scenes list is empty and shows fallback."""
         cuts_without_scenes = [
             CorteVideo(
                 title="Corte Legado",
@@ -594,7 +594,8 @@ class ReviewSceneScriptingTests(unittest.TestCase):
         ]
         page = render_review_page(cuts_without_scenes, "token-123")
         self.assertNotIn('<div class="scenes">', page)
-        self.assertNotIn('class="scenes-title"', page)
+        self.assertNotIn('<ol class="scenes-list">', page)
+        self.assertIn("No scene script available", page)
 
     def test_t017_render_review_page_escapes_special_characters_in_scenes(self):
         """T017: render_review_page safely HTML escapes scene fields."""

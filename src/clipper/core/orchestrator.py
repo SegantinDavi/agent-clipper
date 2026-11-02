@@ -7,6 +7,7 @@ import hashlib
 import inspect
 import logging
 import uuid
+from pathlib import Path
 from typing import TypedDict
 
 if __name__ == "__main__":
@@ -54,6 +55,7 @@ from clipper.core.node_0 import node_0_preventive_slicing
 from clipper.core.style_loader import load_visual_identity
 from clipper.video.editor import cut_and_format_video
 from clipper.review.review import (
+    ApprovalDecision,
     load_approval_decision,
     load_review_plans,
     prepare_review,
@@ -105,7 +107,7 @@ class VideoState(TypedDict):
     cortes_finais: list
     review_directory: str
     review_session: str
-    approved_cut_ids: list[int]
+    approved_cut_ids: list[int | str]
     approval_complete: bool
     visual_identity: dict
     style_path: str
@@ -536,17 +538,97 @@ def editor_node(state: VideoState) -> dict:
     return {}
 
 
+def _parse_cut_pattern_index(cut_id: str) -> int | None:
+    r"""Parses positional index N from string matching ^cut[-_]?(\d+)$ (case-insensitive)."""
+    s = cut_id.strip().lower()
+    if s.startswith("cut"):
+        rest = s[3:]
+        if rest.startswith(("-", "_")):
+            rest = rest[1:]
+        if rest.isdigit():
+            return int(rest)
+    return None
+
+
+def resolve_cut(
+    cut_id: int | str, cortes: list
+) -> tuple[int | None, dict | CorteVideo | None]:
+    """
+    Resolves cut object and its 0-based index from cortes list by cut_id according to CTR-019-02:
+    1. Explicit dictionary / model 'id': str(corte['id']) == str(cut_id)
+    2. Positional pattern match ^cut[-_]?(\\d+)$ (case-insensitive, 0-based): cut-0 -> cortes[0]
+    3. 1-based integer index: 1 -> cortes[0] (supports int or digit string)
+    Returns (cut_index, cut_obj) or (None, None) if unmatched.
+    """
+    # 1. Explicit dictionary / model 'id'
+    for idx, c in enumerate(cortes):
+        c_id = None
+        if isinstance(c, dict) and "id" in c:
+            c_id = c["id"]
+        elif hasattr(c, "id") and getattr(c, "id", None) is not None:
+            c_id = getattr(c, "id")
+        if c_id is not None and str(c_id) == str(cut_id):
+            return idx, c
+
+    # 2. Positional Pattern Match (^cut[-_]?(\\d+)$)
+    if isinstance(cut_id, str):
+        n = _parse_cut_pattern_index(cut_id)
+        if n is not None and 0 <= n < len(cortes):
+            return n, cortes[n]
+
+    # 3. 1-based Integer Index
+    if isinstance(cut_id, int) and not isinstance(cut_id, bool):
+        if 1 <= cut_id <= len(cortes):
+            return cut_id - 1, cortes[cut_id - 1]
+    elif isinstance(cut_id, str) and cut_id.strip().isdigit():
+        val = int(cut_id.strip())
+        if 1 <= val <= len(cortes):
+            return val - 1, cortes[val - 1]
+
+    # 4. Fallback Unmatched
+    return None, None
+
+
 def coder_node(state: VideoState) -> dict:
     """Nó Coder: Gera script Python auto-contido para renderização do corte vertical aprovado."""
     if state.get("approval_complete") is not True:
         logger.error("Cut approval is required before code generation.")
         raise ValueError("Cut approval is required before code generation.")
 
-    cortes = state.get("cortes_finais", [])
-    approved_ids = state.get("approved_cut_ids", [])
-    current_cut_index = state.get("current_cut_index", 0)
+    # Fail-fast validation of decision.json when review_directory is present (FR-009 / CTR-019-02)
+    review_dir = state.get("review_directory")
+    if review_dir:
+        decision_file = Path(review_dir) / "decision.json"
+        if not decision_file.exists():
+            raise ValueError(f"decision.json not found in review directory: {review_dir}")
+        try:
+            content = decision_file.read_text(encoding="utf-8")
+            decision_obj = ApprovalDecision.model_validate_json(content)
+            approved_ids = (
+                decision_obj.approved_cut_ids
+                if decision_obj.approved_cut_ids is not None
+                else decision_obj.approved_ids
+            )
+        except Exception as exc:
+            raise ValueError(
+                f"decision.json is unreadable or structurally invalid in: {review_dir}"
+            ) from exc
+    else:
+        approved_ids = state.get("approved_cut_ids") or []
 
-    if not approved_ids or current_cut_index >= len(approved_ids):
+    current_cut_index = state.get("current_cut_index", 0)
+    render_attempts = state.get("render_attempts", 0)
+
+    # Empty approval defensive safeguard (FR-008, SC-003, CTR-019-02)
+    if not approved_ids:
+        logger.warning("No cuts approved in decision. Skipping all rendering.")
+        return {
+            "render_script_path": "",
+            "render_error": "No approved cuts available to process.",
+            "render_exit_code": 0,
+        }
+
+    if current_cut_index >= len(approved_ids):
         logger.warning(
             "No approved cuts available to generate code for at index %s.",
             current_cut_index,
@@ -554,13 +636,47 @@ def coder_node(state: VideoState) -> dict:
         return {
             "render_script_path": "",
             "render_error": "No approved cuts available to process.",
+            "render_exit_code": 0,
         }
 
+    cortes = state.get("cortes_finais") or state.get("cuts") or []
+
+    # Single-pass skip audit on initial iteration pass (current_cut_index == 0 and render_attempts == 0)
+    if current_cut_index == 0 and render_attempts == 0 and cortes:
+        approved_cut_indices = set()
+        for aid in approved_ids:
+            res_idx, _ = resolve_cut(aid, cortes)
+            if res_idx is not None:
+                approved_cut_indices.add(res_idx)
+
+        uses_cut_pattern = any(
+            isinstance(aid, str) and _parse_cut_pattern_index(aid) is not None
+            for aid in approved_ids
+        )
+
+        for idx, c in enumerate(cortes):
+            if idx not in approved_cut_indices:
+                c_id = None
+                if isinstance(c, dict) and "id" in c:
+                    c_id = c["id"]
+                elif hasattr(c, "id") and getattr(c, "id", None) is not None:
+                    c_id = getattr(c, "id")
+                elif uses_cut_pattern:
+                    c_id = f"cut-{idx}"
+                else:
+                    c_id = idx + 1
+                logger.info("Cut '%s' is not in approved_cut_ids. Skipping rendering.", c_id)
+
     cut_id = approved_ids[current_cut_index]
-    if isinstance(cut_id, int) and 1 <= cut_id <= len(cortes):
-        corte_raw = cortes[cut_id - 1]
-    else:
-        corte_raw = cortes[0] if cortes else {}
+    _, corte_raw = resolve_cut(cut_id, cortes)
+
+    if corte_raw is None:
+        logger.warning("Approved cut ID '%s' does not match any cut in VideoState.", cut_id)
+        return {
+            "render_script_path": "",
+            "render_error": f"Approved cut ID '{cut_id}' does not match any cut in VideoState.",
+            "render_exit_code": 0,
+        }
 
     corte = (
         corte_raw.model_dump()
@@ -687,6 +803,16 @@ def execution_node(state: VideoState) -> dict:
     script_path = state.get("render_script_path", "")
     approved_ids = state.get("approved_cut_ids", [])
     current_cut_index = state.get("current_cut_index", 0)
+
+    # Empty approval defensive safeguard
+    if not approved_ids:
+        logger.warning("No approved cuts to execute.")
+        return {
+            "render_attempts": attempts,
+            "render_exit_code": 0,
+            "render_error": "",
+        }
+
     cut_id = (
         approved_ids[current_cut_index]
         if approved_ids and 0 <= current_cut_index < len(approved_ids)
@@ -698,6 +824,13 @@ def execution_node(state: VideoState) -> dict:
             state.get("render_error")
             or f"Render script file missing or not found: '{script_path}'"
         )
+        if not script_path and ("does not match any cut" in err_msg or "No approved cuts" in err_msg):
+            logger.warning("Execution skipped (Attempt %d): %s", attempts, err_msg)
+            return {
+                "render_attempts": attempts,
+                "render_exit_code": 0,
+                "render_error": err_msg,
+            }
         logger.warning(
             "Execution skipped (Attempt %d): %s",
             attempts,
@@ -769,6 +902,15 @@ def execution_node(state: VideoState) -> dict:
                 cut_id,
                 cleanup_err,
             )
+
+
+def route_approval_outcome(state: VideoState) -> str:
+    """Função de roteamento condicional avaliada pelo LangGraph após approval_node."""
+    approved_ids = state.get("approved_cut_ids", [])
+    if not approved_ids:
+        logger.warning("No cuts approved in decision. Skipping all rendering.")
+        return "end"
+    return "coder"
 
 
 def route_execution_outcome(state: VideoState) -> str:
@@ -879,7 +1021,14 @@ def create_graph() -> StateGraph:
     workflow.add_edge("pensador", "extrator")
     workflow.add_edge("extrator", "preview")
     workflow.add_edge("preview", "approval")
-    workflow.add_edge("approval", "coder")
+    workflow.add_conditional_edges(
+        "approval",
+        route_approval_outcome,
+        {
+            "coder": "coder",
+            "end": END,
+        },
+    )
     workflow.add_edge("coder", "execution")
 
     workflow.add_conditional_edges(
