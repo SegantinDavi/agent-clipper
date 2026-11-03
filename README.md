@@ -49,14 +49,20 @@ flowchart TD
    - **Gatilhos de Motion Design por Cena**: Segmenta o corte em intervalos de cena contíguos (`SceneInterval`) sem gaps, aplicando efeitos dinâmicos de enquadramento (punch-in com escala 1.12x para `impact`, aproximação 1.08x para `zoom_in`/`slow_zoom`, enquadramentos alternados para transições e pills semi-transparentes de metáfora visual renderizadas com Pillow e fontes Liberation).
    - **Integridade Absoluta de Legendas**: 100% das palavras transcritas pelo Whisper são mapeadas para legendas sem qualquer truncamento de prompt, sincronizadas do início ao fim do vídeo.
    - **Fallback Coder DAG Disponível**: Para testes isolados ou experimentos de auto-cura de scripts, o Coder DAG estocástico permanece acessível via `RENDER_ENGINE=coder`.
-3. **Centralização de Prompts (`prompts.py`)**: Todos os artefatos de prompt, templates e exemplos Few-Shot residem isolados em `prompts.py`, desacoplados da lógica de orquestração do grafo.
-4. **Gerenciamento Estrito de Memória (WSL 8GB RAM / 12GB VRAM)**:
+3. **Pipeline Híbrido de Inserts Animados & Mixagem SFX (`asset_resolver.py` & `asset_tool.py`)**:
+   - **Catálogo de Assets em `/assets`**: Clipes pré-renderizados em WebM VP9 com canal alfa (transparência real), ícones de alta resolução e efeitos sonoros WAV curtos indexados em `manifest.json`.
+   - **Resolução Semântica Automática**: O `AssetResolver` mapeia a `visual_metaphor` das cenas do roteiro para o asset mais adequado, com fallback determinístico para cards procedurais dinâmicos estilizados com física elástica (*ease-out-back* pop-in, micro-flutuação senoidal e fade-out).
+   - **Mixagem Sutil de SFX**: Efeitos sonoros (`whoosh`, `pop`, `ding`) são mixados na trilha principal no timestamp exato de entrada dos inserts, atenuados em -14 dB para manter a clareza da voz.
+   - **Zona Segura Vertical**: Inserts são posicionados no terço superior/médio (`y <= 70%`), garantindo colisão zero com as legendas (`y >= 75%`).
+   - **CLI de Apoio aos Assets**: Ferramenta `python -m clipper.tools.asset_tool validate` (audita codecs, canais alfa e dimensões pares) e `sync-manifest` (indexação automática de novos arquivos).
+4. **Centralização de Prompts (`prompts.py`)**: Todos os artefatos de prompt, templates e exemplos Few-Shot residem isolados em `prompts.py`, desacoplados da lógica de orquestração do grafo.
+5. **Gerenciamento Estrito de Memória (WSL 8GB RAM / 12GB VRAM)**:
    - Com Ollama, `faster-whisper` roda na CPU/int8 e a VRAM fica para o Qwen. Com Gemini, Whisper roda na GPU/float16 e a LLM permanece na API.
    - Fatiamento preventivo de áudio via FFmpeg em pausas silenciosas (`node_0.py`) para evitar estouro de contexto e esgotamento de memória.
    - Coleta de lixo forçada (`gc.collect()`) após processamento de chunks.
    - **Controle de Pico de RAM em Renderização (< 2 GB)**: Desalocação explícita de buffers intermediários (arrays numpy, objetos Pillow, `.close()` em todos os clips do MoviePy e `gc.collect()`), garantindo consumo de memória rigorosamente controlado.
    - **Descarga Incondicional de VRAM pós-Renderização**: O orquestrador executa `release_cuda_memory(cut_id=cut_id)` em bloco `finally:` infalível, liberando cache CUDA e gravando auditoria com métricas de memória em `pipeline.log`.
-5. **Resiliência e Persistência**: Grafo compilado com `SqliteSaver` gravando checkpoints em `/app/output/estado.db`. A etapa de aprovação humana utiliza **Human-in-the-Loop nativo** (`interrupt()` e `Command(resume=...)`), persistindo o estado de suspensão antes de iniciar o servidor web e tolerando reinicializações do container sem reprocessamento de nós anteriores.
+6. **Resiliência e Persistência**: Grafo compilado com `SqliteSaver` gravando checkpoints em `/app/output/estado.db`. A etapa de aprovação humana utiliza **Human-in-the-Loop nativo** (`interrupt()` e `Command(resume=...)`), persistindo o estado de suspensão antes de iniciar o servidor web e tolerando reinicializações do container sem reprocessamento de nós anteriores.
 
 ---
 

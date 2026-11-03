@@ -1,0 +1,110 @@
+{
+  "version": "1.0.0",
+  "assets": [
+    {
+      "id": "chart_growth",
+      "file": "animations/business/chart_up.webm",
+      "type": "animated_video",
+      "tags": [
+        "crescimento",
+        "lucro",
+        "vendas",
+        "acoes",
+        "investimento",
+        "faturamento",
+        "dinheiro",
+        "resultado",
+        "escalar"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": "sfx/whooshes/quick_whoosh.wav",
+      "max_duration": 3.0
+    },
+    {
+      "id": "alert_warning",
+      "file": "animations/emotions/alert_warning.webm",
+      "type": "animated_video",
+      "tags": [
+        "alerta",
+        "cuidado",
+        "atencao",
+        "perigo",
+        "erro",
+        "risco",
+        "problema",
+        "nunca faca"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": "sfx/pops/pop_bubble.wav",
+      "max_duration": 2.5
+    },
+    {
+      "id": "lightbulb_idea",
+      "file": "animations/tech/lightbulb_idea.webm",
+      "type": "animated_video",
+      "tags": [
+        "ideia",
+        "sacada",
+        "insight",
+        "criatividade",
+        "genial",
+        "conceito",
+        "pensamento"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": "sfx/pops/subtle_ding.wav",
+      "max_duration": 2.5
+    },
+    {
+      "id": "fire_hype",
+      "file": "animations/emotions/fire_burn.webm",
+      "type": "animated_video",
+      "tags": [
+        "fogo",
+        "hype",
+        "viral",
+        "incrivel",
+        "pesado",
+        "absurdo",
+        "quente",
+        "energia"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": "sfx/whooshes/quick_whoosh.wav",
+      "max_duration": 2.5
+    },
+    {
+      "id": "target_goal",
+      "file": "icons/general/target_goal.png",
+      "type": "icon_with_card",
+      "tags": [
+        "meta",
+        "foco",
+        "objetivo",
+        "estrategia",
+        "acertar",
+        "missao"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": "sfx/pops/pop_bubble.wav",
+      "max_duration": 3.0
+    },
+    {
+      "id": "dollar_money",
+      "file": "icons/finance/dollar.png",
+      "type": "icon_with_card",
+      "tags": [
+        "dolar",
+        "moeda",
+        "riqueza",
+        "custo",
+        "preco",
+        "financas",
+        "economia"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": "sfx/pops/subtle_ding.wav",
+      "max_duration": 3.0
+    }
+  ]
+}

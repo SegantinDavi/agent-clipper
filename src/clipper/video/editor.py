@@ -190,9 +190,12 @@ def cut_and_format_video(
                                 x_center=clip.w / 2, y_center=clip.h / 2)
 
                 # Motion design engine: aplica variações de escala/enquadramento por cena
+                from clipper.video.asset_resolver import AssetResolver, ResolvedInsert
                 from clipper.video.motion_engine import (
                     build_motion_plan,
                     apply_motion_design,
+                    create_animated_insert_clip,
+                    mix_audio_sfx,
                     create_metaphor_badge_clip,
                 )
                 motion_plan = build_motion_plan(
@@ -202,24 +205,39 @@ def cut_and_format_video(
                 )
                 clip = apply_motion_design(clip, motion_plan, visual_identity=visual_identity)
 
-                # Metáforas visuais opcionais em badge sutil no topo do vídeo
+                # Resolvedor semântico de assets e inserts animados de motion design
+                resolver = AssetResolver()
+                resolved_inserts: list[ResolvedInsert] = []
                 for interval in motion_plan.intervals:
                     if interval.visual_metaphor:
-                        badge = create_metaphor_badge_clip(
-                            interval.visual_metaphor,
-                            frame_width=clip.w,
+                        dummy_scene = Scene(
+                            start_word="",
+                            end_word="",
+                            visual_metaphor=interval.visual_metaphor,
+                            animation_trigger=interval.animation_trigger,
+                        )
+                        resolved_insert = resolver.resolve_insert_for_scene(
+                            scene=dummy_scene,
+                            scene_index=interval.scene_index,
+                            scene_start_time=interval.rel_start,
+                            scene_duration=interval.duration,
                             visual_identity=visual_identity,
                         )
-                        if badge is not None:
-                            badge_dur = min(interval.duration, 2.5)
-                            badge_x = max(0, int((clip.w - badge.w) / 2))
-                            badge_y = max(10, int(clip.h * 0.06))
-                            badge = (
-                                badge.set_start(interval.rel_start)
-                                .set_duration(badge_dur)
-                                .set_position((badge_x, badge_y))
+                        if resolved_insert is not None:
+                            resolved_inserts.append(resolved_insert)
+                            insert_clip = create_animated_insert_clip(
+                                resolved_insert=resolved_insert,
+                                video_size=tuple(clip.size),
+                                visual_identity=visual_identity,
                             )
-                            overlay_clips.append(badge)
+                            if insert_clip is not None:
+                                overlay_clips.append(insert_clip)
+
+                # Mixagem sutil de áudio SFX sincronizado na faixa original de som
+                if hasattr(clip, "audio") and clip.audio is not None and resolved_inserts:
+                    mixed_audio = mix_audio_sfx(clip.audio, resolved_inserts)
+                    if mixed_audio is not None:
+                        clip.audio = mixed_audio
 
                 if len(pause_plan.kept) > 1:
                     # Frame selection and speaker focus still use the original source clock.
