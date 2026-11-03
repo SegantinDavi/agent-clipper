@@ -7,15 +7,26 @@ escala (punch-in, zoom suave) e alternância de ângulo via MoviePy 1.0.3 e Pill
 from __future__ import annotations
 
 import logging
+import math
+import os
 import unicodedata
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from moviepy.editor import ImageClip, VideoClip, concatenate_videoclips
+from moviepy.editor import (
+    AudioClip,
+    AudioFileClip,
+    CompositeAudioClip,
+    ImageClip,
+    VideoClip,
+    VideoFileClip,
+    concatenate_videoclips,
+)
 
-from clipper.core.schemas import CorteVideo, Scene
+from clipper.core.schemas import AssetType, CorteVideo, Scene
+from clipper.video.asset_resolver import EasingProfile, ResolvedInsert
 
 logger = logging.getLogger(__name__)
 
@@ -357,3 +368,226 @@ def create_metaphor_badge_clip(
     draw.text((text_x, text_y), clean_text, font=font, fill=(245, 245, 245, 255))
 
     return ImageClip(np.array(image))
+
+
+def ease_out_back(t: float, overshoot: float = 1.70158) -> float:
+    """Calcula a curva de aceleração ease_out_back para pop-in elástico."""
+    t_clamped = min(max(t, 0.0), 1.0)
+    t_sub = t_clamped - 1.0
+    return 1.0 + (overshoot + 1.0) * (t_sub ** 3) + overshoot * (t_sub ** 2)
+
+
+def sine_float(t: float, amplitude: float = 4.0, frequency: float = 0.8) -> float:
+    """Calcula micro-deslocamento vertical senoidal em pixels para flutuação contínua."""
+    return amplitude * math.sin(2.0 * math.pi * frequency * t)
+
+
+def smooth_fade(t: float, total_duration: float, fade_duration: float = 0.25) -> float:
+    """Calcula opacidade de 1.0 a 0.0 durante os últimos fade_duration segundos."""
+    if total_duration <= fade_duration:
+        return max(0.0, min(1.0, (total_duration - t) / max(0.01, total_duration)))
+    if t >= total_duration - fade_duration:
+        remaining = max(0.0, total_duration - t)
+        return remaining / fade_duration
+    return 1.0
+
+
+def create_procedural_card_image(
+    label_text: str,
+    target_width: int = 480,
+    target_height: int = 120,
+    visual_identity: dict | None = None,
+) -> Image.Image:
+    """Renderiza imagem RGBA de card procedural com tipografia Liberation e bordas arredondadas."""
+    from clipper.video.editor import load_caption_font
+
+    # Força dimensões estritamente pares
+    if target_width % 2 != 0:
+        target_width -= 1
+    if target_height % 2 != 0:
+        target_height -= 1
+
+    clean_text = label_text.strip()
+    if len(clean_text) > 40:
+        clean_text = clean_text[:37] + "..."
+
+    font_size = max(16, round(target_height * 0.28))
+    font = load_caption_font(font_size)
+
+    image = Image.new("RGBA", (target_width, target_height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+
+    # Cores
+    accent_color = "#FFD700"  # Gold padrão
+    if visual_identity and "caption_color" in visual_identity:
+        accent_color = visual_identity["caption_color"]
+
+    accent_rgb = (255, 215, 0)
+    if isinstance(accent_color, str) and accent_color.startswith("#") and len(accent_color) == 7:
+        try:
+            accent_rgb = (
+                int(accent_color[1:3], 16),
+                int(accent_color[3:5], 16),
+                int(accent_color[5:7], 16),
+            )
+        except Exception:
+            pass
+
+    # Fundo do card
+    radius = max(8, target_height // 4)
+    draw.rounded_rectangle(
+        [(0, 0), (target_width - 1, target_height - 1)],
+        radius=radius,
+        fill=(18, 18, 22, 220),
+        outline=(255, 255, 255, 75),
+        width=2,
+    )
+
+    # Barra lateral de acento visual (accent pill)
+    bar_w = 6
+    bar_pad_y = max(8, target_height // 4)
+    bar_x = max(12, target_width // 24)
+    draw.rounded_rectangle(
+        [(bar_x, bar_pad_y), (bar_x + bar_w, target_height - bar_pad_y)],
+        radius=3,
+        fill=accent_rgb + (255,),
+    )
+
+    # Texto
+    left, top, right, bottom = font.getbbox(clean_text)
+    text_w = right - left
+    text_h = bottom - top
+
+    text_x = bar_x + bar_w + 14 - left
+    text_y = (target_height - text_h) // 2 - top
+    draw.text((text_x, text_y), clean_text, font=font, fill=(245, 245, 245, 255))
+
+    return image
+
+
+def create_animated_insert_clip(
+    resolved_insert: ResolvedInsert,
+    video_size: tuple[int, int],
+    visual_identity: dict | None = None,
+) -> VideoClip | None:
+    """Constrói clipe animado transparente para sobreposição do insert no vídeo vertical."""
+    if not resolved_insert or resolved_insert.duration <= 0.1:
+        return None
+
+    vw, vh = video_size
+    tw, th = resolved_insert.target_width, resolved_insert.target_height
+
+    # Garante dimensões pares
+    if tw % 2 != 0:
+        tw -= 1
+    if th % 2 != 0:
+        th -= 1
+
+    # Calcula coordenadas centrais garantindo zona de segurança (y <= 0.70 * vh)
+    pos_x = int(vw * resolved_insert.center_x_ratio - tw / 2.0)
+    pos_y = int(vh * resolved_insert.center_y_ratio - th / 2.0)
+
+    # Garante que não ultrapasse a margem das legendas
+    if pos_y + th > vh * 0.72:
+        pos_y = int(vh * 0.72 - th)
+    pos_x = max(10, min(vw - tw - 10, pos_x))
+    pos_y = max(10, pos_y)
+
+    # Caso A: Clipes de vídeo WebM pré-renderizados com canal alfa
+    if (
+        resolved_insert.asset_path
+        and os.path.exists(resolved_insert.asset_path)
+        and resolved_insert.asset_type == AssetType.ANIMATED_VIDEO
+    ):
+        try:
+            anim_clip = VideoFileClip(resolved_insert.asset_path, has_mask=True)
+            scaled = anim_clip.resize(newsize=(tw, th))
+            if scaled.duration < resolved_insert.duration:
+                from moviepy.editor import vfx
+                scaled = scaled.fx(vfx.loop, duration=resolved_insert.duration)
+            else:
+                scaled = scaled.subclip(0, resolved_insert.duration)
+
+            return (
+                scaled.set_start(resolved_insert.start_time)
+                .set_duration(resolved_insert.duration)
+                .set_position((pos_x, pos_y))
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to load WebM insert '%s': %s. Falling back to procedural card.",
+                resolved_insert.asset_path,
+                exc,
+            )
+
+    # Caso B: Card Procedural com animação elástica e flutuação
+    card_img = create_procedural_card_image(
+        label_text=resolved_insert.label_text,
+        target_width=tw,
+        target_height=th,
+        visual_identity=visual_identity,
+    )
+    img_arr = np.array(card_img)
+
+    easing = resolved_insert.easing
+    total_dur = resolved_insert.duration
+    pop_dur = easing.pop_duration
+
+    def scale_func(t: float) -> float:
+        if t < pop_dur:
+            progress = t / max(0.01, pop_dur)
+            return max(0.01, ease_out_back(progress, easing.overshoot_factor))
+        return 1.0
+
+    def pos_func(t: float) -> tuple[int, int]:
+        y_offset = sine_float(t, easing.float_amplitude, easing.float_frequency)
+        if t > total_dur - easing.fade_duration:
+            fade_prog = (t - (total_dur - easing.fade_duration)) / max(0.01, easing.fade_duration)
+            y_offset -= 10.0 * fade_prog
+        return (pos_x, int(pos_y + y_offset))
+
+    card_clip = ImageClip(img_arr, transparent=True)
+    animated = (
+        card_clip.set_start(resolved_insert.start_time)
+        .set_duration(total_dur)
+        .resize(scale_func)
+        .set_position(pos_func)
+    )
+    return animated
+
+
+def mix_audio_sfx(
+    original_audio: AudioClip | None,
+    inserts: list[ResolvedInsert],
+) -> AudioClip | None:
+    """Mixa efeitos sonoros dos inserts na trilha principal de áudio atenuando volume."""
+    if original_audio is None or not inserts:
+        return original_audio
+
+    valid_sfx_inserts = [
+        ins for ins in inserts
+        if ins.sfx_path and os.path.exists(ins.sfx_path)
+    ]
+    if not valid_sfx_inserts:
+        return original_audio
+
+    try:
+        sfx_clips = []
+        for ins in valid_sfx_inserts:
+            try:
+                sfx_clip = AudioFileClip(ins.sfx_path)
+                sfx_clip = sfx_clip.volumex(0.35)
+                sfx_clip = sfx_clip.set_start(ins.start_time)
+                sfx_clips.append(sfx_clip)
+            except Exception as sfx_err:
+                logger.warning("Failed to load audio SFX from '%s': %s", ins.sfx_path, sfx_err)
+
+        if not sfx_clips:
+            return original_audio
+
+        composite_audio = CompositeAudioClip([original_audio] + sfx_clips)
+        composite_audio.duration = original_audio.duration
+        return composite_audio
+    except Exception as exc:
+        logger.warning("mix_audio_sfx failed, preserving original audio: %s", exc)
+        return original_audio
