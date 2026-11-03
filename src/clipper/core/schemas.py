@@ -1,3 +1,5 @@
+from enum import Enum
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -46,5 +48,35 @@ class RenderScriptPayload(BaseModel):
         min_length=1,
         description="Código Python completo e auto-contido para renderização do corte vertical usando MoviePy 1.0.3 e Pillow.",
     )
+
+
+class AssetType(str, Enum):
+    ANIMATED_VIDEO = "animated_video"
+    ICON_WITH_CARD = "icon_with_card"
+    SFX = "sfx"
+
+
+class AssetPosition(str, Enum):
+    UPPER_THIRD = "upper_third"
+    MIDDLE_THIRD = "middle_third"
+    LOWER_THIRD = "lower_third"
+
+
+class AssetItem(BaseModel):
+    """Representa um elemento catalogado no manifest de assets."""
+    id: str = Field(..., min_length=1, description="Identificador único (ex: 'chart_growth')")
+    file: str = Field(..., min_length=1, description="Caminho relativo a partir de /assets")
+    type: AssetType = Field(..., description="Tipo do elemento (animated_video, icon_with_card, sfx)")
+    tags: List[str] = Field(default_factory=list, description="Lista de palavras-chave normalizadas para match com metáforas")
+    default_position: AssetPosition = Field(default=AssetPosition.UPPER_THIRD, description="Posicionamento vertical seguro recomendado")
+    default_sfx: Optional[str] = Field(default=None, description="Caminho relativo do SFX padrão associado (opcional)")
+    max_duration: Optional[float] = Field(default=3.0, description="Duração máxima de exibição do insert em segundos")
+
+
+class AssetManifest(BaseModel):
+    """Estrutura raiz do arquivo assets/manifest.json."""
+    version: str = Field(default="1.0.0", description="Versão do schema do catálogo")
+    assets: List[AssetItem] = Field(default_factory=list, description="Lista de assets disponíveis")
+
 
 

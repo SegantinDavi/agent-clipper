@@ -26,8 +26,8 @@
 
 **Purpose**: Criação da estrutura de diretórios em `assets/`, schemas Pydantic de metadados e fixtures iniciais.
 
-- [ ] T001 Criar a estrutura inicial de diretórios para o catálogo de assets em `assets/animations/`, `assets/icons/`, `assets/sfx/` com arquivo `assets/manifest.json` inicial
-- [ ] T002 [P] Implementar schemas Pydantic `AssetType`, `AssetPosition`, `AssetItem` e `AssetManifest` em `src/clipper/core/schemas.py`
+- [x] T001 Criar a estrutura inicial de diretórios para o catálogo de assets em `assets/animations/`, `assets/icons/`, `assets/sfx/` com arquivo `assets/manifest.json` inicial
+- [x] T002 [P] Implementar schemas Pydantic `AssetType`, `AssetPosition`, `AssetItem` e `AssetManifest` em `src/clipper/core/schemas.py`
 
 ---
 
@@ -37,8 +37,8 @@
 
 **⚠️ CRITICAL**: Nenhuma história de usuário pode iniciar sem esta fundação
 
-- [ ] T003 Implementar dataclasses `EasingProfile`, `ResolvedInsert` e `AssetValidationResult` em `src/clipper/video/asset_resolver.py`
-- [ ] T004 [P] Criar fixtures e mocks de assets para testes unitários em `tests/test_asset_resolver.py`
+- [x] T003 Implementar dataclasses `EasingProfile`, `ResolvedInsert` e `AssetValidationResult` em `src/clipper/video/asset_resolver.py`
+- [x] T004 [P] Criar fixtures e mocks de assets para testes unitários em `tests/test_asset_resolver.py`
 
 **Checkpoint**: Fundação pronta - tarefas das histórias de usuário podem prosseguir
 
@@ -51,13 +51,13 @@
 **Independent Test**: Executar `AssetResolver` com metáforas conhecidas, sinônimos, termos desconhecidos e sem metáfora, verificando a geração de `ResolvedInsert` com os caminhos e coordenadas corretas.
 
 ### Tests for User Story 1
-- [ ] T005 [P] [US1] Criar testes unitários para carregamento de `manifest.json`, validação de tags e degradação graciosa em caso de arquivo ausente em `tests/test_asset_resolver.py`
-- [ ] T006 [P] [US1] Criar testes unitários para o algoritmo de match semântico (match exato, match por tag, match parcial e fallback procedural) em `tests/test_asset_resolver.py`
+- [x] T005 [P] [US1] Criar testes unitários para carregamento de `manifest.json`, validação de tags e degradação graciosa em caso de arquivo ausente em `tests/test_asset_resolver.py`
+- [x] T006 [P] [US1] Criar testes unitários para o algoritmo de match semântico (match exato, match por tag, match parcial e fallback procedural) em `tests/test_asset_resolver.py`
 
 ### Implementation for User Story 1
-- [ ] T007 [US1] Implementar a classe `AssetResolver` com método de inicialização e leitura segura do `manifest.json` em `src/clipper/video/asset_resolver.py`
-- [ ] T008 [US1] Implementar o método `resolve_insert_for_scene(scene, scene_index, start_time, duration, visual_identity)` em `src/clipper/video/asset_resolver.py` com cálculo de zona segura
-- [ ] T009 [US1] Executar testes da User Story 1 via `PYTHONPATH=src venv/bin/python -m unittest tests/test_asset_resolver.py`
+- [x] T007 [US1] Implementar a classe `AssetResolver` com método de inicialização e leitura segura do `manifest.json` em `src/clipper/video/asset_resolver.py`
+- [x] T008 [US1] Implementar o método `resolve_insert_for_scene(scene, scene_index, start_time, duration, visual_identity)` em `src/clipper/video/asset_resolver.py` com cálculo de zona segura
+- [x] T009 [US1] Executar testes da User Story 1 via `PYTHONPATH=src venv/bin/python -m unittest tests/test_asset_resolver.py`
 
 **Checkpoint**: User Story 1 100% funcional e testável de forma independente
 
