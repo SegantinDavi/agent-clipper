@@ -2,30 +2,13 @@
   "version": "1.0.0",
   "assets": [
     {
-      "id": "chart_growth",
-      "file": "animations/business/chart_up.webm",
-      "type": "animated_video",
+      "id": "balao_alerta",
+      "file": "icons/communication/balao_alerta.png",
+      "type": "icon_with_card",
       "tags": [
-        "crescimento",
-        "lucro",
-        "vendas",
-        "acoes",
-        "investimento",
-        "faturamento",
-        "dinheiro",
-        "resultado",
-        "escalar"
-      ],
-      "default_position": "upper_third",
-      "default_sfx": "sfx/whooshes/quick_whoosh.wav",
-      "max_duration": 3.0
-    },
-    {
-      "id": "alert_warning",
-      "file": "animations/emotions/alert_warning.webm",
-      "type": "animated_video",
-      "tags": [
+        "balao alerta",
         "alerta",
+        "aviso",
         "cuidado",
         "atencao",
         "perigo",
@@ -35,75 +18,1294 @@
         "nunca faca"
       ],
       "default_position": "upper_third",
-      "default_sfx": "sfx/pops/pop_bubble.wav",
-      "max_duration": 2.5
-    },
-    {
-      "id": "lightbulb_idea",
-      "file": "animations/tech/lightbulb_idea.webm",
-      "type": "animated_video",
-      "tags": [
-        "ideia",
-        "sacada",
-        "insight",
-        "criatividade",
-        "genial",
-        "conceito",
-        "pensamento"
-      ],
-      "default_position": "upper_third",
-      "default_sfx": "sfx/pops/subtle_ding.wav",
-      "max_duration": 2.5
-    },
-    {
-      "id": "fire_hype",
-      "file": "animations/emotions/fire_burn.webm",
-      "type": "animated_video",
-      "tags": [
-        "fogo",
-        "hype",
-        "viral",
-        "incrivel",
-        "pesado",
-        "absurdo",
-        "quente",
-        "energia"
-      ],
-      "default_position": "upper_third",
-      "default_sfx": "sfx/whooshes/quick_whoosh.wav",
-      "max_duration": 2.5
-    },
-    {
-      "id": "target_goal",
-      "file": "icons/general/target_goal.png",
-      "type": "icon_with_card",
-      "tags": [
-        "meta",
-        "foco",
-        "objetivo",
-        "estrategia",
-        "acertar",
-        "missao"
-      ],
-      "default_position": "upper_third",
-      "default_sfx": "sfx/pops/pop_bubble.wav",
+      "default_sfx": null,
       "max_duration": 3.0
     },
     {
-      "id": "dollar_money",
-      "file": "icons/finance/dollar.png",
+      "id": "balao_de_fala",
+      "file": "icons/communication/balao_de_fala.png",
       "type": "icon_with_card",
       "tags": [
-        "dolar",
-        "moeda",
-        "riqueza",
-        "custo",
-        "preco",
-        "financas",
-        "economia"
+        "balao de fala",
+        "conversa",
+        "dialogo",
+        "fala",
+        "comunicacao",
+        "declaracao",
+        "pronunciamento"
       ],
       "default_position": "upper_third",
-      "default_sfx": "sfx/pops/subtle_ding.wav",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "balao_debate",
+      "file": "icons/communication/balao_debate.png",
+      "type": "icon_with_card",
+      "tags": [
+        "balao debate",
+        "debate",
+        "discussao",
+        "contraditorio",
+        "controversia",
+        "polarizacao",
+        "argumento"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "balao_expectativa",
+      "file": "icons/communication/balao_expectativa.png",
+      "type": "icon_with_card",
+      "tags": [
+        "balao expectativa",
+        "expectativa",
+        "anseio",
+        "projecao",
+        "esperanca",
+        "suposicao"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "balao_negacao",
+      "file": "icons/communication/balao_negacao.png",
+      "type": "icon_with_card",
+      "tags": [
+        "balao negacao",
+        "negacao",
+        "discordia",
+        "recusa",
+        "rejeicao",
+        "reprovacao",
+        "nao",
+        "proibido"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "balao_pensamento",
+      "file": "icons/communication/balao_pensamento.png",
+      "type": "icon_with_card",
+      "tags": [
+        "balao pensamento",
+        "pensamento",
+        "ideia",
+        "reflexao",
+        "mente",
+        "insight",
+        "ponderacao",
+        "sacada"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "balao_previsao",
+      "file": "icons/communication/balao_previsao.png",
+      "type": "icon_with_card",
+      "tags": [
+        "balao previsao",
+        "previsao",
+        "prognostico",
+        "estimativa futura",
+        "antecipacao",
+        "perspectiva"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "balao_promessa",
+      "file": "icons/communication/balao_promessa.png",
+      "type": "icon_with_card",
+      "tags": [
+        "balao promessa",
+        "promessa",
+        "compromisso",
+        "proposta",
+        "afirmacao",
+        "garantia"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "balao_promessa_ampliado",
+      "file": "icons/communication/balao_promessa_ampliado.png",
+      "type": "icon_with_card",
+      "tags": [
+        "balao promessa ampliado",
+        "grande promessa",
+        "mega proposta",
+        "discurso ampliado",
+        "compromisso solene"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "baloes_conversa",
+      "file": "icons/communication/baloes_conversa.png",
+      "type": "icon_with_card",
+      "tags": [
+        "baloes conversa",
+        "bate papo",
+        "dialogo multiplo",
+        "reuniao",
+        "troca de ideias",
+        "entrevista"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "baloes_resposta",
+      "file": "icons/communication/baloes_resposta.png",
+      "type": "icon_with_card",
+      "tags": [
+        "baloes resposta",
+        "respostas",
+        "replica",
+        "esclarecimento",
+        "devolutiva",
+        "solucao"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "barra_atividade",
+      "file": "icons/indicators/barra_atividade.png",
+      "type": "icon_with_card",
+      "tags": [
+        "barra atividade",
+        "progresso",
+        "carregamento",
+        "status",
+        "nivel de atividade",
+        "andamento"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "botao_pausa",
+      "file": "icons/indicators/botao_pausa.png",
+      "type": "icon_with_card",
+      "tags": [
+        "botao pausa",
+        "pausa",
+        "parar",
+        "congelar",
+        "interrupcao",
+        "suspensao",
+        "esperar"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "caixa_entrega",
+      "file": "icons/business/caixa_entrega.png",
+      "type": "icon_with_card",
+      "tags": [
+        "caixa entrega",
+        "entrega",
+        "pacote",
+        "frete",
+        "logistica",
+        "encomenda",
+        "delivery",
+        "despacho",
+        "envio"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "caixa_misterio",
+      "file": "icons/general/caixa_misterio.png",
+      "type": "icon_with_card",
+      "tags": [
+        "caixa misterio",
+        "incerteza",
+        "surpresa",
+        "enigma",
+        "fator desconhecido",
+        "segredo"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "caixa_moedas",
+      "file": "icons/finance/caixa_moedas.png",
+      "type": "icon_with_card",
+      "tags": [
+        "caixa moedas",
+        "cofre",
+        "poupanca",
+        "reserva",
+        "acumulacao",
+        "dinheiro guardado",
+        "riqueza"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "calendario",
+      "file": "icons/indicators/calendario.png",
+      "type": "icon_with_card",
+      "tags": [
+        "calendario",
+        "data",
+        "prazo",
+        "cronograma",
+        "agenda",
+        "mes",
+        "periodo"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "calendario_futuro",
+      "file": "icons/indicators/calendario_futuro.png",
+      "type": "icon_with_card",
+      "tags": [
+        "calendario futuro",
+        "data futura",
+        "prazo futuro",
+        "adiamento",
+        "longo prazo",
+        "previsao de data"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "cartao_auxilio",
+      "file": "icons/finance/cartao_auxilio.png",
+      "type": "icon_with_card",
+      "tags": [
+        "cartao auxilio",
+        "auxilio emergencial",
+        "subsidio",
+        "beneficio social",
+        "assistencia",
+        "bolsa familia",
+        "ajuda"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "cartao_beneficio",
+      "file": "icons/finance/cartao_beneficio.png",
+      "type": "icon_with_card",
+      "tags": [
+        "cartao beneficio",
+        "cartao",
+        "credito",
+        "debito",
+        "vale refeicao",
+        "pagamento",
+        "financas"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "carteira",
+      "file": "icons/finance/carteira.png",
+      "type": "icon_with_card",
+      "tags": [
+        "carteira",
+        "bolso",
+        "dinheiro",
+        "financas",
+        "orcamento",
+        "renda",
+        "salario"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "carteiras",
+      "file": "icons/finance/carteiras.png",
+      "type": "icon_with_card",
+      "tags": [
+        "carteiras",
+        "orcamentos",
+        "diversas rendas",
+        "financas familiares",
+        "recursos",
+        "contas"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "casa",
+      "file": "icons/general/casa.png",
+      "type": "icon_with_card",
+      "tags": [
+        "casa",
+        "moradia",
+        "lar",
+        "habitacao",
+        "familia",
+        "imobiliario",
+        "setor residencial"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "casa_espacial",
+      "file": "icons/general/casa_espacial.png",
+      "type": "icon_with_card",
+      "tags": [
+        "casa espacial",
+        "futuro",
+        "inovacao extrema",
+        "moradia futurista",
+        "alta tecnologia",
+        "utopia"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "celular",
+      "file": "icons/tech/celular.png",
+      "type": "icon_with_card",
+      "tags": [
+        "celular",
+        "smartphone",
+        "aplicativo",
+        "app",
+        "mobile",
+        "tela",
+        "digital",
+        "notificacao"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "comercio",
+      "file": "icons/business/comercio.png",
+      "type": "icon_with_card",
+      "tags": [
+        "comercio",
+        "varejo",
+        "compra e venda",
+        "setor comercial",
+        "mercado",
+        "distribuicao"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "consumidor",
+      "file": "icons/business/consumidor.png",
+      "type": "icon_with_card",
+      "tags": [
+        "consumidor",
+        "cliente",
+        "comprador",
+        "publico",
+        "usuario",
+        "cidadao consumidor"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "copo_cerveja",
+      "file": "icons/general/copo_cerveja.png",
+      "type": "icon_with_card",
+      "tags": [
+        "copo cerveja",
+        "happy hour",
+        "lazer",
+        "confraternizacao",
+        "bar",
+        "descontracao",
+        "bebida"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "coracao",
+      "file": "icons/general/coracao.png",
+      "type": "icon_with_card",
+      "tags": [
+        "coracao",
+        "saude",
+        "paixao",
+        "cuidado",
+        "humanizacao",
+        "empatia",
+        "bem estar",
+        "vida"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "empresa_tecnologia",
+      "file": "icons/tech/empresa_tecnologia.png",
+      "type": "icon_with_card",
+      "tags": [
+        "empresa tecnologia",
+        "startup",
+        "big tech",
+        "escritorio",
+        "corporacao",
+        "firma tech"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "empresario",
+      "file": "icons/business/empresario.png",
+      "type": "icon_with_card",
+      "tags": [
+        "empresario",
+        "executivo",
+        "empreendedor",
+        "chefe",
+        "fundador",
+        "lider empresarial",
+        "negocios"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "engrenagem_ciclo",
+      "file": "icons/tech/engrenagem_ciclo.png",
+      "type": "icon_with_card",
+      "tags": [
+        "engrenagem ciclo",
+        "engrenagem",
+        "automacao",
+        "processo",
+        "sistema",
+        "mecanismo",
+        "funcionamento"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "fichas_empresarios",
+      "file": "icons/business/fichas_empresarios.png",
+      "type": "icon_with_card",
+      "tags": [
+        "fichas empresarios",
+        "cadastro",
+        "perfil empresarial",
+        "networking",
+        "socios",
+        "stakeholders"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "foguete",
+      "file": "icons/general/foguete.png",
+      "type": "icon_with_card",
+      "tags": [
+        "foguete",
+        "lancamento",
+        "aceleracao",
+        "viral",
+        "decolagem",
+        "crescimento exponencial",
+        "sucesso",
+        "hype",
+        "energia"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "globo",
+      "file": "icons/general/globo.png",
+      "type": "icon_with_card",
+      "tags": [
+        "globo",
+        "planeta",
+        "mundo",
+        "internacional",
+        "globalizacao",
+        "comercio exterior",
+        "escala mundial"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "grafico",
+      "file": "icons/indicators/grafico.png",
+      "type": "icon_with_card",
+      "tags": [
+        "grafico",
+        "metricas",
+        "indices",
+        "estatisticas",
+        "performance",
+        "evolucao",
+        "analise",
+        "crescimento",
+        "lucro",
+        "resultado"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "icone_midia",
+      "file": "icons/communication/icone_midia.png",
+      "type": "icon_with_card",
+      "tags": [
+        "icone midia",
+        "imprensa",
+        "jornalismo",
+        "noticia",
+        "comunicacao social",
+        "transmissao",
+        "midia"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "indicador_melhora",
+      "file": "icons/indicators/indicador_melhora.png",
+      "type": "icon_with_card",
+      "tags": [
+        "indicador melhora",
+        "crescimento",
+        "melhora",
+        "alta",
+        "tendencia de alta",
+        "recuperacao",
+        "evolucao positiva",
+        "escalar"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "indicador_resposta",
+      "file": "icons/indicators/indicador_resposta.png",
+      "type": "icon_with_card",
+      "tags": [
+        "indicador resposta",
+        "confirmacao",
+        "feedback",
+        "status de resposta",
+        "resultado"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "interface_ia",
+      "file": "icons/tech/interface_ia.png",
+      "type": "icon_with_card",
+      "tags": [
+        "interface ia",
+        "inteligencia artificial",
+        "ia",
+        "algoritmo",
+        "computacao",
+        "automacao digital",
+        "bot",
+        "software"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "interrogacao",
+      "file": "icons/indicators/interrogacao.png",
+      "type": "icon_with_card",
+      "tags": [
+        "interrogacao",
+        "duvida",
+        "pergunta",
+        "questionamento",
+        "incerteza",
+        "dilema",
+        "misterio"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "linha_tempo",
+      "file": "icons/indicators/linha_tempo.png",
+      "type": "icon_with_card",
+      "tags": [
+        "linha do tempo",
+        "timeline",
+        "historico",
+        "etapas",
+        "fases",
+        "evolucao temporal"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "loja",
+      "file": "icons/business/loja.png",
+      "type": "icon_with_card",
+      "tags": [
+        "loja",
+        "estabelecimento",
+        "ponto comercial",
+        "fachada",
+        "comercio local"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "loja_media",
+      "file": "icons/business/loja_media.png",
+      "type": "icon_with_card",
+      "tags": [
+        "loja media",
+        "medio negocio",
+        "media empresa",
+        "franquia",
+        "expansao comercial"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "loja_pequena",
+      "file": "icons/business/loja_pequena.png",
+      "type": "icon_with_card",
+      "tags": [
+        "loja pequena",
+        "pequeno negocio",
+        "microempresa",
+        "mei",
+        "comercio de bairro"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "loja_quebrada",
+      "file": "icons/business/loja_quebrada.png",
+      "type": "icon_with_card",
+      "tags": [
+        "loja quebrada",
+        "falencia",
+        "crise",
+        "comercio fechado",
+        "prejuizo",
+        "quebra",
+        "fechamento",
+        "divida"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "lojas",
+      "file": "icons/business/lojas.png",
+      "type": "icon_with_card",
+      "tags": [
+        "lojas",
+        "cadeia de lojas",
+        "rede de comercio",
+        "shopping center",
+        "galerias"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "mapa_bairro",
+      "file": "icons/general/mapa_bairro.png",
+      "type": "icon_with_card",
+      "tags": [
+        "mapa bairro",
+        "regiao",
+        "comunidade",
+        "territorio local",
+        "vizinhanca",
+        "zoneamento"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "mapa_comercio",
+      "file": "icons/general/mapa_comercio.png",
+      "type": "icon_with_card",
+      "tags": [
+        "mapa comercio",
+        "distribuicao comercial",
+        "polos comerciais",
+        "rota de mercado",
+        "logistica regional"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "marcador_pandemia",
+      "file": "icons/general/marcador_pandemia.png",
+      "type": "icon_with_card",
+      "tags": [
+        "marcador pandemia",
+        "pandemia",
+        "crise sanitaria",
+        "virus",
+        "isolamento",
+        "quarentena",
+        "saude publica"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "mercadinho",
+      "file": "icons/business/mercadinho.png",
+      "type": "icon_with_card",
+      "tags": [
+        "mercadinho",
+        "mercearia",
+        "minimercado",
+        "quitanda",
+        "supermercado de bairro"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "mesa_conversa",
+      "file": "icons/communication/mesa_conversa.png",
+      "type": "icon_with_card",
+      "tags": [
+        "mesa conversa",
+        "negociacao",
+        "conciliacao",
+        "mesa redonda",
+        "acordo",
+        "alinhamento"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "moeda",
+      "file": "icons/finance/moeda.png",
+      "type": "icon_with_card",
+      "tags": [
+        "moeda",
+        "centavo",
+        "dinheiro",
+        "custo",
+        "preco",
+        "real",
+        "valor",
+        "economia",
+        "taxa",
+        "dolar"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "moedas",
+      "file": "icons/finance/moedas.png",
+      "type": "icon_with_card",
+      "tags": [
+        "moedas",
+        "riqueza",
+        "faturamento",
+        "capital",
+        "fluxo de caixa",
+        "financas",
+        "lucro",
+        "vendas"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "painel_exemplo",
+      "file": "icons/indicators/painel_exemplo.png",
+      "type": "icon_with_card",
+      "tags": [
+        "painel exemplo",
+        "exemplo",
+        "demonstracao",
+        "caso pratico",
+        "dashboard",
+        "ilustracao"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "painel_ressalvas",
+      "file": "icons/indicators/painel_ressalvas.png",
+      "type": "icon_with_card",
+      "tags": [
+        "painel ressalvas",
+        "ressalvas",
+        "condicoes",
+        "termos",
+        "atencao aos detalhes",
+        "excecoes",
+        "observacoes"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "painel_teste",
+      "file": "icons/indicators/painel_teste.png",
+      "type": "icon_with_card",
+      "tags": [
+        "painel teste",
+        "teste",
+        "experimentacao",
+        "piloto",
+        "prova de conceito",
+        "validacao"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "pixels_expectativa",
+      "file": "icons/tech/pixels_expectativa.png",
+      "type": "icon_with_card",
+      "tags": [
+        "pixels expectativa",
+        "digital",
+        "dados",
+        "tecnologia",
+        "pixels",
+        "computacao grafica",
+        "bits"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "planeta_marte",
+      "file": "icons/general/planeta_marte.png",
+      "type": "icon_with_card",
+      "tags": [
+        "planeta marte",
+        "marte",
+        "missao espacial",
+        "ambicao",
+        "objetivo distante",
+        "exploracao"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "planta_projeto",
+      "file": "icons/business/planta_projeto.png",
+      "type": "icon_with_card",
+      "tags": [
+        "planta projeto",
+        "blueprint",
+        "planejamento",
+        "arquitetura",
+        "desenho tecnico",
+        "projeto",
+        "plano"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "predio_publico",
+      "file": "icons/general/predio_publico.png",
+      "type": "icon_with_card",
+      "tags": [
+        "predio publico",
+        "governo",
+        "prefeitura",
+        "camara",
+        "estado",
+        "tribunal",
+        "instituicao publica",
+        "setor publico"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "raio_bairro",
+      "file": "icons/general/raio_bairro.png",
+      "type": "icon_with_card",
+      "tags": [
+        "raio bairro",
+        "cobertura local",
+        "abrangencia",
+        "proximidade",
+        "raio de acao",
+        "perimetro"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "recibo",
+      "file": "icons/finance/recibo.png",
+      "type": "icon_with_card",
+      "tags": [
+        "recibo",
+        "comprovante",
+        "nota fiscal",
+        "despesa",
+        "pagamento",
+        "fatura",
+        "gasto",
+        "tributo"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "rede_familias",
+      "file": "icons/general/rede_familias.png",
+      "type": "icon_with_card",
+      "tags": [
+        "rede familias",
+        "comunidade",
+        "rede de apoio",
+        "familias",
+        "sociedade",
+        "populacao"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "retrato_generico_portavoz",
+      "file": "icons/communication/retrato_generico_portavoz.png",
+      "type": "icon_with_card",
+      "tags": [
+        "retrato generico porta voz",
+        "porta voz",
+        "apresentador",
+        "interlocutor",
+        "figura publica",
+        "narrador"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "sacola",
+      "file": "icons/business/sacola.png",
+      "type": "icon_with_card",
+      "tags": [
+        "sacola",
+        "sacola de compras",
+        "consumo",
+        "varejo",
+        "compras",
+        "shopping"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "seta",
+      "file": "icons/indicators/seta.png",
+      "type": "icon_with_card",
+      "tags": [
+        "seta",
+        "direcao",
+        "orientacao",
+        "indicacao",
+        "foco",
+        "apontamento",
+        "meta"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "seta_fluxo",
+      "file": "icons/indicators/seta_fluxo.png",
+      "type": "icon_with_card",
+      "tags": [
+        "seta fluxo",
+        "fluxo",
+        "migracao",
+        "movimento",
+        "transicao",
+        "direcionamento continuo"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "simbolo_infinito",
+      "file": "icons/general/simbolo_infinito.png",
+      "type": "icon_with_card",
+      "tags": [
+        "simbolo infinito",
+        "infinito",
+        "sem limites",
+        "continuidade",
+        "perpetuo",
+        "eterno",
+        "ilimitado"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "tabuleiro_rota",
+      "file": "icons/indicators/tabuleiro_rota.png",
+      "type": "icon_with_card",
+      "tags": [
+        "tabuleiro rota",
+        "estrategia",
+        "plano de acao",
+        "rota",
+        "tatica",
+        "itinerario",
+        "mapa estrategico",
+        "meta",
+        "objetivo"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "taxi",
+      "file": "icons/general/taxi.png",
+      "type": "icon_with_card",
+      "tags": [
+        "taxi",
+        "transporte",
+        "mobilidade urbana",
+        "corrida",
+        "deslocamento",
+        "transito"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "tesoura",
+      "file": "icons/general/tesoura.png",
+      "type": "icon_with_card",
+      "tags": [
+        "tesoura",
+        "corte",
+        "reducao",
+        "podar",
+        "dividir",
+        "cisao"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "tesoura_recibo",
+      "file": "icons/finance/tesoura_recibo.png",
+      "type": "icon_with_card",
+      "tags": [
+        "tesoura recibo",
+        "corte de gastos",
+        "reducao de custos",
+        "economia",
+        "corte orcamentario",
+        "desconto"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "torre_tecnologia",
+      "file": "icons/tech/torre_tecnologia.png",
+      "type": "icon_with_card",
+      "tags": [
+        "torre tecnologia",
+        "telecomunicacoes",
+        "5g",
+        "antena",
+        "infraestrutura digital",
+        "conectividade",
+        "rede"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "trabalhador",
+      "file": "icons/business/trabalhador.png",
+      "type": "icon_with_card",
+      "tags": [
+        "trabalhador",
+        "operario",
+        "empregado",
+        "funcionario",
+        "mao de obra",
+        "profissional",
+        "trabalho"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "trilho",
+      "file": "icons/indicators/trilho.png",
+      "type": "icon_with_card",
+      "tags": [
+        "trilho",
+        "caminho",
+        "diretriz",
+        "trilha",
+        "ferrovia",
+        "rota fixa",
+        "rumo"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "vaga_emprego",
+      "file": "icons/business/vaga_emprego.png",
+      "type": "icon_with_card",
+      "tags": [
+        "vaga emprego",
+        "contratacao",
+        "recrutamento",
+        "oportunidade de trabalho",
+        "emprego",
+        "vaga",
+        "carreira"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
+      "max_duration": 3.0
+    },
+    {
+      "id": "valor_citado",
+      "file": "icons/finance/valor_citado.png",
+      "type": "icon_with_card",
+      "tags": [
+        "valor citado",
+        "preco",
+        "cifra",
+        "cotacao",
+        "estimativa",
+        "quantia",
+        "montante"
+      ],
+      "default_position": "upper_third",
+      "default_sfx": null,
       "max_duration": 3.0
     }
   ]

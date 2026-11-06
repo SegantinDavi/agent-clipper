@@ -88,7 +88,7 @@ Use dois nós sequenciais operando o MESMO modelo do perfil selecionado (Qwen2.5
 ##### 9. Planejamento (SDD) e Observabilidade Restrita
 
 - **Proibição de Telemetria Externa:** A adição de coletores de telemetria pesados (como Langfuse, Arize Phoenix ou similares) é **estritamente proibida**. O ambiente opera no limite da RAM (8GB) e introduzir essas ferramentas causará esgotamento de memória e vazamentos na VRAM. A observabilidade deve ser feita **apenas** através de logs tradicionais em arquivo (ex: `pipeline.log`).
-- **Especificação de Design (SDD):** Toda nova funcionalidade, refatoração estrutural ou mudança arquitetural deve ser obrigatoriamente precedida por um Documento de Especificação de Design (SDD) gerado via `speckit`. O agente de código deve seguir o design aprovado no SDD à risca, sem alucinar implementações não documentadas.
+- **Especificação de Design (SDD sob demanda):** O planejamento e documentação via Especificação de Design (SDD / `speckit`) deve ser seguido apenas quando a skill for chamada ou solicitada explicitamente pelo usuário. Para tarefas operacionais, ajustes diretos de arquivos ou quando o usuário dispensar expressamente o SDD, as alterações devem ser realizadas diretamente sem criar pastas em `specs/`, mantendo os testes e as regras do projeto estritamente intactos. Quando o SDD for acionado explicitamente, o agente deve seguir o design aprovado à risca.
 
 ##### 10. Atualização Contínua de Documentação e Configurações (Doc Sync)
 

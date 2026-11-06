@@ -1,0 +1,21 @@
+{
+  "palette": {
+    "caption_color": "#52E08B",
+    "caption_stroke_color": "#101B19"
+  },
+  "typography": {
+    "caption_font_size": 80,
+    "caption_stroke_width": 8,
+    "caption_reference_width": 1080
+  },
+  "layout": {
+    "caption_center_x_ratio": 0.5,
+    "caption_center_y_ratio": 0.79,
+    "caption_safe_width_ratio": 0.9
+  },
+  "motion": {
+    "caption_max_words": 3,
+    "caption_max_gap": 0.5,
+    "caption_max_duration": 2.0
+  }
+}
