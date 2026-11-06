@@ -12,7 +12,7 @@ from clipper.video.editor import (
     create_caption_clip, cut_and_format_video, group_caption_words,
     position_caption_clip, remove_caption_punctuation,
 )
-from clipper.core.schemas import CorteVideo
+from clipper.core.schemas import CorteVideo, Scene
 
 
 class EditorRenderTests(unittest.TestCase):
@@ -109,6 +109,57 @@ class EditorRenderTests(unittest.TestCase):
                 before_caption = result.get_frame(0)
                 self.assertFalse(np.any((before_caption[:, :, 1] > 150)
                                         & (before_caption[:, :, 0] < 110)))
+
+    def test_video_exports_with_scenes_and_visual_metaphors(self):
+        """Regression test for NameError: Scene is not defined when cut has scenes with visual metaphors."""
+        Path("output").mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir="output") as directory:
+            source_path = os.path.join(directory, "source_scene.mp4")
+            with ColorClip((320, 240), color=(20, 20, 30), duration=2) as source:
+                source.write_videofile(source_path, fps=10, codec="libx264", audio=False, logger=None)
+
+            corte = CorteVideo(
+                id=1,
+                title="Scene Metaphor Test",
+                description="Test cut with scene metaphors",
+                start_time=0.0,
+                end_time=2.0,
+                scenes=[
+                    Scene(
+                        start_word="mercado",
+                        end_word="financeiro",
+                        visual_metaphor="investimento em acoes",
+                        animation_trigger="impact",
+                    ),
+                    Scene(
+                        start_word="em",
+                        end_word="alta",
+                        visual_metaphor="crescimento economico",
+                        animation_trigger="zoom_in",
+                    ),
+                ],
+            )
+            words = [
+                {"word": "mercado", "start": 0.1, "end": 0.5},
+                {"word": "financeiro", "start": 0.5, "end": 0.9},
+                {"word": "em", "start": 1.0, "end": 1.3},
+                {"word": "alta", "start": 1.3, "end": 1.7},
+            ]
+
+            with patch("clipper.video.editor.SPEAKER_FOCUS_ENABLED", False):
+                paths = cut_and_format_video(
+                    source_path,
+                    [corte],
+                    words,
+                    output_dir=directory,
+                )
+
+            self.assertEqual(len(paths), 1)
+            self.assertTrue(os.path.exists(paths[0]))
+            with VideoFileClip(paths[0]) as result:
+                self.assertEqual(result.w % 2, 0)
+                self.assertEqual(result.h % 2, 0)
+                self.assertAlmostEqual(result.duration, 2.0, delta=0.2)
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip, concatenate_videoclips
 from moviepy.video.fx.all import crop
-from clipper.core.schemas import CorteVideo
+from clipper.core.schemas import CorteVideo, Scene
 from clipper.video.pause_editing import PausePlan, PauseSettings, identity_plan, remap_word_groups
 from clipper.runtime.config import (
     CAPTION_CENTER_X_RATIO, CAPTION_CENTER_Y_RATIO, CAPTION_COLOR,
@@ -210,14 +210,28 @@ def cut_and_format_video(
                 resolved_inserts: list[ResolvedInsert] = []
                 for interval in motion_plan.intervals:
                     if interval.visual_metaphor:
-                        dummy_scene = Scene(
-                            start_word="",
-                            end_word="",
-                            visual_metaphor=interval.visual_metaphor,
-                            animation_trigger=interval.animation_trigger,
-                        )
+                        scene_obj = None
+                        scenes_list = corte.get("scenes", []) if isinstance(corte, dict) else getattr(corte, "scenes", [])
+                        if 0 <= interval.scene_index < len(scenes_list):
+                            candidate = scenes_list[interval.scene_index]
+                            if isinstance(candidate, Scene):
+                                scene_obj = candidate
+                            elif isinstance(candidate, dict):
+                                try:
+                                    scene_obj = Scene(**candidate)
+                                except Exception:
+                                    pass
+
+                        if scene_obj is None:
+                            scene_obj = Scene(
+                                start_word="-",
+                                end_word="-",
+                                visual_metaphor=interval.visual_metaphor,
+                                animation_trigger=interval.animation_trigger or "standard",
+                            )
+
                         resolved_insert = resolver.resolve_insert_for_scene(
-                            scene=dummy_scene,
+                            scene=scene_obj,
                             scene_index=interval.scene_index,
                             scene_start_time=interval.rel_start,
                             scene_duration=interval.duration,
