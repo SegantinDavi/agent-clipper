@@ -1,0 +1,1262 @@
+{
+  "versao_schema": 1,
+  "status": "aguardando_aprovacao_visual",
+  "estilo": "../../estilo.json",
+  "estilo_sha256": "c2d698d1c0da3dbc3dd422f36ad4fac744a57b134791ccc88e98774f85ef5ab2",
+  "codigo_sha256": "58c7b4fa7879c8b0e1f1b8e07916aa50fd57be45c434d025455d8cd4235924f7",
+  "quantidade": 78,
+  "roteiro_coberto_integralmente": true,
+  "nomes_usados_no_roteiro": 71,
+  "resolucao_desenho": 1024,
+  "custo_total_api": 0,
+  "elementos": [
+    {
+      "id": "balao_alerta",
+      "arquivo": "balao_alerta.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        77,
+        435,
+        419
+      ],
+      "assinatura": "0bb8ce6bf98926e7d6a8c518f9f9e7055f58939abf0a4272f1d74866a1a2d0cb",
+      "sha256_png": "881d3334e7cbad60034e5ccaacf7d38bd8fdadc1f1d53884d141de01a7f060c0",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "balao_de_fala",
+      "arquivo": "balao_de_fala.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        77,
+        435,
+        419
+      ],
+      "assinatura": "c01ea4803f1b317b76aa68a4aec1becd40805a4e8fc41ce33c217877dfc4559d",
+      "sha256_png": "d15b9cebd4f64acca449de1bcac002db2eb95013d8f188df560be9204b2c62f1",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "balao_debate",
+      "arquivo": "balao_debate.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        77,
+        435,
+        419
+      ],
+      "assinatura": "471f24ff764a83be7b0ad89b2df8106a6a3584a34f2e220f9c63895b9db1475c",
+      "sha256_png": "5361d9f62558368e712732477cb7eac5282b62217eb6ae9c7ce2f225f9927bb5",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "balao_expectativa",
+      "arquivo": "balao_expectativa.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        77,
+        435,
+        419
+      ],
+      "assinatura": "1b704d2e147408c6305444a066999779ffe656880e9abcf70195cdd4ab32383b",
+      "sha256_png": "8b4b5175e5b971cb501b4908538eda89cff30e53f533544a82fbfc3e439262ff",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "balao_negacao",
+      "arquivo": "balao_negacao.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        77,
+        435,
+        419
+      ],
+      "assinatura": "f46b59cd2ea2789be87f22ba1c7321f7d4737a8c5746539e0063c690c5739789",
+      "sha256_png": "d38536327131a9e024b953d6c3e58b0dd4226519bc0ca7662961fe002def87a5",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "balao_pensamento",
+      "arquivo": "balao_pensamento.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        77,
+        435,
+        419
+      ],
+      "assinatura": "bbb66e202790122237a0c6dfb0466586ad298fcb1830193f2793d738642a7231",
+      "sha256_png": "e55a8c45933938f86157989e7a97de5334934de90a1ae4d003ab45feeca54124",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "balao_previsao",
+      "arquivo": "balao_previsao.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        77,
+        435,
+        419
+      ],
+      "assinatura": "145c13c271f1a1060383c6af4009c6690212e3b48891d8795e602a03a3b1edb0",
+      "sha256_png": "6d262c6580863b026170a25815225317a558f6f35ddd8b60c854a319d8593ead",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "balao_promessa",
+      "arquivo": "balao_promessa.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        77,
+        435,
+        419
+      ],
+      "assinatura": "6947aebfa5cf90ce52da2a025a46dc5530e3382751de0d942e8de9a5706868fd",
+      "sha256_png": "deef30d86da74c9354a71b2fdf375d4dd70f78f08edf4dfe64f0541856637c97",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "balao_promessa_ampliado",
+      "arquivo": "balao_promessa_ampliado.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        77,
+        435,
+        419
+      ],
+      "assinatura": "26cf26d9fee90b009e22b6e89c05b440fe13008b617cd7791473e93d98d097f0",
+      "sha256_png": "2ca3bfa8dbc5e336be65700ff7ec747b8d174bfee04924ac599935d4f5bb5941",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "baloes_conversa",
+      "arquivo": "baloes_conversa.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        50,
+        95,
+        450,
+        433
+      ],
+      "assinatura": "f36777ffb886404bbbf5d788c80d6745eac86a94d623bc5da1387b14aa5db852",
+      "sha256_png": "0eed85bf7e8d4ad29223ecb6dee264faf976d92bdeb2eb13d3e64999168f8a84",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "baloes_resposta",
+      "arquivo": "baloes_resposta.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        50,
+        95,
+        450,
+        433
+      ],
+      "assinatura": "89de4248a9261d6163d03e0012b03f5fe55a06fe22c94792ea8ae35ad16529ff",
+      "sha256_png": "1514c5e0a3acd6512618ed4f1cec6b94cbb232efbd6d9c810421d9b19b620170",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "barra_atividade",
+      "arquivo": "barra_atividade.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        197,
+        459,
+        315
+      ],
+      "assinatura": "6786371689de5929a3fb4051c5a379dfe98f970bc31e6fd85dd8404d779b0451",
+      "sha256_png": "fdc28c1c52da4d4a5f84aef31838b05f26263984bf8a4f70117947094614b130",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "botao_pausa",
+      "arquivo": "botao_pausa.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        69,
+        69,
+        443,
+        443
+      ],
+      "assinatura": "80034046ddb95ef4e391c3340219886f38c189c2e96e77d0b0877a4a66704aca",
+      "sha256_png": "00bbeb97a81dd456f6ca747d6cb62ddb3904b020950edc9237479ac074cdde9a",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "caixa_entrega",
+      "arquivo": "caixa_entrega.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        93,
+        85,
+        419,
+        427
+      ],
+      "assinatura": "e6dd529e691111d84225b143330047a5762c961c973777856617d45a61b20cc8",
+      "sha256_png": "393db5f5f095886456f9b13a41be027dd38a981013692d84cc94679575df3c8f",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "caixa_misterio",
+      "arquivo": "caixa_misterio.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        93,
+        85,
+        419,
+        427
+      ],
+      "assinatura": "c5b1c6af26d11df48fc090bf3007e8afa29ccc4fb1c5239895d925e2a098b54a",
+      "sha256_png": "e176a2c2b1fbd5d399486bfa71a9f4fad47a3a93f24c3cc3d2d2292b9df14037",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "caixa_moedas",
+      "arquivo": "caixa_moedas.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        93,
+        77,
+        419,
+        427
+      ],
+      "assinatura": "977d4d077955d6defe906e98113de4879fe09cd04fe6a2897dcfca6d66d42579",
+      "sha256_png": "d7c7698a93c9a1f37e13286049041316a8b66e1904aadb49816f61d924852f96",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "calendario",
+      "arquivo": "calendario.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        77,
+        53,
+        435,
+        435
+      ],
+      "assinatura": "667fe9fd844cffed4c07f3cc5d10a6efa290434addd2cb05ab128b289f67f176",
+      "sha256_png": "cca520da61f28ad27f8a2b5df5b0fd9d0eb87b85e9eb9fc5b8a9eb20065532b0",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "calendario_futuro",
+      "arquivo": "calendario_futuro.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        77,
+        53,
+        435,
+        435
+      ],
+      "assinatura": "e8e6afe7c78ef9cdd48f38fba59e89df77c38a0c716520b12f0eb55dbe597ae2",
+      "sha256_png": "8f6b55acebf2ae7820760eab12a431f9ca4db74d9f813aa68b3346daa293b5ba",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "cartao_auxilio",
+      "arquivo": "cartao_auxilio.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        109,
+        459,
+        395
+      ],
+      "assinatura": "9737d649ecf69d1b9c154cbf197834c709ee1b9dd7db8e61a4999058ec736079",
+      "sha256_png": "5600272f5ab2d65a3715f7a2f12c2b9e7ef0a2c648a7464d20078dee06691095",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "cartao_beneficio",
+      "arquivo": "cartao_beneficio.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        109,
+        459,
+        395
+      ],
+      "assinatura": "e6296ac7dd53260e2c715c694d631964c117879226c56e376138bd7715115bfa",
+      "sha256_png": "c30b522b0794dd936922cd534d8f9fee38fa8e915cc5b157bec270c04c082770",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "carteira",
+      "arquivo": "carteira.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        69,
+        77,
+        451,
+        395
+      ],
+      "assinatura": "5afc44674685c453db8f3c8d6503c19219d0e6453425025c95e1e6bfdb34cd0b",
+      "sha256_png": "70376e27a03ecd1bfc4fa49f035c9d5787a6862c977231ec06e333457af3b3a1",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "carteiras",
+      "arquivo": "carteiras.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        58,
+        111,
+        458,
+        421
+      ],
+      "assinatura": "232a5b2d8132002de572098399b255dd8515ff354fb073b2316de248785ab6b9",
+      "sha256_png": "66a2498fb5f08eafc2820e99dbc8ca5252e65aefe9b1bfbd7fd8619056c42a64",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "casa",
+      "arquivo": "casa.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        54,
+        62,
+        443,
+        427
+      ],
+      "assinatura": "9faee82016f3f36ce6a28b076479ae0f38b8d35a3c5794053e621f3c71f2ac20",
+      "sha256_png": "a27424a534262e3f38cb7e013acbce0b36d19bdb436c22f2849b70693bdf7425",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "casa_espacial",
+      "arquivo": "casa_espacial.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        54,
+        24,
+        443,
+        427
+      ],
+      "assinatura": "ad9d263cc69d6534b6bef7f8076da8ad0796e7b309596904dc9b766c7be1d23f",
+      "sha256_png": "10c071bc41a3fc2d9bf610beb0a66c2627fbb1ea68a88312262cd6feeca3a153",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "celular",
+      "arquivo": "celular.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        149,
+        37,
+        363,
+        459
+      ],
+      "assinatura": "e26f09bdb2a10a4306c4c8182d2ca71da63d29f99452919c14d1f01f70c217b1",
+      "sha256_png": "4a937a215238a3fbf5db817e2c6a1d06f66ffdf4e732ec6ee7bccfb7ecaa594f",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "comercio",
+      "arquivo": "comercio.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        46,
+        101,
+        451,
+        419
+      ],
+      "assinatura": "3269b80ca55063db6a81e29d09cf8f741743d8ac5eebaa1abf8482d8d007dbb6",
+      "sha256_png": "f896ac85fc10d8bd1f1b3d22bc36a7cb071f4bd20334e41baa529878b2d2928b",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "consumidor",
+      "arquivo": "consumidor.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        109,
+        61,
+        403,
+        451
+      ],
+      "assinatura": "20bae5eb8cb275204a5cbf67f3bccb3418264baf3b17fee68bf17cedbcaedc36",
+      "sha256_png": "635210bcc3d790d9f2539ebcd0a98c67c9e3967b287c8149c789c7b247a16b55",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "copo_cerveja",
+      "arquivo": "copo_cerveja.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        133,
+        101,
+        427,
+        411
+      ],
+      "assinatura": "b6d88cdfccc76fccc6e91c6029e14be095f9cb1b7651daf61a9396643207d587",
+      "sha256_png": "fbb60c100e953de56d0018345bf15a9d268e65c53a8c1cdf40e7ed223a471d66",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "coracao",
+      "arquivo": "coracao.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        37,
+        109,
+        475,
+        443
+      ],
+      "assinatura": "74f707107133327c235202316300b4e124d4034f4c9f0761def888ae02b064cc",
+      "sha256_png": "6c66798d35607e4d6691fbfd47b03238818c9b3c70ad7bb65476d70689bea2a6",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "empresa_tecnologia",
+      "arquivo": "empresa_tecnologia.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        54,
+        69,
+        451,
+        459
+      ],
+      "assinatura": "7df6e261584b33ee37e88eb393f7f3c4f6bec69e4500b884a780652767b3eb16",
+      "sha256_png": "9f08eeb54890fc120f4eb4f47cba9b70f073e35150bc6beea9a425dca3951dc7",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "empresario",
+      "arquivo": "empresario.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        109,
+        61,
+        403,
+        451
+      ],
+      "assinatura": "5caeaf610a48d6a66bbbb1282b2d1d88e6226ddc7633f1c250afee767e29e291",
+      "sha256_png": "d4c6d64f1168828f07927b3ce2cabb01ee5f7b2e1d600b87a04bfd4fb15b8b1c",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "engrenagem_ciclo",
+      "arquivo": "engrenagem_ciclo.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        61,
+        61,
+        451,
+        451
+      ],
+      "assinatura": "bda14b6ecf7082ee5923c2b809b93bba2da64d2fd5ec356a2e02b1dd873ea39b",
+      "sha256_png": "8a08377249ea90fc0d6d2e0ab0a635c2270b8e39aef625095f4f1f260aba229d",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "fichas_empresarios",
+      "arquivo": "fichas_empresarios.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        55,
+        89,
+        458,
+        351
+      ],
+      "assinatura": "9e2c0b95e747ae0211ea8670e2c24f26aefec5534b48028dd199a611189ddb00",
+      "sha256_png": "d4fd1be091df36855e0225e5dc0c76dfea7dc2f3b9cafdd806326c39bf7ee7f4",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "foguete",
+      "arquivo": "foguete.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        125,
+        30,
+        387,
+        467
+      ],
+      "assinatura": "8db95246809b4af14f68e7b374e90694f407ddffa8f1b7229419a47e147c1dc9",
+      "sha256_png": "3c96f47340069c9b3e5b28ba0514732bb91342b038cb8f6d5eb0468c73d22017",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "globo",
+      "arquivo": "globo.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        85,
+        69,
+        427,
+        427
+      ],
+      "assinatura": "376acae90b91539458482972b273599e4f1aff87f6b8dda0b8a1e9a0a95d090e",
+      "sha256_png": "11733fe78f891c6814ef548439edb1a36517c6da861e2462ba7acb6405c23a90",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "grafico",
+      "arquivo": "grafico.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        64,
+        69,
+        451,
+        433
+      ],
+      "assinatura": "1e7cef36adb65b9b4a7ab711be535c462ccacf31185835b113d409ce26da2301",
+      "sha256_png": "671ebe6f691b735bf1b68ca84ea41d90c1afc76701744d9ae604aeda35b6c234",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "icone_midia",
+      "arquivo": "icone_midia.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        54,
+        69,
+        451,
+        459
+      ],
+      "assinatura": "b51eb43527be9bf9a430ab617ed7fa504c98983382c7124a1276a3e9baac39c5",
+      "sha256_png": "9a1adca2de03f65e8b66eea9c0e0b86ecf503f9cf28b3c7fafaf09f7f5807ce3",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "indicador_melhora",
+      "arquivo": "indicador_melhora.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        77,
+        62,
+        443,
+        427
+      ],
+      "assinatura": "b7e2fcca1793e273fa9fcfa057642725bbf9ee5a173781d2b7d7b26a3e16676f",
+      "sha256_png": "ddaca62ed00c2be5423cba37498a0cab0b3026b257e331c667a036a988de94c9",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "indicador_resposta",
+      "arquivo": "indicador_resposta.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        70,
+        102,
+        451,
+        411
+      ],
+      "assinatura": "591887bcf78274e03aefa60d551a39272b9e46c55dce9dbff795fff27aacbc77",
+      "sha256_png": "e9900b135bb8865ef8baa2c1945cb2d9219758548c98e15649b8e99751236734",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "interface_ia",
+      "arquivo": "interface_ia.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        54,
+        69,
+        451,
+        459
+      ],
+      "assinatura": "4e7be280617ddcbfe6acfcbceefaa16888e8ef390e45855e6a8af3a9a0068269",
+      "sha256_png": "5dc13bcc8f79121764f9700b1d0ddf3cefe196032a2e4a1b429237d42741c371",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "interrogacao",
+      "arquivo": "interrogacao.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        117,
+        69,
+        379,
+        435
+      ],
+      "assinatura": "61d2eed3071216950700fbee380092c90c5f1c43f6a982c17b45a8291fb67fb0",
+      "sha256_png": "a661c87904424a68b800c22cf9dcc3961c2e7332cbddc2b0c158ced1b324574f",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "linha_tempo",
+      "arquivo": "linha_tempo.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        102,
+        443,
+        387
+      ],
+      "assinatura": "a3ddfadf78a4f5c7c8453595c380f37bf9cfcb3a4c0bd56854a3d8de22f89fc8",
+      "sha256_png": "8588f508fd39268c8a6ec15b0a3e15ad853642f90e60edbb5f4c513c8e5a54ce",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "loja",
+      "arquivo": "loja.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        46,
+        101,
+        451,
+        419
+      ],
+      "assinatura": "bd29e3197313ec11a16f28f39a2624234f085b8fe69b4a4728ee4d7458cb4696",
+      "sha256_png": "8c8ac04edba57af2e0556b3d0fa9a9ebf58978e996b20c1d1ba77d1f1c1c15b2",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "loja_media",
+      "arquivo": "loja_media.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        46,
+        53,
+        451,
+        419
+      ],
+      "assinatura": "8751a8ee5986ed6d1ea845f24df226dedf1cc0e90897a595af2debd3730ccacb",
+      "sha256_png": "f8797b435ae4d3f95e8c616f9e9b2e2aa3b2e53f64d302333a6d2ba986ba0870",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "loja_pequena",
+      "arquivo": "loja_pequena.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        46,
+        101,
+        451,
+        419
+      ],
+      "assinatura": "0a91ae417202c8a7484e708a951adf460536ad1d019442f565146f33ed15b4c8",
+      "sha256_png": "402282fac15546fb78de030c1415d37706ff1e7cd9af76d2cfbc451321483b98",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "loja_quebrada",
+      "arquivo": "loja_quebrada.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        46,
+        101,
+        451,
+        419
+      ],
+      "assinatura": "6a2795bdd7775593362dbf3f90eef33735be876b65d3bf007ec0650935d3f132",
+      "sha256_png": "6264701cbf759159b94b01fcb7fdbf48232fb3ae6408f41f6d80d5546be7c570",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "lojas",
+      "arquivo": "lojas.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        46,
+        131,
+        458,
+        433
+      ],
+      "assinatura": "0f4e1c29dbd6df3699e63f8c7aad917f36264c7e96cbf398c3e4f380f9d3a80f",
+      "sha256_png": "c13f7c20aaa3ff6c05d90f43b49f443d766ccb885b89708d82716001fbac3c0b",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "mapa_bairro",
+      "arquivo": "mapa_bairro.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        69,
+        459,
+        435
+      ],
+      "assinatura": "a10b6be6a6ee223b2bbcc5fcfeb2787cf75bd3d1f21fe4ccc8bc18f55474d763",
+      "sha256_png": "5733005f7dfc952a9098ce8347e1f9dfe66389ec7785af28fa57c1495041710b",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "mapa_comercio",
+      "arquivo": "mapa_comercio.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        69,
+        459,
+        435
+      ],
+      "assinatura": "344573ded54a22ebcfe8f872ad1198b688c207ff9b6294b88ecd21739c75126d",
+      "sha256_png": "12482be9000eed388e4281794af292ba65e556ff050f979e63752d75eb84b4cf",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "marcador_pandemia",
+      "arquivo": "marcador_pandemia.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        77,
+        53,
+        435,
+        435
+      ],
+      "assinatura": "42da2dd049ecdb2b6fd61da569e5d084ce8c97aa5526736bc120c127fa3b7b45",
+      "sha256_png": "34bda03540eb18acc22dd41f6275db1537f9d0a5f7895ec959cc29c4927a1175",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "mercadinho",
+      "arquivo": "mercadinho.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        46,
+        101,
+        451,
+        419
+      ],
+      "assinatura": "87a97b8c3d0f72fd03459989352a483888cb307e73b7e179fb32835490f71bb6",
+      "sha256_png": "c26fb6aeaddf44feb0364005ffaad932d7343018765fb62b6827694c0f22af06",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "mesa_conversa",
+      "arquivo": "mesa_conversa.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        77,
+        109,
+        427,
+        435
+      ],
+      "assinatura": "85bc2835a3cd5e645ccf6c66a01909e00277c5840113e79c2f1b02b482f914fd",
+      "sha256_png": "d77afd183d908eaf6bd59da89d7865a3ab568ae3c1221f3c211218c1990a4c4c",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "moeda",
+      "arquivo": "moeda.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        93,
+        61,
+        403,
+        427
+      ],
+      "assinatura": "13671610c88d3d96e14e566af2aa0f8aeb87ee1cae789b27b70075801abb4d73",
+      "sha256_png": "075788ff6d7e5c5b633ac1e3fa95739ae90e36a74a61499ee1cee8ccee60fabe",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "moedas",
+      "arquivo": "moedas.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        66,
+        91,
+        414,
+        423
+      ],
+      "assinatura": "693bdcbf45f62a917380323d4b69dfa0c5fbff2bf206b845a95603a08fed73b5",
+      "sha256_png": "1557da4606253759a9fe97d1992da4ca0a9ced220e52192af4344853044edd16",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "painel_exemplo",
+      "arquivo": "painel_exemplo.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        69,
+        459,
+        427
+      ],
+      "assinatura": "569499577f101e6032566024f198f0de40ed055c1432ff58dcb4c15ac85421be",
+      "sha256_png": "b46a54aa57338ef866ce38974540cf07758d440840c1354cadcc51cf75b29d80",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "painel_ressalvas",
+      "arquivo": "painel_ressalvas.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        69,
+        459,
+        427
+      ],
+      "assinatura": "b7ec0227bfd70c61f56cbaa51615e2ccca335350553483cc91b5c7ecbacf348f",
+      "sha256_png": "ef87e5eaf506c0470bcd6205b2baf04e35f19f2f7d81170363f73ad3af23b0da",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "painel_teste",
+      "arquivo": "painel_teste.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        69,
+        459,
+        427
+      ],
+      "assinatura": "f7ca7bc5f9b827b5138e2409a881bf4f2fe2e344b770634378f70d7a5c2f2ae3",
+      "sha256_png": "2ec9acac686b47e169ee5910e8e2339b0a0b7aff3aed3f56e180f4b537752ac2",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "pixels_expectativa",
+      "arquivo": "pixels_expectativa.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        69,
+        61,
+        459,
+        435
+      ],
+      "assinatura": "57c82ee845f7f41f8d43e07b5844fd3361aec2ddec239d646a9ee95622b9c7e6",
+      "sha256_png": "d53396790f2b533b032cc11235a90f307c500a6382eb069398fc2868f3e11bca",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "planeta_marte",
+      "arquivo": "planeta_marte.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        85,
+        69,
+        427,
+        427
+      ],
+      "assinatura": "e921bf906f704c3d04c1e0edb46f1da2c7b8fca41b3e880a884b9c60933b958f",
+      "sha256_png": "57a14af78c9e078e7fe9e05f900e1d8a23618d69af949b4b6c3676a2fe84c401",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "planta_projeto",
+      "arquivo": "planta_projeto.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        69,
+        459,
+        427
+      ],
+      "assinatura": "9ee6e26bcab8b13e9f7dde6f181c241b823f36835d700568fcf2b7f2d450b6af",
+      "sha256_png": "0d7119ac949569dc678c2c1899c6e0c8e8170b03084fabfe41ace1c37ecd97e2",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "predio_publico",
+      "arquivo": "predio_publico.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        61,
+        45,
+        435,
+        443
+      ],
+      "assinatura": "00e4bdddb373eaff642e2fcddfa443d65a6dedee487b0361818438b2ef37f499",
+      "sha256_png": "83169ac239f8d6b7ad5f6a3d4944b15fafc1f241699bd73f8fdc4334c3a22ff2",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "raio_bairro",
+      "arquivo": "raio_bairro.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        69,
+        69,
+        443,
+        443
+      ],
+      "assinatura": "e508a4a06e7751efed1e800583c4ac2cebda1ccffc91740018a7c331fdc16ff5",
+      "sha256_png": "44bc729a97f56eb62fb601c86b6587c25678b387c5d373333f94b31a3559fb1d",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "recibo",
+      "arquivo": "recibo.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        117,
+        53,
+        395,
+        443
+      ],
+      "assinatura": "650fff5695dac6b70f4b22e41f77ea6ecd995360f2a2ba321806b6c81a087d66",
+      "sha256_png": "ba4666b0a31b382946e00c09d0ee89b4d13b3ad410785d1712ce404420bb9b34",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "rede_familias",
+      "arquivo": "rede_familias.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        61,
+        69,
+        435,
+        435
+      ],
+      "assinatura": "deb3f7d9918ee45c984899c767f98e7893b0d09f2bb8e1e18ad346baa6e9295f",
+      "sha256_png": "220be9ccadc6ba7e170ab5557392ba2139bfa0c3bb70cb09e60f479d3472b198",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "retrato_generico_portavoz",
+      "arquivo": "retrato_generico_portavoz.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        109,
+        61,
+        403,
+        451
+      ],
+      "assinatura": "bb01ba16df205694f7150f994e104fbbe8799912faca16168176e68b5f69037f",
+      "sha256_png": "30bf358e12f6f7805f3d1b59067e26103b18b6eba869dcc49675cf5e483c6616",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "sacola",
+      "arquivo": "sacola.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        64,
+        90,
+        432,
+        424
+      ],
+      "assinatura": "7d500529bd4d4ad75812215bb9ecec5c27c9ca9650373131154835ed35d0698c",
+      "sha256_png": "c9d8a52d6f8c3d9c52b2e6c61441b3a33eb93ddbdf3dbf0b69da8ad572a512fb",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "seta",
+      "arquivo": "seta.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        110,
+        459,
+        403
+      ],
+      "assinatura": "d3d5d10f9ec65377847605679aa4c23654da5fe573ea71566430a73e7a1cf655",
+      "sha256_png": "9457f9e211b9fc785f8cc754ec9803bf78cbb7d5d444704e14af5bcaea2346cf",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "seta_fluxo",
+      "arquivo": "seta_fluxo.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        110,
+        459,
+        403
+      ],
+      "assinatura": "d81b07174e887f49eca9b1e3dd477dd438a7945327ae1fbb4f71ac8b68f53990",
+      "sha256_png": "48617509849cab01b5843194dbfc4a789d81ce08dc8f3c0edb620584de9a6dc3",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "simbolo_infinito",
+      "arquivo": "simbolo_infinito.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        38,
+        149,
+        475,
+        363
+      ],
+      "assinatura": "001711833ad30afaacfd826b0105f57189f739dbdd559a79be08ae74ed9eb1fa",
+      "sha256_png": "e4f296953561a012bd9627a8de28a99ea3ea8b1de30cf8ca5a39380532afbe8d",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "tabuleiro_rota",
+      "arquivo": "tabuleiro_rota.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        102,
+        443,
+        387
+      ],
+      "assinatura": "28552d0ae7a3a0335961bee10fc39efaeb91eb88441bc1d28415dac16a5b5538",
+      "sha256_png": "bfb4bae17c1c5e35a15ab4f2b6236cf1eb6f206e51db658dcddd2e2efab81ba7",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "taxi",
+      "arquivo": "taxi.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        101,
+        459,
+        395
+      ],
+      "assinatura": "6d0d7b2a68477b3406f0285067a75e0448a6a93a87b0d68f299ed897459ca69b",
+      "sha256_png": "3436d992bfecdc6771ef4e3e270852c961c761f22358c8af1ce74203e579a226",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "tesoura",
+      "arquivo": "tesoura.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        93,
+        46,
+        459,
+        451
+      ],
+      "assinatura": "7e35d1ffa6e4c5ba12ae7ad8b6b8bba9d18b6bc3e149107eaa85eb01ab3320cd",
+      "sha256_png": "5d72313d6d77f780e8bed7be6ba65a966179c79da0f6acb3290c39eca4753956",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "tesoura_recibo",
+      "arquivo": "tesoura_recibo.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        60,
+        52,
+        399,
+        449
+      ],
+      "assinatura": "476fe7c02dcd5135ba01e16379e3fbe534edcf98a4352c135529e5c3f93bf22e",
+      "sha256_png": "e5996c54af3123aaa5f6612f79759150061d16d6dd90ac0bf6879a0fdb83b622",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "torre_tecnologia",
+      "arquivo": "torre_tecnologia.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        117,
+        45,
+        395,
+        443
+      ],
+      "assinatura": "8235e36882cd51288bbb7523d7a01b36ff94c3a4f14b7a7701c6270442d3d3e5",
+      "sha256_png": "fe1f8a940be0384ffd86f1eb7cea6ecf3141a0bc6529893e802d6025116074a9",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "trabalhador",
+      "arquivo": "trabalhador.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        109,
+        61,
+        403,
+        451
+      ],
+      "assinatura": "f7f57bafc162771db79ee134f43684baaa2623300ec03bdf32d0139695ba8bf2",
+      "sha256_png": "e189de4d46f382632607c6717098f9c2346b177a891a18d585a6a48ae976a17a",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "trilho",
+      "arquivo": "trilho.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        102,
+        443,
+        387
+      ],
+      "assinatura": "865a4c330043f240363a3c013519e89907722875fb29522c466f5a86f48f8c05",
+      "sha256_png": "aab7b1ce94563f9ff129d0d499f34a6f442d59dfcda4520567a993e33dbbe676",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "vaga_emprego",
+      "arquivo": "vaga_emprego.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        37,
+        144,
+        433,
+        397
+      ],
+      "assinatura": "513c98393088ea5cc14bb610ffd02f800fd909527cf136171f30ef002674471d",
+      "sha256_png": "39e9cb623150cc77a45bd3f076cd74785475ac314c32a196ee7a01b7da9c4b04",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    },
+    {
+      "id": "valor_citado",
+      "arquivo": "valor_citado.png",
+      "largura_px": 512,
+      "altura_px": 512,
+      "bbox_alpha": [
+        53,
+        141,
+        459,
+        347
+      ],
+      "assinatura": "62654d20bfca82666845281961742778ce543b3923e7a0ae9605bb158886aeb5",
+      "sha256_png": "332dfaa43b67cd7aec1a516b0340ede3df028965c69c469181b45fd253a7c393",
+      "origem": "desenho_em_codigo",
+      "custo_api": 0
+    }
+  ]
+}

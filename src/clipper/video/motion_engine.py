@@ -397,6 +397,7 @@ def create_procedural_card_image(
     target_width: int = 480,
     target_height: int = 120,
     visual_identity: dict | None = None,
+    icon_path: str | None = None,
 ) -> Image.Image:
     """Renderiza imagem RGBA de card procedural com tipografia Liberation e bordas arredondadas."""
     from clipper.video.editor import load_caption_font
@@ -453,12 +454,35 @@ def create_procedural_card_image(
         fill=accent_rgb + (255,),
     )
 
-    # Texto
+    cur_x = bar_x + bar_w + 14
+
+    # Se houver ícone válido (ex: PNG com canal alfa), desenha no card
+    if icon_path and os.path.exists(icon_path):
+        try:
+            with Image.open(icon_path) as icon_img:
+                icon_img = icon_img.convert("RGBA")
+                icon_dim = max(16, target_height - 24)
+                icon_resized = icon_img.resize((icon_dim, icon_dim), Image.Resampling.LANCZOS)
+                icon_y = (target_height - icon_dim) // 2
+                image.paste(icon_resized, (cur_x, icon_y), icon_resized)
+                cur_x += icon_dim + 12
+        except Exception:
+            pass
+
+    # Texto com ajuste para não ultrapassar a largura do card
+    max_text_w = max(50, target_width - cur_x - 16)
+    while clean_text and (font.getbbox(clean_text)[2] - font.getbbox(clean_text)[0]) > max_text_w:
+        clean_text = clean_text[:-1]
+    if len(clean_text) < len(label_text.strip()):
+        clean_text = clean_text.rstrip()
+        if len(clean_text) > 3:
+            clean_text = clean_text[:-3] + "..."
+
     left, top, right, bottom = font.getbbox(clean_text)
     text_w = right - left
     text_h = bottom - top
 
-    text_x = bar_x + bar_w + 14 - left
+    text_x = cur_x - left
     text_y = (target_height - text_h) // 2 - top
     draw.text((text_x, text_y), clean_text, font=font, fill=(245, 245, 245, 255))
 
@@ -526,6 +550,7 @@ def create_animated_insert_clip(
         target_width=tw,
         target_height=th,
         visual_identity=visual_identity,
+        icon_path=resolved_insert.asset_path if (resolved_insert.asset_path and os.path.exists(resolved_insert.asset_path)) else None,
     )
     img_arr = np.array(card_img)
 
